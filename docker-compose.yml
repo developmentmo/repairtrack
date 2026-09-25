@@ -1,0 +1,30 @@
+# Local development infrastructure. The application itself runs from the IDE.
+# Object storage (S3-compatible) is added in Phase 6.
+
+name: repairtrack
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: repairtrack-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-repairtrack}
+      POSTGRES_USER: ${POSTGRES_USER:-repairtrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-repairtrack}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      # Bound to localhost only: the dev database is never reachable from the network.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18+ images keep data under /var/lib/postgresql/<major>/, so mount the parent directory.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

@@ -1,0 +1,9 @@
+# Test profile. The real connection details are supplied by Testcontainers via @ServiceConnection,
+# which takes precedence over these properties. The placeholders below only satisfy the
+# ${DATABASE_*} references in application.yml, which have no defaults by design.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://provided-by-testcontainers/unused
+    username: provided-by-testcontainers
+    password: provided-by-testcontainers

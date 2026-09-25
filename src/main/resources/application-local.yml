@@ -1,0 +1,18 @@
+# Local development profile. Activate with SPRING_PROFILES_ACTIVE=local.
+# Defaults match docker-compose.yml. Environment variables still take precedence.
+# These are throwaway local credentials, never used outside a developer machine.
+
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/repairtrack}
+    username: ${DATABASE_USERNAME:repairtrack}
+    password: ${DATABASE_PASSWORD:repairtrack}
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.repairtrack: DEBUG
