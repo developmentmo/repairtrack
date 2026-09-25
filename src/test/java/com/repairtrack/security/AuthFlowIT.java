@@ -9,25 +9,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import com.repairtrack.ApiTestClient;
 import com.repairtrack.ApiTestClient.ApiResponse;
-import com.repairtrack.TestcontainersConfiguration;
+import com.repairtrack.IntegrationTest;
 
 /**
  * End-to-end authentication and account-security behaviour over real HTTP and PostgreSQL.
  * Every test uses its own unique email, so tests are independent despite the shared database.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("test")
+@IntegrationTest
 class AuthFlowIT {
 
     private static final String PASSWORD = "correct horse battery staple";

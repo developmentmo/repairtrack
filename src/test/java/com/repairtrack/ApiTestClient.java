@@ -35,6 +35,10 @@ public final class ApiTestClient {
         return send(request(path, bearerToken).GET(), bearerToken);
     }
 
+    public ApiResponse delete(String path, String bearerToken) {
+        return send(request(path, bearerToken).DELETE(), bearerToken);
+    }
+
     public ApiResponse post(String path, Object body) {
         return post(path, body, null);
     }

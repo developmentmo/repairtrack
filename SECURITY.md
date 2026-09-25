@@ -52,6 +52,26 @@ Two layers:
 
 Garage roles are not global user roles: a person can be a mechanic at garage A and nobody at garage B.
 
+### Garage authorization (Phase 3)
+
+All garage checks live in `GarageAccessService` and are based on the caller's **active membership of that
+specific garage**:
+
+| Action | Rule |
+|---|---|
+| Register garage | any authenticated user; becomes its first `GARAGE_ADMIN`; status always `PENDING` |
+| View garage profile | any authenticated user (business information) |
+| List members | active member of that garage, or `SYSTEM_ADMIN` |
+| Add member / remove other member | active `GARAGE_ADMIN` of that garage |
+| Leave garage | the member themselves (not the last admin) |
+| Re-apply for verification | active `GARAGE_ADMIN`, only from `UNVERIFIED` |
+| Verification decision | `SYSTEM_ADMIN` only |
+| Record work (Phase 5) | `validateCanCreateRepair`: active member (admin or mechanic) **and** garage not `SUSPENDED` |
+
+A `SYSTEM_ADMIN` is not implicitly a garage member and cannot record work for a garage.
+Adding members by email reveals to garage admins whether an account exists (accepted; an invitation
+flow can replace this later).
+
 ### Never trusted from clients
 
 Roles, account status, verification status, source type, garage IDs and ownership claims. Request DTOs don't have
@@ -72,3 +92,4 @@ fields for server-decided values; unknown JSON properties can never set them.
 - No cleanup job for expired refresh tokens.
 - CORS not configured (only needed for Flutter web; mobile apps don't use it).
 - No admin endpoints to block users or grant roles (done directly in the database for now).
+- Garage verification history is only kept as "latest change" until the audit module (Phase 5) consumes `GarageEvents`.

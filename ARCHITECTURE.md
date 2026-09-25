@@ -49,6 +49,16 @@ Types in a module's **base package** are its public API for other modules. Examp
 | `AuthenticatedUser` | The caller (ID, email, platform roles). Other modules receive it as a method parameter. |
 | `Role` | Platform roles `OWNER`, `SYSTEM_ADMIN`. |
 | `UserRegisteredEvent` | Published after registration (for audit/notifications). |
+| `UserDirectory`, `UserSummary` | Read-only user lookup (e.g. add a garage member by email). No credentials. |
+
+Garage module public API:
+
+| Type | Purpose |
+|---|---|
+| `GarageAccessService` | Explicit garage authorization: `validateCanCreateRepair(actor, garageId)` returns a `GarageWorkPermit`, plus `requireGarageAdmin`, `requireMemberOrSystemAdmin`. |
+| `GarageWorkPermit` | Result of the repair-authorization check. Carries the garage's verification status, from which the repair module derives `GARAGE` vs `VERIFIED_GARAGE`. |
+| `GarageRole`, `GarageVerificationStatus` | Published enums. |
+| `GarageEvents.*` | Registered, verification status changed, member added/removed. |
 
 Controllers obtain the caller with `@AuthenticationPrincipal AuthenticatedUser` and pass it explicitly into
 application services. Services never read `SecurityContextHolder` themselves: authorization inputs stay
@@ -95,6 +105,8 @@ extractable. Foreign keys still exist at the database level while we share one d
 | Business errors extend `common.error.ApplicationException` with an `ErrorCategory` | Modules express *what* went wrong; only `GlobalExceptionHandler` knows HTTP statuses. |
 | Stateless JWT access tokens + rotating opaque refresh tokens (Phase 2) | Mobile-friendly, no server session; refresh tokens stay revocable. Details in SECURITY.md. |
 | Platform roles on the user; garage roles on garage membership | A global `MECHANIC` role cannot express "mechanic *at garage X*". |
+| Multi-row invariants guarded by locking the aggregate root row (`findByIdForUpdate`) | e.g. "a garage keeps at least one admin" cannot be broken by two concurrent removals. |
+| Memberships and other history-bearing rows are ended, never deleted | Past work stays attributable to the person and garage that did it. |
 | Entities get their UUID at construction; `@Version` on entities | ID is known before persisting (events, links); `@Version` gives optimistic locking and lets Spring Data detect new entities without an extra SELECT. |
 
 ## Domain model (target)

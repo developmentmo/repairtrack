@@ -6,10 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -20,9 +17,7 @@ import com.repairtrack.ApiTestClient.ApiResponse;
  * foundation: context starts, Flyway migrates, health is public, everything else is protected,
  * errors are uniform.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("test")
+@IntegrationTest
 class ApplicationFoundationIT {
 
     @Value("${local.server.port}")

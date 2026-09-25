@@ -10,9 +10,11 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V1 | `V1__baseline.sql` | Baseline; no tables. Establishes the migration pipeline. |
 | V2 | `V2__create_app_user.sql` | `app_user`, `app_user_role` (platform roles only) |
 | V3 | `V3__create_refresh_token.sql` | `refresh_token` (hashed, rotating refresh tokens) |
+| V4 | `V4__create_garage.sql` | `garage` |
+| V5 | `V5__create_garage_user.sql` | `garage_user` (memberships) |
 
 Planned, in phase order (version numbers are assigned when each migration is written):
-garage, garage_user (Phase 3) · vehicle, vehicle_ownership (Phase 4) · repair_event, repair_part,
+vehicle, vehicle_ownership (Phase 4) · repair_event, repair_part,
 mileage_record, verification, audit_event (Phase 5) · document (Phase 6) · vehicle_share (Phase 7).
 
 ## Tables
@@ -42,6 +44,34 @@ mileage_record, verification, audit_event (Phase 5) · document (Phase 6) · veh
 | revoked_at | TIMESTAMPTZ | null = active |
 | replaced_by_id | UUID | FK refresh_token: rotation chain |
 | version | BIGINT | optimistic locking |
+
+### garage
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| name | VARCHAR(150) | |
+| kvk_number | VARCHAR(8) | 8 digits (check). Indexed, **not unique**: one KvK registration can have several branches. |
+| address, postal_code, city | | postal code stored as `1234 AB` (check) |
+| phone, email | | optional |
+| verification_status | VARCHAR(20) | UNVERIFIED, PENDING, VERIFIED, SUSPENDED. Indexed (admin review queue). |
+| verification_changed_at / _by / _note | | latest verification change; full history via audit (Phase 5) |
+| created_by | UUID | FK app_user |
+| created_at, updated_at, version | | |
+
+### garage_user
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| garage_id | UUID | FK garage |
+| user_id | UUID | FK app_user |
+| role | VARCHAR(20) | GARAGE_ADMIN, MECHANIC |
+| status | VARCHAR(20) | ACTIVE, ENDED. Rows are never deleted. |
+| added_by, created_at | | |
+| ended_by, ended_at | | set iff ENDED (check constraint) |
+| version | BIGINT | |
+
+Partial unique index `uk_garage_user_active_membership (garage_id, user_id) WHERE status = 'ACTIVE'`:
+one active membership per user and garage; re-joining creates a new row.
 
 ## Conventions
 

@@ -45,8 +45,17 @@ Business codes:
 | `INVALID_CREDENTIALS` | 401 | Login: wrong email or password (identical for both) |
 | `INVALID_REFRESH_TOKEN` | 401 | Refresh: unknown, expired, revoked or replayed token |
 | `ACCOUNT_BLOCKED` | 403 | Login/refresh of a blocked account (login: only after a correct password) |
-| `USER_NOT_FOUND` | 404 | |
+| `USER_NOT_FOUND` | 404 | No (active) account for the given user / email |
 | `EMAIL_ALREADY_REGISTERED` | 409 | Registration with an existing email (case-insensitive) |
+| `INVALID_GARAGE_DATA` | 400 | Garage data rejected by domain validation |
+| `GARAGE_ACCESS_DENIED` | 403 | Not a (sufficiently privileged) member of the garage |
+| `GARAGE_SUSPENDED` | 403 | Suspended garage tries to record work |
+| `SYSTEM_ADMIN_REQUIRED` | 403 | Verification decisions |
+| `GARAGE_NOT_FOUND` | 404 | |
+| `GARAGE_MEMBER_NOT_FOUND` | 404 | User has no active membership in that garage |
+| `ALREADY_GARAGE_MEMBER` | 409 | User already has an active membership |
+| `INVALID_VERIFICATION_TRANSITION` | 422 | Status change not allowed from the current status |
+| `LAST_GARAGE_ADMIN` | 422 | Removing the garage's last admin |
 
 ## Authentication
 
@@ -82,6 +91,36 @@ Registration never accepts roles or status; every new account is an active `OWNE
 | GET | `/api/v1/users/me` | authenticated | 200 `UserResponse` |
 
 `UserResponse`: `{id, email, firstName, lastName, status, roles, createdAt}`. Never contains credentials.
+
+## Garages
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/garages` | any user (becomes GARAGE_ADMIN) | `{name, kvkNumber, address, postalCode, city, phone?, email?}` | 201 `GarageResponse` (status `PENDING`) |
+| GET | `/api/v1/garages/mine` | any user | | 200 `[{garageId, name, city, verificationStatus, role, memberSince}]` |
+| GET | `/api/v1/garages/{garageId}` | any user | | 200 `GarageResponse` |
+| POST | `/api/v1/garages/{garageId}/verification-request` | garage admin | | 200; `UNVERIFIED` &rarr; `PENDING` |
+| POST | `/api/v1/garages/{garageId}/verification` | SYSTEM_ADMIN | `{status, note?}` | 200 `GarageResponse` |
+
+Validation: `kvkNumber` 8 digits; `postalCode` Dutch format (`1234AB` / `1234 AB`, stored as `1234 AB`).
+
+Verification transitions (system admin): `PENDING → VERIFIED|UNVERIFIED`, `VERIFIED → SUSPENDED|UNVERIFIED`,
+`SUSPENDED → VERIFIED|UNVERIFIED`. Garage admin: `UNVERIFIED → PENDING`.
+
+`GarageResponse`: `{id, name, kvkNumber, address, postalCode, city, phone, email, verificationStatus, verificationChangedAt, createdAt}`
+
+### Garage members
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/garages/{garageId}/users` | garage admin | `{email, role}` (`GARAGE_ADMIN` / `MECHANIC`) | 201 member |
+| GET | `/api/v1/garages/{garageId}/users` | members, SYSTEM_ADMIN | | 200 `[{userId, email, firstName, lastName, role, memberSince}]` |
+| DELETE | `/api/v1/garages/{garageId}/users/{userId}` | garage admin, or the member themselves | | 204 |
+
+The added user must already have an account. DELETE ends the membership; the row is kept as history.
+A garage always keeps at least one garage admin.
+
+`GET /api/v1/garages/{garageId}/vehicles` from the original plan follows once vehicles and repairs exist (Phase 4/5).
 
 ## Operational
 
