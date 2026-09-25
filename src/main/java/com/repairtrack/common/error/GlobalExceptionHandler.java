@@ -12,6 +12,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,8 +26,12 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 /**
  * Translates exceptions into the uniform {@link ApiErrorResponse} format.
  * <p>
- * Phase 1 covers framework-level errors only. Business exceptions (e.g. INVALID_MILEAGE,
- * VEHICLE_NOT_FOUND) get their own handlers when the first module introduces them.
+ * Business errors extend {@link ApplicationException}; their {@link ErrorCategory} determines the
+ * HTTP status. Framework errors are mapped explicitly below. Anything else becomes a 500 without
+ * leaking details.
+ * <p>
+ * Authentication failures in the security filter chain never reach this class; they are written by
+ * the security module's entry point / access-denied handler in the same {@link ApiErrorResponse} format.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -36,6 +42,22 @@ public class GlobalExceptionHandler {
 
     public GlobalExceptionHandler(Clock clock) {
         this.clock = clock;
+    }
+
+    @ExceptionHandler(ApplicationException.class)
+    ResponseEntity<ApiErrorResponse> handleApplication(ApplicationException ex, HttpServletRequest request) {
+        return build(statusOf(ex.category()), ex.code(), ex.getMessage(), request);
+    }
+
+    /** Thrown by method security (e.g. {@code @PreAuthorize}) inside the MVC layer. */
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to perform this action.", request);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity<ApiErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication is required.", request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -94,13 +116,22 @@ public class GlobalExceptionHandler {
 
     /**
      * Last-resort handler. Logs the full exception server-side but never leaks its message to the client.
-     * Note for Phase 2: Spring Security's AccessDenied/Authentication exceptions must get explicit
-     * handlers (or be left to the security filter chain) so they are not swallowed as 500s here.
      */
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception for {} {}", request.getMethod(), request.getRequestURI(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred.", request);
+    }
+
+    static HttpStatus statusOf(ErrorCategory category) {
+        return switch (category) {
+            case INVALID_REQUEST -> HttpStatus.BAD_REQUEST;
+            case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
+            case FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case CONFLICT -> HttpStatus.CONFLICT;
+            case BUSINESS_RULE_VIOLATION -> HttpStatus.valueOf(422); // constant name differs across Spring versions
+        };
     }
 
     private ResponseEntity<ApiErrorResponse> build(HttpStatus status, String code, String message,

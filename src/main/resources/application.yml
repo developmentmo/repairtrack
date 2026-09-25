@@ -43,6 +43,15 @@ server:
     include-stacktrace: never
     include-message: never
 
+repairtrack:
+  security:
+    jwt:
+      # HS256 signing secret, at least 32 bytes. Generate with: openssl rand -base64 48
+      secret: ${JWT_SECRET}
+      issuer: ${JWT_ISSUER:repairtrack}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
+    refresh-token-ttl: ${REFRESH_TOKEN_TTL:30d}
+
 management:
   endpoints:
     web:

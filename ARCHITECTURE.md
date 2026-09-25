@@ -35,7 +35,24 @@ Every top-level package under `com.repairtrack` is an application module (Spring
 └── infrastructure  Spring Data repositories, external adapters (S3, RDW, ...).
 ```
 
-Dependency direction: `api → application → domain ← infrastructure`.
+Dependency direction: `api → application → domain`, and `application → infrastructure` for
+Spring Data repositories and technical configuration. There is deliberately no port/adapter layer
+(repository interfaces in `domain` implemented in `infrastructure`): with Spring Data that would be
+indirection without a current benefit. Domain classes never depend on `api` or `infrastructure`.
+
+### Module public API
+
+Types in a module's **base package** are its public API for other modules. Example (security):
+
+| Type | Purpose |
+|---|---|
+| `AuthenticatedUser` | The caller (ID, email, platform roles). Other modules receive it as a method parameter. |
+| `Role` | Platform roles `OWNER`, `SYSTEM_ADMIN`. |
+| `UserRegisteredEvent` | Published after registration (for audit/notifications). |
+
+Controllers obtain the caller with `@AuthenticationPrincipal AuthenticatedUser` and pass it explicitly into
+application services. Services never read `SecurityContextHolder` themselves: authorization inputs stay
+visible in method signatures and unit tests need no security context.
 
 ### Boundary rules (enforced)
 
@@ -75,6 +92,10 @@ extractable. Foreign keys still exist at the database level while we share one d
 | Actuator exposes only `health` and `info` | Liveness/readiness probes available; nothing sensitive exposed. |
 | Connection settings from env vars, no defaults in `application.yml` | Fail fast on misconfiguration; secrets never in the repo. |
 | Integration tests on real PostgreSQL (Testcontainers), never H2 | Tests the SQL dialect, constraints and migrations we actually run. |
+| Business errors extend `common.error.ApplicationException` with an `ErrorCategory` | Modules express *what* went wrong; only `GlobalExceptionHandler` knows HTTP statuses. |
+| Stateless JWT access tokens + rotating opaque refresh tokens (Phase 2) | Mobile-friendly, no server session; refresh tokens stay revocable. Details in SECURITY.md. |
+| Platform roles on the user; garage roles on garage membership | A global `MECHANIC` role cannot express "mechanic *at garage X*". |
+| Entities get their UUID at construction; `@Version` on entities | ID is known before persisting (events, links); `@Version` gives optimistic locking and lets Spring Data detect new entities without an extra SELECT. |
 
 ## Domain model (target)
 

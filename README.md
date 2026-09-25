@@ -6,12 +6,13 @@ chronological, auditable history per vehicle (identified by VIN), where every re
 always determined server-side. Records are never silently changed or deleted: they are voided or
 corrected, and every mutation is audited.
 
-> Current state: **Phase 1 — backend foundation.** No authentication, vehicles, garages or repairs yet.
+> Current state: **Phase 2 — authentication and users.** No vehicles, garages or repairs yet.
 
 ## Tech stack
 
-Java 21 · Spring Boot 4.1 · Spring MVC · Spring Data JPA / Hibernate · Flyway · PostgreSQL 18 ·
-Spring Boot Actuator · Spring Modulith (boundary verification) · JUnit 5 · Testcontainers · Maven
+Java 21 · Spring Boot 4.1 · Spring MVC · Spring Security (JWT) · Spring Data JPA / Hibernate · Flyway ·
+PostgreSQL 18 · Bean Validation · Spring Boot Actuator · Spring Modulith (boundary verification) ·
+JUnit · Mockito · Testcontainers · Maven
 
 ## Prerequisites
 
@@ -44,8 +45,19 @@ curl http://localhost:8080/actuator/health
 # {"status":"UP","components":{"db":{"status":"UP",...},...}}   (details shown in `local` profile only)
 
 curl http://localhost:8080/actuator/health/readiness
-curl http://localhost:8080/api/v1/nothing-here
-# {"timestamp":"...","status":404,"code":"NOT_FOUND","message":"The requested resource does not exist.","path":"/api/v1/nothing-here"}
+```
+
+### Try authentication
+
+```bash
+curl -s -X POST localhost:8080/api/v1/auth/register -H 'Content-Type: application/json' \
+  -d '{"email":"jan@example.nl","password":"correct horse battery staple","firstName":"Jan","lastName":"Jansen"}'
+
+TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"jan@example.nl","password":"correct horse battery staple"}' | jq -r .accessToken)
+
+curl -s localhost:8080/api/v1/users/me -H "Authorization: Bearer $TOKEN"
+curl -s localhost:8080/api/v1/users/me    # 401 {"code":"UNAUTHORIZED",...}
 ```
 
 ## Configuration
@@ -61,7 +73,10 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `DATABASE_PASSWORD` | yes (outside `local`) | Database password |
 | `DATABASE_POOL_SIZE` | no (default 10) | Hikari maximum pool size |
 | `SERVER_PORT` | no (default 8080) | HTTP port |
-| `JWT_SECRET` | Phase 2 | Token signing secret |
+| `JWT_SECRET` | yes (outside `local`) | HS256 signing secret, >= 32 bytes (`openssl rand -base64 48`) |
+| `JWT_ISSUER` | no (default `repairtrack`) | `iss` claim of access tokens |
+| `JWT_ACCESS_TOKEN_TTL` | no (default `15m`) | Access-token lifetime |
+| `REFRESH_TOKEN_TTL` | no (default `30d`) | Refresh-token lifetime |
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` | Phase 6 | Document object storage |
 
 ## Database

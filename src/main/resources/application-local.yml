@@ -8,6 +8,12 @@ spring:
     username: ${DATABASE_USERNAME:repairtrack}
     password: ${DATABASE_PASSWORD:repairtrack}
 
+repairtrack:
+  security:
+    jwt:
+      # Local development only. Any real environment MUST set JWT_SECRET.
+      secret: ${JWT_SECRET:local-development-secret-do-not-use-anywhere-else}
+
 management:
   endpoint:
     health:

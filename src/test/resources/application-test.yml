@@ -7,3 +7,8 @@ spring:
     url: jdbc:postgresql://provided-by-testcontainers/unused
     username: provided-by-testcontainers
     password: provided-by-testcontainers
+
+repairtrack:
+  security:
+    jwt:
+      secret: test-secret-only-used-by-automated-tests-0123456789

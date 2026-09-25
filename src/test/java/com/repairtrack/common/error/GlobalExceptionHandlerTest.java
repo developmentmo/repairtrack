@@ -14,6 +14,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -89,8 +90,58 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
     }
 
+    @Test
+    void applicationExceptionUsesItsCodeMessageAndCategoryStatus() throws Exception {
+        mockMvc.perform(get("/test/conflict"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("THING_ALREADY_EXISTS"))
+                .andExpect(jsonPath("$.message").value("That thing already exists."));
+    }
+
+    @Test
+    void businessRuleViolationMapsTo422() throws Exception {
+        mockMvc.perform(get("/test/rule"))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("RULE_BROKEN"));
+    }
+
+    @Test
+    void accessDeniedFromMethodSecurityMapsTo403() throws Exception {
+        mockMvc.perform(get("/test/denied"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void everyErrorCategoryHasAStatus() {
+        for (ErrorCategory category : ErrorCategory.values()) {
+            org.assertj.core.api.Assertions.assertThat(GlobalExceptionHandler.statusOf(category)).isNotNull();
+        }
+    }
+
+    static class TestException extends ApplicationException {
+        TestException(ErrorCategory category, String code, String message) {
+            super(category, code, message);
+        }
+    }
+
     @RestController
     static class FailingController {
+
+        @GetMapping("/test/conflict")
+        String conflict() {
+            throw new TestException(ErrorCategory.CONFLICT, "THING_ALREADY_EXISTS", "That thing already exists.");
+        }
+
+        @GetMapping("/test/rule")
+        String rule() {
+            throw new TestException(ErrorCategory.BUSINESS_RULE_VIOLATION, "RULE_BROKEN", "Rule broken.");
+        }
+
+        @GetMapping("/test/denied")
+        String denied() {
+            throw new AccessDeniedException("nope");
+        }
 
         @GetMapping("/test/boom")
         String boom() {
