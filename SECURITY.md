@@ -39,7 +39,7 @@ Two layers:
    Everything else requires a valid access token.
 2. **Application layer**: every use case receives the caller as an explicit `AuthenticatedUser` parameter and
    checks permissions against **data**, not just roles (e.g. `vehicleAccessService.canModify(user, vehicle)`,
-   `garageAccessService.validateCanCreateRepair(...)`, from Phases 3 to 5). URL patterns are never used for
+   `garageAccessService.validateCanRecordWork(...)`, from Phases 3 to 5). URL patterns are never used for
    business authorization.
 
 ### Roles
@@ -66,11 +66,28 @@ specific garage**:
 | Leave garage | the member themselves (not the last admin) |
 | Re-apply for verification | active `GARAGE_ADMIN`, only from `UNVERIFIED` |
 | Verification decision | `SYSTEM_ADMIN` only |
-| Record work (Phase 5) | `validateCanCreateRepair`: active member (admin or mechanic) **and** garage not `SUSPENDED` |
+| Record work (Phase 5) | `validateCanRecordWork`: active member (admin or mechanic) **and** garage not `SUSPENDED` |
 
 A `SYSTEM_ADMIN` is not implicitly a garage member and cannot record work for a garage.
 Adding members by email reveals to garage admins whether an account exists (accepted; an invitation
 flow can replace this later).
+
+### Vehicle authorization (Phase 4)
+
+| Action | Rule |
+|---|---|
+| Register as owner | any user; becomes owner. VIN must not exist yet. |
+| Register for a garage | `GarageAccessService.validateCanRecordWork` (active member, garage not suspended); no owner is created |
+| View vehicle / search | any authenticated user; **VIN hidden** except for current owner, SYSTEM_ADMIN, members of the registering garage |
+| Edit details | current owner, SYSTEM_ADMIN, or registering-garage member **while unowned**. VIN never editable. |
+| Claim | vehicle has no active owner **and** caller supplies the correct VIN |
+| End ownership | current owner only |
+
+Claim proof is intentionally modest in V1: the VIN is never revealed by the API to non-owners, so knowing it
+suggests access to the car or its registration documents. It does not prove legal ownership (a VIN is also
+visible on the car itself). Mitigations: one active owner at a time, ownership changes are evented (audit), and
+the design allows stronger proofs later (document review, RDW) without API changes.
+Owner identity is never exposed through any vehicle endpoint.
 
 ### Never trusted from clients
 
@@ -93,3 +110,5 @@ fields for server-decided values; unknown JSON properties can never set them.
 - CORS not configured (only needed for Flutter web; mobile apps don't use it).
 - No admin endpoints to block users or grant roles (done directly in the database for now).
 - Garage verification history is only kept as "latest change" until the audit module (Phase 5) consumes `GarageEvents`.
+- No rate limiting on vehicle claims (VIN guessing is impractical, but should be throttled).
+- No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).

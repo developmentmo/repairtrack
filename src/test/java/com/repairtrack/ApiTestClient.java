@@ -43,6 +43,13 @@ public final class ApiTestClient {
         return post(path, body, null);
     }
 
+    public ApiResponse put(String path, Object body, String bearerToken) {
+        HttpRequest.Builder builder = request(path, bearerToken)
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(jsonMapper.writeValueAsString(body)));
+        return send(builder, bearerToken);
+    }
+
     public ApiResponse post(String path, Object body, String bearerToken) {
         HttpRequest.Builder builder = request(path, bearerToken)
                 .header("Content-Type", "application/json")

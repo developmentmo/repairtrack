@@ -55,10 +55,20 @@ Garage module public API:
 
 | Type | Purpose |
 |---|---|
-| `GarageAccessService` | Explicit garage authorization: `validateCanCreateRepair(actor, garageId)` returns a `GarageWorkPermit`, plus `requireGarageAdmin`, `requireMemberOrSystemAdmin`. |
+| `GarageAccessService` | Explicit garage authorization: `validateCanRecordWork(actor, garageId)` returns a `GarageWorkPermit`, plus `requireGarageAdmin`, `requireMemberOrSystemAdmin`. |
 | `GarageWorkPermit` | Result of the repair-authorization check. Carries the garage's verification status, from which the repair module derives `GARAGE` vs `VERIFIED_GARAGE`. |
 | `GarageRole`, `GarageVerificationStatus` | Published enums. |
 | `GarageEvents.*` | Registered, verification status changed, member added/removed. |
+
+Vehicle module public API:
+
+| Type | Purpose |
+|---|---|
+| `VehicleAccessService` | `requireExists`, `isActiveOwner`, `requireActiveOwner` for the repair/document/sharing modules. |
+| `VehicleEvents.*` | Registered, details changed (with `VehicleFieldChange` list), ownership started/ended. |
+
+Module dependencies so far: `vehicle → garage → security → common` (all through base-package APIs; no cycles,
+verified by `ModularityTest`).
 
 Controllers obtain the caller with `@AuthenticationPrincipal AuthenticatedUser` and pass it explicitly into
 application services. Services never read `SecurityContextHolder` themselves: authorization inputs stay
@@ -107,6 +117,8 @@ extractable. Foreign keys still exist at the database level while we share one d
 | Platform roles on the user; garage roles on garage membership | A global `MECHANIC` role cannot express "mechanic *at garage X*". |
 | Multi-row invariants guarded by locking the aggregate root row (`findByIdForUpdate`) | e.g. "a garage keeps at least one admin" cannot be broken by two concurrent removals. |
 | Memberships and other history-bearing rows are ended, never deleted | Past work stays attributable to the person and garage that did it. |
+| `common.time.BusinessCalendar` for "now"/"today" | Instants in UTC; user-entered dates judged in Europe/Amsterdam (`repairtrack.business-time-zone`). |
+| VIN is identity, license plate is an attribute | A vehicle keeps its history through plate changes and owners. |
 | Entities get their UUID at construction; `@Version` on entities | ID is known before persisting (events, links); `@Version` gives optimistic locking and lets Spring Data detect new entities without an extra SELECT. |
 
 ## Domain model (target)

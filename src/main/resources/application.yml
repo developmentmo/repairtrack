@@ -44,6 +44,8 @@ server:
     include-message: never
 
 repairtrack:
+  # Zone in which user-entered calendar dates are interpreted ("today", "not in the future").
+  business-time-zone: Europe/Amsterdam
   security:
     jwt:
       # HS256 signing secret, at least 32 bytes. Generate with: openssl rand -base64 48

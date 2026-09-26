@@ -19,8 +19,8 @@ import com.repairtrack.security.Role;
 
 /**
  * Explicit, data-based authorization for everything a user does on behalf of a garage.
- * Part of the garage module's public API: the repair module (Phase 5) calls
- * {@link #validateCanCreateRepair} before recording work.
+ * Part of the garage module's public API: other modules call {@link #validateCanRecordWork}
+ * before doing anything on behalf of a garage (registering a customer's vehicle, recording a repair).
  * <p>
  * Checks are based on the caller's ACTIVE membership of the specific garage, never on a
  * global role. A SYSTEM_ADMIN is not implicitly a garage member.
@@ -46,7 +46,7 @@ public class GarageAccessService {
      * @throws GarageSuspendedException     if the garage is suspended
      */
     @Transactional(readOnly = true)
-    public GarageWorkPermit validateCanCreateRepair(AuthenticatedUser actor, UUID garageId) {
+    public GarageWorkPermit validateCanRecordWork(AuthenticatedUser actor, UUID garageId) {
         Garage garage = garages.findById(garageId).orElseThrow(GarageNotFoundException::new);
         GarageUser membership = activeMembership(actor.id(), garageId)
                 .orElseThrow(() -> new GarageAccessDeniedException("You are not a member of this garage."));
@@ -54,6 +54,12 @@ public class GarageAccessService {
             throw new GarageSuspendedException();
         }
         return new GarageWorkPermit(garageId, actor.id(), membership.getRole(), garage.getVerificationStatus());
+    }
+
+    /** Plain membership check, e.g. for "may this garage's staff edit a vehicle they registered". */
+    @Transactional(readOnly = true)
+    public boolean isActiveMember(UUID userId, UUID garageId) {
+        return activeMembership(userId, garageId).isPresent();
     }
 
     /** Caller must be an active GARAGE_ADMIN of the garage. */

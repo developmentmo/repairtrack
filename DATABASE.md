@@ -12,9 +12,11 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V3 | `V3__create_refresh_token.sql` | `refresh_token` (hashed, rotating refresh tokens) |
 | V4 | `V4__create_garage.sql` | `garage` |
 | V5 | `V5__create_garage_user.sql` | `garage_user` (memberships) |
+| V6 | `V6__create_vehicle.sql` | `vehicle` |
+| V7 | `V7__create_vehicle_ownership.sql` | `vehicle_ownership` |
 
 Planned, in phase order (version numbers are assigned when each migration is written):
-vehicle, vehicle_ownership (Phase 4) · repair_event, repair_part,
+repair_event, repair_part,
 mileage_record, verification, audit_event (Phase 5) · document (Phase 6) · vehicle_share (Phase 7).
 
 ## Tables
@@ -72,6 +74,34 @@ mileage_record, verification, audit_event (Phase 5) · document (Phase 6) · veh
 
 Partial unique index `uk_garage_user_active_membership (garage_id, user_id) WHERE status = 'ACTIVE'`:
 one active membership per user and garage; re-joining creates a new row.
+
+### vehicle
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| vin | VARCHAR(17) | **unique** (`uk_vehicle_vin`), immutable, ISO 3779 check (no I/O/Q), upper-case |
+| license_plate | VARCHAR(12) | normalized (upper-case, no dashes); indexed (`ix_vehicle_license_plate`), not unique |
+| make, model | VARCHAR(100) | |
+| model_year | INTEGER | 1886..2100 (check); the application also limits it to next year |
+| first_registration_date | DATE | |
+| status | VARCHAR(20) | ACTIVE, ARCHIVED |
+| registered_by | UUID | FK app_user |
+| registered_by_garage_id | UUID | FK garage, when a garage registered the vehicle |
+| created_at, updated_at, version | | |
+
+No owner column. Ownership lives in `vehicle_ownership`.
+
+### vehicle_ownership
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| vehicle_id | UUID | FK vehicle; indexed |
+| user_id | UUID | FK app_user; indexed ("my vehicles") |
+| start_date, end_date | DATE | `end_date >= start_date` (check) |
+| status | VARCHAR(20) | ACTIVE, ENDED; end_date/ended_at set iff ENDED (check) |
+| created_at, ended_at, version | | |
+
+Partial unique index `uk_vehicle_ownership_active (vehicle_id) WHERE status = 'ACTIVE'`: at most one current owner.
 
 ## Conventions
 

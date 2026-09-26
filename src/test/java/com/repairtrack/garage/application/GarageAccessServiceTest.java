@@ -55,7 +55,7 @@ class GarageAccessServiceTest {
         givenGarage();
         givenMembership(mechanic, GarageRole.MECHANIC);
 
-        GarageWorkPermit permit = access.validateCanCreateRepair(mechanic, garage.getId());
+        GarageWorkPermit permit = access.validateCanRecordWork(mechanic, garage.getId());
 
         assertThat(permit.role()).isEqualTo(GarageRole.MECHANIC);
         assertThat(permit.garageVerificationStatus()).isEqualTo(GarageVerificationStatus.PENDING);
@@ -68,7 +68,7 @@ class GarageAccessServiceTest {
         givenGarage();
         givenMembership(mechanic, GarageRole.MECHANIC);
 
-        assertThat(access.validateCanCreateRepair(mechanic, garage.getId()).garageVerified()).isTrue();
+        assertThat(access.validateCanRecordWork(mechanic, garage.getId()).garageVerified()).isTrue();
     }
 
     @Test
@@ -76,7 +76,7 @@ class GarageAccessServiceTest {
         givenGarage();
         givenNoMembership(mechanic);
 
-        assertThatThrownBy(() -> access.validateCanCreateRepair(mechanic, garage.getId()))
+        assertThatThrownBy(() -> access.validateCanRecordWork(mechanic, garage.getId()))
                 .isInstanceOf(GarageAccessDeniedException.class);
     }
 
@@ -86,7 +86,7 @@ class GarageAccessServiceTest {
         givenGarage();
         givenNoMembership(admin);
 
-        assertThatThrownBy(() -> access.validateCanCreateRepair(admin, garage.getId()))
+        assertThatThrownBy(() -> access.validateCanRecordWork(admin, garage.getId()))
                 .isInstanceOf(GarageAccessDeniedException.class);
     }
 
@@ -97,7 +97,7 @@ class GarageAccessServiceTest {
         givenGarage();
         givenMembership(mechanic, GarageRole.MECHANIC);
 
-        assertThatThrownBy(() -> access.validateCanCreateRepair(mechanic, garage.getId()))
+        assertThatThrownBy(() -> access.validateCanRecordWork(mechanic, garage.getId()))
                 .isInstanceOf(GarageSuspendedException.class);
     }
 
@@ -106,7 +106,7 @@ class GarageAccessServiceTest {
         UUID unknown = UUID.randomUUID();
         when(garages.findById(unknown)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> access.validateCanCreateRepair(mechanic, unknown))
+        assertThatThrownBy(() -> access.validateCanRecordWork(mechanic, unknown))
                 .isInstanceOf(GarageNotFoundException.class);
     }
 

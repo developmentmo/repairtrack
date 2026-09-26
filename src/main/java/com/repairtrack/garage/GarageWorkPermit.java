@@ -3,8 +3,9 @@ package com.repairtrack.garage;
 import java.util.UUID;
 
 /**
- * Proof that a user may record work (repairs, maintenance) on behalf of a garage, as of the
- * moment it was issued. Returned by {@link GarageAccessService#validateCanCreateRepair}.
+ * Proof that a user may act on behalf of a garage (register a customer's vehicle, record
+ * repairs and maintenance), as of the
+ * moment it was issued. Returned by {@link GarageAccessService#validateCanRecordWork}.
  * The repair module uses {@link #garageVerified()} to decide between source types
  * GARAGE and VERIFIED_GARAGE.
  */

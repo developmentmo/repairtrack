@@ -56,6 +56,15 @@ Business codes:
 | `ALREADY_GARAGE_MEMBER` | 409 | User already has an active membership |
 | `INVALID_VERIFICATION_TRANSITION` | 422 | Status change not allowed from the current status |
 | `LAST_GARAGE_ADMIN` | 422 | Removing the garage's last admin |
+| `INVALID_VEHICLE_DATA` | 400 | Invalid VIN, plate, model year, or a date in the future |
+| `INVALID_VEHICLE_SEARCH` | 400 | Search without, or with both, `vin` and `licensePlate` |
+| `VEHICLE_ACCESS_DENIED` | 403 | Not allowed to edit the vehicle / not its current owner |
+| `OWNERSHIP_PROOF_INVALID` | 403 | Claim with a VIN that does not match |
+| `VEHICLE_NOT_FOUND` | 404 | |
+| `VEHICLE_ALREADY_REGISTERED` | 409 | A vehicle with this VIN exists: search and claim it instead |
+| `VEHICLE_ALREADY_OWNED` | 409 | Vehicle has an active owner |
+| `ALREADY_VEHICLE_OWNER` | 409 | Caller already owns it |
+| `INVALID_OWNERSHIP_PERIOD` | 422 | Start in the future, end before start, or overlapping the previous owner |
 
 ## Authentication
 
@@ -120,7 +129,36 @@ Verification transitions (system admin): `PENDING → VERIFIED|UNVERIFIED`, `VER
 The added user must already have an account. DELETE ends the membership; the row is kept as history.
 A garage always keeps at least one garage admin.
 
-`GET /api/v1/garages/{garageId}/vehicles` from the original plan follows once vehicles and repairs exist (Phase 4/5).
+`GET /api/v1/garages/{garageId}/vehicles` from the original plan follows with repairs (Phase 5): it lists the
+vehicles a garage has worked on.
+
+## Vehicles
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vehicles` | any user; with `garageId`: garage member | `{vin, licensePlate?, make, model, modelYear?, firstRegistrationDate?, garageId?, ownedSince?}` | 201 `VehicleResponse` |
+| GET | `/api/v1/vehicles` | any user | | 200 `[VehicleResponse]`: vehicles the caller currently owns |
+| GET | `/api/v1/vehicles/search?vin=…` or `?licensePlate=…` | any user | | 200 `[{id, licensePlate, make, model, modelYear}]` (exact match, never a VIN) |
+| GET | `/api/v1/vehicles/{vehicleId}` | any user | | 200 `VehicleResponse` |
+| PUT | `/api/v1/vehicles/{vehicleId}` | see below | `{licensePlate?, make, model, modelYear?, firstRegistrationDate?}` | 200 `VehicleResponse` |
+| POST | `/api/v1/vehicles/{vehicleId}/claim` | any user | `{vin, ownedSince?}` | 201 `OwnershipResponse` |
+| POST | `/api/v1/vehicles/{vehicleId}/ownership/end` | current owner | `{endDate?}` (optional body) | 200 `OwnershipResponse` |
+
+`VehicleResponse`: `{id, vin, licensePlate, make, model, modelYear, firstRegistrationDate, status, ownedByMe, canEdit, createdAt, updatedAt}`.
+`vin` is `null` unless the caller is the current owner, a SYSTEM_ADMIN, or a member of the garage that registered
+the vehicle. No response ever contains owner identity.
+
+`OwnershipResponse`: `{vehicleId, startDate, endDate, status}`.
+
+Rules:
+- **Registration without `garageId`**: the caller becomes owner from `ownedSince` (default: today).
+  **With `garageId`**: the caller must be an active member of that non-suspended garage; the vehicle has no owner.
+- VIN: 17 characters, no I/O/Q, case and spaces ignored, unique, immutable (not part of PUT).
+  License plate: stored without dashes/spaces, upper-case; searched the same way.
+- **PUT** allowed for the current owner, SYSTEM_ADMIN, or a member of the registering garage *while the vehicle has no owner*.
+- **Claim**: only when the vehicle has no active owner, with the correct VIN as proof. `ownedSince` must not
+  be before the previous owner's end date.
+- All "not in the future" checks use today's date in Europe/Amsterdam.
 
 ## Operational
 
