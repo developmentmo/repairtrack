@@ -65,6 +65,11 @@ Business codes:
 | `VEHICLE_ALREADY_OWNED` | 409 | Vehicle has an active owner |
 | `ALREADY_VEHICLE_OWNER` | 409 | Caller already owns it |
 | `INVALID_OWNERSHIP_PERIOD` | 422 | Start in the future, end before start, or overlapping the previous owner |
+| `INVALID_REPAIR_DATA` | 400 | Future event date, implausible mileage, missing title/reason, invalid part |
+| `NO_CHANGES` | 400 | Correction that changes nothing |
+| `REPAIR_ACCESS_DENIED` | 403 | Not allowed to see the vehicle history or to change this record |
+| `REPAIR_NOT_FOUND` | 404 | |
+| `REPAIR_ALREADY_VOIDED` | 422 | Voided records cannot be voided, corrected or extended again |
 
 ## Authentication
 
@@ -159,6 +164,64 @@ Rules:
 - **Claim**: only when the vehicle has no active owner, with the correct VIN as proof. `ownedSince` must not
   be before the previous owner's end date.
 - All "not in the future" checks use today's date in Europe/Amsterdam.
+
+## Vehicle history (repairs)
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vehicles/{vehicleId}/repairs` | current owner; with `garageId`: garage member | `CreateRepairRequest` | 201 `RepairResponse` (+ `warnings`) |
+| GET | `/api/v1/vehicles/{vehicleId}/repairs` | history viewers¹ | | 200 `[RepairResponse]`, newest first, **including voided** |
+| GET | `/api/v1/vehicles/{vehicleId}/mileage` | history viewers¹ | | 200 `{readings, anomalies}` |
+| GET | `/api/v1/repairs/{repairId}` | history viewers¹ | | 200 `RepairResponse` |
+| POST | `/api/v1/repairs/{repairId}/void` | record's author side² or SYSTEM_ADMIN | `{reason}` | 200 `RepairResponse` (status `VOIDED`) |
+| POST | `/api/v1/repairs/{repairId}/corrections` | record's author side² | `{eventType?, eventDate?, mileage?, title?, description?, reason}` | 200 `RepairResponse` (+ `warnings`) |
+| POST | `/api/v1/repairs/{repairId}/parts` | record's author side² | `{parts: [PartRequest]}` | 201 `RepairResponse` |
+| GET | `/api/v1/repairs/{repairId}/parts` | history viewers¹ | | 200 `[PartResponse]` |
+| GET | `/api/v1/garages/{garageId}/vehicles` | garage members, SYSTEM_ADMIN | | 200 `[{id, licensePlate, make, model, modelYear}]` |
+
+¹ current owner, SYSTEM_ADMIN, members of a garage that registered the vehicle or recorded work on it.
+² garage record: active member of **that** garage (not suspended). Owner record: the owner who created it, while
+still the current owner. An owner can never change a garage record and vice versa.
+
+There is **no DELETE** for repairs (`405`). Records are voided (stay visible, with reason) or corrected
+(original values stay visible).
+
+`CreateRepairRequest`:
+```json
+{
+  "eventType": "REPAIR",               // MAINTENANCE, REPAIR, INSPECTION, TYRE_CHANGE, DAMAGE_REPAIR, APK, RECALL, OTHER
+  "eventDate": "2026-09-14",           // not in the future (Europe/Amsterdam)
+  "mileage": 183421,                   // 0..2,000,000
+  "title": "Brake replacement",
+  "description": "Front discs and pads",
+  "garageId": "…",                     // omit to record as owner
+  "parts": [{"partNumber": "0986494521", "brand": "Bosch", "description": "Brake pads", "quantity": 1}]
+}
+```
+There are no `sourceType` / `verificationStatus` fields. The backend derives them:
+
+| Recorded by | sourceType | verificationStatus |
+|---|---|---|
+| current owner | `OWNER` | `UNVERIFIED` |
+| garage, not verified | `GARAGE` | `GARAGE_VERIFIED` |
+| verified garage | `VERIFIED_GARAGE` | `GARAGE_VERIFIED` |
+| owner + document (Phase 6) | `OWNER_DOCUMENT` | `DOCUMENTED` |
+| RDW / manufacturer import (future) | `RDW` / `MANUFACTURER` | `OFFICIAL_SOURCE` |
+
+`RepairResponse`: `{id, vehicleId, eventType, eventDate, mileage, title, description, sourceType, verificationStatus,
+status, garage: {id, name, city, verificationStatus} | null, parts: [...], corrections: [{field, originalValue,
+correctedValue, reason, correctedByGarage | null (= owner), correctedAt}], voidedAt, voidReason, createdAt, updatedAt,
+warnings: [...]}`.
+
+**Mileage warnings** never block a request. A reading lower than the preceding reading (by date) produces
+`{code: "MILEAGE_DECREASE", message, earlier: {date, mileage, sourceType}, later: {...}}`. It is reported as an
+inconsistency, never as fraud.
+
+## Audit
+
+| Method | Path | Who | Response |
+|---|---|---|---|
+| GET | `/api/v1/audit-events?entityType=USER\|GARAGE\|VEHICLE\|REPAIR_EVENT&entityId=…` | SYSTEM_ADMIN | 200 `[{id, entityType, entityId, action, actorId, oldValue, newValue, createdAt}]` |
 
 ## Operational
 

@@ -14,10 +14,15 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V5 | `V5__create_garage_user.sql` | `garage_user` (memberships) |
 | V6 | `V6__create_vehicle.sql` | `vehicle` |
 | V7 | `V7__create_vehicle_ownership.sql` | `vehicle_ownership` |
+| V8 | `V8__index_vehicle_registered_by_garage.sql` | index for "vehicles of a garage" |
+| V9 | `V9__create_repair_event.sql` | `repair_event` |
+| V10 | `V10__create_repair_part.sql` | `repair_part` |
+| V11 | `V11__create_repair_correction.sql` | `repair_correction` |
+| V12 | `V12__create_mileage_record.sql` | `mileage_record` |
+| V13 | `V13__create_audit_event.sql` | `audit_event` + append-only trigger |
 
 Planned, in phase order (version numbers are assigned when each migration is written):
-repair_event, repair_part,
-mileage_record, verification, audit_event (Phase 5) · document (Phase 6) · vehicle_share (Phase 7).
+document, verification (Phase 6) · vehicle_share (Phase 7).
 
 ## Tables
 
@@ -102,6 +107,39 @@ No owner column. Ownership lives in `vehicle_ownership`.
 | created_at, ended_at, version | | |
 
 Partial unique index `uk_vehicle_ownership_active (vehicle_id) WHERE status = 'ACTIVE'`: at most one current owner.
+
+### repair_event
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| vehicle_id | UUID | FK vehicle |
+| garage_id | UUID | FK garage; set iff source is GARAGE/VERIFIED_GARAGE |
+| created_by | UUID | FK app_user |
+| event_type | VARCHAR(20) | MAINTENANCE … OTHER (check) |
+| source_type, verification_status | VARCHAR(20) | **check constraint allows only the combinations the VerificationService produces** |
+| event_date | DATE | |
+| mileage | INTEGER | 0..2,000,000 |
+| title, description | VARCHAR(150), VARCHAR(5000) | |
+| status | VARCHAR(20) | ACTIVE, VOIDED; voided_at/voided_by/void_reason set iff VOIDED (check) |
+| created_at, updated_at, version | | |
+
+Indexes: `vehicle_id`, `(vehicle_id, event_date)`, `(vehicle_id, mileage)`, `garage_id`. Never deleted.
+
+### repair_part
+`id, repair_event_id (FK), part_number?, brand?, description, quantity (1..999), added_by, created_at`. Append-only.
+
+### repair_correction
+One row per corrected field: `repair_event_id, field (EVENT_TYPE|EVENT_DATE|MILEAGE|TITLE|DESCRIPTION), old_value,
+new_value, reason, corrected_by, corrected_by_garage_id (null = owner), created_at`. Append-only.
+
+### mileage_record
+`id, vehicle_id, mileage, recorded_date, source_type, source_event_id (no FK: future RDW readings have no event),
+status (ACTIVE|VOIDED), created_at, voided_at, version`. Index `(vehicle_id, recorded_date)`. A corrected or voided
+repair voids its reading; corrections add a new one. Anomalies are computed on read, not stored.
+
+### audit_event
+`id, sequence_number (identity: strict order), entity_type, entity_id, action, actor_id, old_value JSONB,
+new_value JSONB, created_at`. No foreign keys. **A trigger rejects every UPDATE and DELETE.**
 
 ## Conventions
 

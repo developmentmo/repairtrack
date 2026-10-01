@@ -89,6 +89,30 @@ visible on the car itself). Mitigations: one active owner at a time, ownership c
 the design allows stronger proofs later (document review, RDW) without API changes.
 Owner identity is never exposed through any vehicle endpoint.
 
+### Vehicle history authorization (Phase 5)
+
+Rules live in `RepairAccessPolicy` (one class, reviewable as a whole):
+
+| Action | Rule |
+|---|---|
+| Create owner record | current owner of the vehicle |
+| Create garage record | `GarageAccessService.validateCanRecordWork(actor, garageId)`: active member, garage not suspended. Any registered vehicle (the garage has the car). |
+| View history / mileage / parts | current owner, SYSTEM_ADMIN, members of a garage that registered the vehicle or recorded work on it |
+| Correct / add parts | garage record: active member of the **recording** garage (not suspended). Owner record: its creator while still the current owner. |
+| Void | as correct, plus SYSTEM_ADMIN (moderation) |
+| Delete | **not possible** (no endpoint; `405`) |
+
+Source type and verification status are decided only by `VerificationService` from a server-built
+`RecordingContext`; the request DTOs have no such fields and a database check constraint rejects any combination the
+service cannot produce. Previous owners lose access to the history when their ownership ends; public sharing is Phase 7.
+
+### Audit trail
+
+- Written in the same transaction as the change (synchronous listeners); a failed audit write rolls the change back.
+- `audit_event` is append-only, enforced by a database trigger (UPDATE/DELETE raise an error).
+- Entries contain IDs and business values only, never emails, names or credentials (covered by `AuditTrailIT`).
+- Readable by SYSTEM_ADMIN only.
+
 ### Never trusted from clients
 
 Roles, account status, verification status, source type, garage IDs and ownership claims. Request DTOs don't have
@@ -109,6 +133,6 @@ fields for server-decided values; unknown JSON properties can never set them.
 - No cleanup job for expired refresh tokens.
 - CORS not configured (only needed for Flutter web; mobile apps don't use it).
 - No admin endpoints to block users or grant roles (done directly in the database for now).
-- Garage verification history is only kept as "latest change" until the audit module (Phase 5) consumes `GarageEvents`.
+- Changes made before Phase 5 have no audit entries (no production data existed).
 - No rate limiting on vehicle claims (VIN guessing is impractical, but should be throttled).
 - No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).

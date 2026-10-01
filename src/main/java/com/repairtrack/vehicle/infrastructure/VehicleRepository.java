@@ -23,6 +23,8 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     /** Expects a normalized plate. Not unique over time, hence a list. */
     List<Vehicle> findByLicensePlate(String licensePlate);
 
+    List<Vehicle> findByRegisteredByGarageId(UUID garageId);
+
     /** Serializes ownership changes of one vehicle (claim, end). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from Vehicle v where v.id = :id")

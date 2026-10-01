@@ -67,8 +67,49 @@ Vehicle module public API:
 | `VehicleAccessService` | `requireExists`, `isActiveOwner`, `requireActiveOwner` for the repair/document/sharing modules. |
 | `VehicleEvents.*` | Registered, details changed (with `VehicleFieldChange` list), ownership started/ended. |
 
-Module dependencies so far: `vehicle → garage → security → common` (all through base-package APIs; no cycles,
-verified by `ModularityTest`).
+Repair, mileage, verification and audit public APIs:
+
+| Type | Purpose |
+|---|---|
+| `verification.VerificationService` + `RecordingContext` (sealed) → `Provenance` | The only place that decides source type and verification status. |
+| `mileage.MileageService` | `record` (returns anomalies involving the new reading), `voidForSourceEvent`, `history`. |
+| `repair.RepairEvents.*` | Created, corrected, voided, part added (with snapshots for the audit trail). |
+| `garage.GarageDirectory`, `vehicle.VehicleDirectory` | Read-only summaries for other modules' responses. |
+
+Module dependencies (all through base-package APIs; no cycles, verified by `ModularityTest`):
+
+```text
+audit ──► repair ──► mileage ──► verification
+  │         │  └───► verification
+  │         ├──────► vehicle ──► garage ──► security ──► common
+  └─────────┴──────────────────────┴──────────┘
+```
+`audit` is a pure consumer: nothing depends on it.
+
+### Events and atomicity
+
+Modules publish Spring application events from inside their transaction. The audit module handles them with
+**synchronous `@EventListener`s**, so the mutation and its audit entry commit or roll back together (spec §34).
+After-commit or asynchronous listeners (`@TransactionalEventListener`, Modulith `@ApplicationModuleListener`) are
+deliberately not used for audit: an entry could be lost. The future outbox will be written the same way, in the same
+transaction.
+
+### Vehicle history model
+
+- `repair_event` is the history entry. Its provenance (source type + verification status) is set once, from a
+  `RecordingContext` established by authorization code, and is guarded again by a DB check constraint.
+- **Void** instead of delete: the record stays, with reason, and its mileage reading is voided.
+- **Correct** instead of update: one `repair_correction` row per field (original, corrected, reason, who, on behalf of
+  which garage). The current row holds the latest values, the correction rows reconstruct every earlier version.
+- **Mileage** is a separate projection (`mileage_record`). Anomalies are computed on read over the full timeline,
+  so a backdated entry can never leave stale flags behind.
+
+### Deferred: `verification` table
+
+The original plan lists a `verification` table. In Phase 5 a record's verification status is fully determined at
+creation and stored on `repair_event`, and every change is in `audit_event`. A separate table would duplicate that.
+It becomes useful when a record's status can change *after* creation (Phase 6: an owner record upgraded to
+`DOCUMENTED` by attaching a document; later: a garage confirming an owner record) and is introduced then.
 
 Controllers obtain the caller with `@AuthenticationPrincipal AuthenticatedUser` and pass it explicitly into
 application services. Services never read `SecurityContextHolder` themselves: authorization inputs stay

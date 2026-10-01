@@ -1,7 +1,9 @@
 package com.repairtrack.garage;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,14 @@ public class GarageAccessService {
     @Transactional(readOnly = true)
     public boolean isActiveMember(UUID userId, UUID garageId) {
         return activeMembership(userId, garageId).isPresent();
+    }
+
+    /** IDs of all garages the user is currently an active member of. */
+    @Transactional(readOnly = true)
+    public Set<UUID> activeGarageIds(UUID userId) {
+        return memberships.findByUserIdAndStatus(userId, MembershipStatus.ACTIVE).stream()
+                .map(GarageUser::getGarageId)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     /** Caller must be an active GARAGE_ADMIN of the garage. */

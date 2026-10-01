@@ -6,7 +6,7 @@ chronological, auditable history per vehicle (identified by VIN), where every re
 always determined server-side. Records are never silently changed or deleted: they are voided or
 corrected, and every mutation is audited.
 
-> Current state: **Phase 4 — vehicles.** Authentication, users, garages (membership, verification), vehicles and vehicle ownership. No repairs yet.
+> Current state: **Phase 5 — vehicle history.** Authentication, garages, vehicles and ownership, repair events with parts, void and correction, mileage history with anomaly warnings, server-side verification status, and an append-only audit trail. Next: documents (Phase 6).
 
 ## Tech stack
 
