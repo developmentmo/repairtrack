@@ -1,18 +1,7 @@
-# Build
-target/
-!.mvn/wrapper/maven-wrapper.jar
+# OS
+.DS_Store
 
 # IDE
 .idea/
 *.iml
 .vscode/
-.classpath
-.project
-.settings/
-
-# OS
-.DS_Store
-
-# Local secrets
-.env
-*.env.local
