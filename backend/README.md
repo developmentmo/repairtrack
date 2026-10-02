@@ -37,8 +37,9 @@ curl -s localhost:3903/health # Garage: "Garage is fully operational"
 SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
 ```
 
-In IntelliJ: run `RepairTrackApplication` with the environment variable `SPRING_PROFILES_ACTIVE=local`
-(or set "Active profiles: local" in the run configuration).
+In IntelliJ: use the shared run configuration **RepairTrack (local)** (`.run/`), which sets
+`SPRING_PROFILES_ACTIVE=local`. Without that profile the app stops at startup with
+`'url' must start with "jdbc"`: outside `local`, `DATABASE_URL` etc. must be set (fail fast by design).
 
 **Without docker compose:** run `TestRepairTrackApplication` (in `src/test/java`). It starts a throwaway
 PostgreSQL container through Testcontainers and wires it in automatically. Data is lost on stop.
