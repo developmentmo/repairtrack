@@ -8,7 +8,7 @@ repairs per vehicle (identified by VIN), with a server-determined source and ver
 | Folder | Contents |
 |---|---|
 | [`backend/`](backend/) | Spring Boot modular monolith (Java 21, PostgreSQL, Flyway, S3-compatible storage). See [backend/README.md](backend/README.md). |
-| `app/` | Flutter app (Phase 8, not started yet) |
+| [`app/`](app/) | Flutter app for iOS, Android and web (Riverpod, Dio, GoRouter). See [app/README.md](app/README.md). |
 
 Backend documentation: [architecture](backend/ARCHITECTURE.md) · [database](backend/DATABASE.md) ·
 [API](backend/API.md) · [security](backend/SECURITY.md)
