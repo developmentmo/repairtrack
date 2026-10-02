@@ -20,6 +20,8 @@ public interface VehicleOwnershipRepository extends JpaRepository<VehicleOwnersh
 
     List<VehicleOwnership> findByUserIdAndStatus(UUID userId, OwnershipStatus status);
 
+    long countByVehicleId(UUID vehicleId);
+
     /** End date of the most recent previous ownership; a new ownership may not start before it. */
     @Query("select max(o.endDate) from VehicleOwnership o where o.vehicleId = :vehicleId")
     Optional<LocalDate> findLatestEndDate(@Param("vehicleId") UUID vehicleId);

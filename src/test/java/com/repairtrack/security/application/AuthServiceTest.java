@@ -25,6 +25,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.repairtrack.common.crypto.OpaqueTokens;
 import com.repairtrack.security.Role;
 import com.repairtrack.security.UserRegisteredEvent;
 import com.repairtrack.security.domain.InvalidPasswordException;

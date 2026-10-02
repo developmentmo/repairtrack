@@ -71,6 +71,10 @@ repairtrack:
     path-style-access: ${S3_PATH_STYLE_ACCESS:true}
     presigned-url-ttl: 5m
     max-file-size: 20MB
+  sharing:
+    # Base of human-facing share links ({base}/v/{token}); the Flutter web app serves that route.
+    public-base-url: ${PUBLIC_BASE_URL}
+    default-validity: 30d
 
 management:
   endpoints:

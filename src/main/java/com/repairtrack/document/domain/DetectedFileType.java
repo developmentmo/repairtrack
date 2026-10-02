@@ -31,6 +31,15 @@ public enum DetectedFileType {
         return Optional.empty();
     }
 
+    public static Optional<DetectedFileType> fromMimeType(String mimeType) {
+        for (DetectedFileType type : values()) {
+            if (type.mimeType.equals(mimeType)) {
+                return Optional.of(type);
+            }
+        }
+        return Optional.empty();
+    }
+
     private boolean matches(byte[] header) {
         if (header.length < signature.length) {
             return false;

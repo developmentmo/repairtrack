@@ -87,6 +87,29 @@ audit ──► repair ──► mileage ──► verification
 `audit` is a pure consumer: nothing depends on it. Phase 6 adds `document → repair` (through
 `RepairDocumentSupport`, the repair module's API for documents) and `audit → document`.
 
+Phase 7 adds `sharing`, a pure reader of the other modules: `sharing → vehicle, repair, mileage, document`, plus
+`audit → sharing` for its events. Nothing depends on `sharing`. The read APIs it uses deliberately skip
+authorization, because the share link *is* the authorization; they live in the modules' public API and are only
+called by `sharing`:
+
+| Type | Purpose |
+|---|---|
+| `vehicle.VehicleDirectory#publicProfile` → `VehiclePublicProfile` | Make, model, year, plate, owner count. No VIN, no owners. |
+| `repair.VehicleHistoryReader` → `VehicleHistory` | Full history incl. voided records and corrections, without access checks. |
+| `document.DocumentDirectory` → `DocumentSummary` | Document metadata per vehicle and presigned URLs by SHA-256, with neutral file names. |
+
+`common.crypto.OpaqueTokens` (moved from `security`) generates 256-bit random tokens and their SHA-256 hashes, for
+refresh tokens and share links.
+
+### Public sharing (Phase 7)
+
+- A `VehicleShare` is created by the current owner, valid 1–365 days, optionally including documents.
+- Status is derived, not stored: `REVOKED` > `EXPIRED` > `OWNER_CHANGED` > `ACTIVE`. A link only works while its
+  creator is still the owner, so selling the car automatically ends all old links (the next owner's history is never
+  exposed by the previous owner's links).
+- `PublicHistoryService` maps the internal history to `PublicHistory.Report`, a separate DTO tree with no IDs, so new
+  internal fields can never leak by accident.
+
 ### Events and atomicity
 
 Modules publish Spring application events from inside their transaction. The audit module handles them with

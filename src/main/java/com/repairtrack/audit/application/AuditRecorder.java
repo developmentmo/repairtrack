@@ -14,6 +14,7 @@ import com.repairtrack.document.DocumentEvents;
 import com.repairtrack.garage.GarageEvents;
 import com.repairtrack.repair.RepairEvents;
 import com.repairtrack.security.UserRegisteredEvent;
+import com.repairtrack.sharing.SharingEvents;
 import com.repairtrack.vehicle.VehicleEvents;
 
 /**
@@ -161,6 +162,22 @@ class AuditRecorder {
                         "documentType", event.documentType(), "mimeType", event.mimeType(),
                         "fileSize", event.fileSize(), "sha256", event.sha256()),
                 event.occurredAt());
+    }
+
+    // ---------- sharing (never the token or its hash) ----------
+
+    @EventListener
+    void on(SharingEvents.ShareCreated event) {
+        trail.record(AuditEntityType.VEHICLE_SHARE, event.shareId(), AuditAction.SHARE_CREATED, event.createdBy(),
+                null, values("vehicleId", event.vehicleId(), "expiresAt", event.expiresAt(),
+                        "includeDocuments", event.includeDocuments()),
+                event.occurredAt());
+    }
+
+    @EventListener
+    void on(SharingEvents.ShareRevoked event) {
+        trail.record(AuditEntityType.VEHICLE_SHARE, event.shareId(), AuditAction.SHARE_REVOKED, event.revokedBy(),
+                null, values("vehicleId", event.vehicleId()), event.occurredAt());
     }
 
     @EventListener

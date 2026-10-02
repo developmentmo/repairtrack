@@ -1,4 +1,4 @@
-package com.repairtrack.security.application;
+package com.repairtrack.common.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

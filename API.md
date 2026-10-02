@@ -74,6 +74,8 @@ Business codes:
 | `DOCUMENT_NOT_FOUND` | 404 | |
 | `FILE_TOO_LARGE` | 413 | Upload larger than 20 MB |
 | `UNSUPPORTED_FILE_TYPE` | 415 | Content is not PDF, JPEG or PNG (decided by the file's bytes) |
+| `INVALID_SHARE` | 400 | Share validity outside 1–365 days |
+| `SHARE_NOT_FOUND` | 404 | Unknown, expired, revoked or ownership-ended link (one answer for all), or another owner's share |
 
 ## Authentication
 
@@ -242,11 +244,44 @@ over the stored bytes.
 `OWNER`/`UNVERIFIED` record raises it to `OWNER_DOCUMENT`/`DOCUMENTED` (`repairVerificationRaised: true`).
 Photos and "other" files do not. Garage records are unaffected.
 
+## Sharing
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vehicles/{vehicleId}/shares` | current owner | optional `{validDays (1–365, default 30), includeDocuments (default false)}` | 201 `{share, token, url}` |
+| GET | `/api/v1/vehicles/{vehicleId}/shares` | current owner | | 200 `[ShareResponse]` (own links only) |
+| POST | `/api/v1/shares/{shareId}/revoke` | current owner who created it | | 200 `ShareResponse` (idempotent) |
+
+`ShareResponse`: `{id, createdAt, expiresAt, includeDocuments, status, accessCount, lastAccessedAt}`, `status` one of
+`ACTIVE`, `EXPIRED`, `REVOKED`, `OWNER_CHANGED`. The `token` and `url` (`{PUBLIC_BASE_URL}/v/{token}`) are returned
+**only once**, on creation: the server stores only a hash. Links are never deleted, only revoked.
+
+### Public vehicle history (no authentication)
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/api/v1/public/vehicles/{token}` | 200 `Report` |
+| GET | `/api/v1/public/vehicles/{token}/documents/{reference}` | 200 `{downloadUrl, expiresAt}` (presigned, 5 minutes) |
+
+`Report`: `{vehicle {make, model, modelYear, firstRegistrationDate, licensePlate, registeredOwnerCount}, summary
+{totalRecords, voidedRecords, recordsByVerification, firstEventDate, lastEventDate, lastRecordedMileage,
+mileageInconsistencies, documentCount}, history [Entry], mileage {readings, inconsistencies}, documentsDownloadable,
+generatedAt, linkValidUntil}`.
+
+`Entry`: `{eventType, eventDate, mileage, title, description, sourceType, verificationStatus, voided, voidReason,
+garage {name, city, verificationStatus} | null, parts, corrections [{field, originalValue, correctedValue, reason,
+correctedBy ("OWNER" or garage name), correctedAt}], documents [{documentType, mimeType, fileSize, uploadedAt,
+downloadable, reference}]}`.
+
+Deliberately absent: internal IDs, VIN, owner and user identities, file names. Voided records stay visible (marked)
+so the history cannot be cleaned up silently. `reference` (the document's SHA-256) is only set when the link allows
+downloads. Every view increments the link's `accessCount`. Any invalid link returns `404 SHARE_NOT_FOUND`.
+
 ## Audit
 
 | Method | Path | Who | Response |
 |---|---|---|---|
-| GET | `/api/v1/audit-events?entityType=USER\|GARAGE\|VEHICLE\|REPAIR_EVENT\|DOCUMENT&entityId=…` | SYSTEM_ADMIN | 200 `[{id, entityType, entityId, action, actorId, oldValue, newValue, createdAt}]` |
+| GET | `/api/v1/audit-events?entityType=USER\|GARAGE\|VEHICLE\|REPAIR_EVENT\|DOCUMENT\|VEHICLE_SHARE&entityId=…` | SYSTEM_ADMIN | 200 `[{id, entityType, entityId, action, actorId, oldValue, newValue, createdAt}]` |
 
 ## Operational
 

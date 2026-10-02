@@ -1,6 +1,7 @@
 package com.repairtrack.document.infrastructure;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,4 +12,8 @@ import com.repairtrack.document.domain.Document;
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
     List<Document> findByRepairEventIdOrderByUploadedAtAsc(UUID repairEventId);
+
+    List<Document> findByVehicleIdOrderByUploadedAtAsc(UUID vehicleId);
+
+    Optional<Document> findFirstByVehicleIdAndSha256OrderByUploadedAtAsc(UUID vehicleId, String sha256);
 }

@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.repairtrack.common.crypto.OpaqueTokens;
 import com.repairtrack.security.UserRegisteredEvent;
 import com.repairtrack.security.domain.PasswordPolicy;
 import com.repairtrack.security.domain.RefreshToken;

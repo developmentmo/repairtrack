@@ -104,7 +104,7 @@ Rules live in `RepairAccessPolicy` (one class, reviewable as a whole):
 
 Source type and verification status are decided only by `VerificationService` from a server-built
 `RecordingContext`; the request DTOs have no such fields and a database check constraint rejects any combination the
-service cannot produce. Previous owners lose access to the history when their ownership ends; public sharing is Phase 7.
+service cannot produce. Previous owners lose access to the history when their ownership ends, including through share links they created.
 
 ### Audit trail
 
@@ -128,6 +128,22 @@ service cannot produce. Previous owners lose access to the history when their ow
 - **Integrity:** SHA-256 computed by the server while receiving the upload. `GET /documents/{id}/integrity`
   detects any later change or loss of the stored object.
 - **Credentials:** static keys only for local/test; in production prefer the AWS default credentials chain (IAM role).
+
+### Public share links (Phase 7)
+
+- **Tokens:** 256 bits from `SecureRandom` (43 URL-safe characters), returned once on creation. Only the SHA-256
+  hash is stored, so a database leak exposes no working links. Internal UUIDs are never public identifiers.
+- **Lifetime:** 1–365 days (default 30); revocable at any time by the owner; dead as soon as the creator stops being
+  the owner. Only the current owner can create, list (own links only) and revoke links.
+- **One answer for every invalid link** (`404 SHARE_NOT_FOUND`): unknown, expired, revoked and ownership-ended links
+  are indistinguishable, so the endpoint reveals nothing about which tokens exist(ed).
+- **Data minimisation:** the report has no VIN, internal IDs, owner/user identities, emails or file names; only the
+  number of registered owners. Garages appear by name and city (public business data).
+- **Documents** are hidden unless the owner chose `includeDocuments`; even then only via short presigned URLs with a
+  neutral file name (`invoice-2026-10-02.pdf`), referenced by SHA-256.
+- **Referrer-Policy: no-referrer** on all responses, so the token in the URL does not leak to linked sites.
+- Creation and revocation are audited (`SHARE_CREATED`, `SHARE_REVOKED`); the token never appears in audit entries or
+  logs (`toString()` overrides). Views are counted per link (`access_count`), not audited per view.
 
 ### Never trusted from clients
 
@@ -154,3 +170,5 @@ fields for server-decided values; unknown JSON properties can never set them.
 - Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.
 - No rate limiting on vehicle claims (VIN guessing is impractical, but should be throttled).
 - No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).
+- No rate limiting on the public share endpoints (guessing 256-bit tokens is infeasible, but scraping should be throttled).
+- Share tokens are part of the URL path: reverse proxies / access logs in production must not log full paths for `/api/v1/public/**` and `/v/**`.

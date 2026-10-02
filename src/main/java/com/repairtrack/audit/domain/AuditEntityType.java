@@ -5,5 +5,6 @@ public enum AuditEntityType {
     GARAGE,
     VEHICLE,
     REPAIR_EVENT,
-    DOCUMENT
+    DOCUMENT,
+    VEHICLE_SHARE
 }

@@ -6,7 +6,7 @@ chronological, auditable history per vehicle (identified by VIN), where every re
 always determined server-side. Records are never silently changed or deleted: they are voided or
 corrected, and every mutation is audited.
 
-> Current state: **Phase 6 — documents.** Authentication, garages, vehicles and ownership, repair history (parts, void, corrections, mileage warnings, server-side verification), documents in S3-compatible storage with SHA-256 integrity, and an append-only audit trail. Next: public sharing (Phase 7).
+> Current state: **Phase 7 — public sharing.** Authentication, garages, vehicles and ownership, repair history (parts, void, corrections, mileage warnings, server-side verification), documents in S3-compatible storage with SHA-256 integrity, an append-only audit trail, and revocable share links that expose a privacy-safe public vehicle history. Next: Flutter app (Phase 8).
 
 ## Tech stack
 
@@ -83,6 +83,7 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `S3_PUBLIC_ENDPOINT` | no | Endpoint used in presigned download URLs, if clients reach storage differently |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | no | Empty = AWS default credentials chain (e.g. IAM role) |
 | `S3_PATH_STYLE_ACCESS` | no (default `true`) | Bucket in the URL path (required for Garage) |
+| `PUBLIC_BASE_URL` | yes (outside `local`) | Base URL of the public site; share links are `{PUBLIC_BASE_URL}/v/{token}` (`local`: `http://localhost:8080`) |
 
 ## Database
 

@@ -49,6 +49,12 @@ public class RepairQueryService {
         return assembler.toViews(repairs.findByVehicleIdOrderByEventDateDescCreatedAtDesc(vehicleId));
     }
 
+    /** For {@code VehicleHistoryReader} only: the caller has authorized access by other means. */
+    @Transactional(readOnly = true)
+    public List<RepairView> historyWithoutAuthorization(UUID vehicleId) {
+        return assembler.toViews(repairs.findByVehicleIdOrderByEventDateDescCreatedAtDesc(vehicleId));
+    }
+
     @Transactional(readOnly = true)
     public RepairView get(AuthenticatedUser actor, UUID repairId) {
         RepairEvent event = repairs.findById(repairId).orElseThrow(RepairNotFoundException::new);

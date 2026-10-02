@@ -22,8 +22,7 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V13 | `V13__create_audit_event.sql` | `audit_event` + append-only trigger |
 | V14 | `V14__create_document.sql` | `document` (metadata; bytes in object storage) |
 | V15 | `V15__create_verification.sql` | `verification` (provenance changes after creation) |
-
-Planned: vehicle_share (Phase 7).
+| V16 | `V16__create_vehicle_share.sql` | `vehicle_share` (public share links, hashed tokens) |
 
 ## Tables
 
@@ -170,3 +169,8 @@ The file bytes are never stored in PostgreSQL.
 ### verification
 `id, repair_event_id (FK), previous_source_type, previous_status, new_source_type, new_status, method
 (DOCUMENT_ATTACHED), evidence_id (document id), changed_by, created_at`. Append-only.
+
+### vehicle_share
+`id, vehicle_id (FK), token_hash (VARCHAR(64), unique, lower-case hex SHA-256 of the token; the token itself is never
+stored), include_documents, expires_at (> created_at), created_by (FK), created_at, revoked_at / revoked_by (both or
+neither), access_count (incremented atomically per view), last_accessed_at, version`. Never deleted; revoked instead.

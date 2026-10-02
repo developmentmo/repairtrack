@@ -13,6 +13,8 @@ repairtrack:
     jwt:
       # Local development only. Any real environment MUST set JWT_SECRET.
       secret: ${JWT_SECRET:local-development-secret-do-not-use-anywhere-else}
+  sharing:
+    public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
   # Matches the garage service in docker-compose.yml (throwaway local credentials).
   storage:
     endpoint: ${S3_ENDPOINT:http://localhost:3900}

@@ -16,3 +16,5 @@ repairtrack:
   storage:
     region: garage
     bucket: repairtrack-test
+  sharing:
+    public-base-url: https://test.repairtrack.example
