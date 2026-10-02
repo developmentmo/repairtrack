@@ -6,7 +6,7 @@ chronological, auditable history per vehicle (identified by VIN), where every re
 always determined server-side. Records are never silently changed or deleted: they are voided or
 corrected, and every mutation is audited.
 
-> Current state: **Phase 2 — authentication and users.** No vehicles, garages or repairs yet.
+> Current state: **Phase 7 — public sharing.** Authentication, garages, vehicles and ownership, repair history (parts, void, corrections, mileage warnings, server-side verification), documents in S3-compatible storage with SHA-256 integrity, an append-only audit trail, and revocable share links that expose a privacy-safe public vehicle history. Next: Flutter app (Phase 8).
 
 ## Tech stack
 
@@ -23,10 +23,11 @@ JUnit · Mockito · Testcontainers · Maven
 ## Run locally
 
 ```bash
-# 1. Start PostgreSQL
+# 1. Start PostgreSQL and Garage (S3-compatible document storage)
 cp .env.example .env          # optional; defaults work without it
 docker compose up -d
 docker compose ps             # wait until postgres is "healthy"
+curl -s localhost:3903/health # Garage: "Garage is fully operational"
 
 # 2. Start the application with the local profile
 SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
@@ -77,7 +78,12 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `JWT_ISSUER` | no (default `repairtrack`) | `iss` claim of access tokens |
 | `JWT_ACCESS_TOKEN_TTL` | no (default `15m`) | Access-token lifetime |
 | `REFRESH_TOKEN_TTL` | no (default `30d`) | Refresh-token lifetime |
-| `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` | Phase 6 | Document object storage |
+| `S3_REGION`, `S3_BUCKET` | yes (outside `local`) | Document storage region and (private) bucket |
+| `S3_ENDPOINT` | no | S3 API endpoint; empty = AWS default for the region |
+| `S3_PUBLIC_ENDPOINT` | no | Endpoint used in presigned download URLs, if clients reach storage differently |
+| `S3_ACCESS_KEY`, `S3_SECRET_KEY` | no | Empty = AWS default credentials chain (e.g. IAM role) |
+| `S3_PATH_STYLE_ACCESS` | no (default `true`) | Bucket in the URL path (required for Garage) |
+| `PUBLIC_BASE_URL` | yes (outside `local`) | Base URL of the public site; share links are `{PUBLIC_BASE_URL}/v/{token}` (`local`: `http://localhost:8080`) |
 
 ## Database
 
@@ -96,10 +102,19 @@ mvn test      # unit tests + module boundary verification (no Docker needed)
 mvn verify    # + integration tests (*IT) against PostgreSQL via Testcontainers (Docker required)
 ```
 
-## Object storage (MinIO)
+## Object storage (Garage)
 
-Not part of Phase 1; added in Phase 6. See the note in [ARCHITECTURE.md](ARCHITECTURE.md#object-storage)
-about the choice of local S3-compatible storage.
+Documents are stored in S3-compatible object storage. Locally that is [Garage](https://garagehq.deuxfleurs.fr)
+(`dxflrs/garage:v2.3.0`), started by `docker compose` as a single node that creates its bucket and access key on
+startup (`--single-node --default-bucket`; config in `docker/garage/garage.toml`). Production can use AWS S3 or any
+S3-compatible store; only configuration changes.
+
+- S3 API: `http://localhost:3900` (region `garage`, path-style), admin/health: `http://localhost:3903/health`
+- Local bucket `repairtrack-documents`, key `GK0123…cdef` (throwaway values, see `.env.example`)
+- Reset all local documents: `docker compose down -v`
+- Android emulator: set `S3_PUBLIC_ENDPOINT=http://10.0.2.2:3900` so presigned URLs point at the host
+
+Integration tests start their own Garage container (Testcontainers), no setup needed.
 
 ## Documentation
 

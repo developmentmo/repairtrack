@@ -49,6 +49,92 @@ Types in a module's **base package** are its public API for other modules. Examp
 | `AuthenticatedUser` | The caller (ID, email, platform roles). Other modules receive it as a method parameter. |
 | `Role` | Platform roles `OWNER`, `SYSTEM_ADMIN`. |
 | `UserRegisteredEvent` | Published after registration (for audit/notifications). |
+| `UserDirectory`, `UserSummary` | Read-only user lookup (e.g. add a garage member by email). No credentials. |
+
+Garage module public API:
+
+| Type | Purpose |
+|---|---|
+| `GarageAccessService` | Explicit garage authorization: `validateCanRecordWork(actor, garageId)` returns a `GarageWorkPermit`, plus `requireGarageAdmin`, `requireMemberOrSystemAdmin`. |
+| `GarageWorkPermit` | Result of the repair-authorization check. Carries the garage's verification status, from which the repair module derives `GARAGE` vs `VERIFIED_GARAGE`. |
+| `GarageRole`, `GarageVerificationStatus` | Published enums. |
+| `GarageEvents.*` | Registered, verification status changed, member added/removed. |
+
+Vehicle module public API:
+
+| Type | Purpose |
+|---|---|
+| `VehicleAccessService` | `requireExists`, `isActiveOwner`, `requireActiveOwner` for the repair/document/sharing modules. |
+| `VehicleEvents.*` | Registered, details changed (with `VehicleFieldChange` list), ownership started/ended. |
+
+Repair, mileage, verification and audit public APIs:
+
+| Type | Purpose |
+|---|---|
+| `verification.VerificationService` + `RecordingContext` (sealed) → `Provenance` | The only place that decides source type and verification status. |
+| `mileage.MileageService` | `record` (returns anomalies involving the new reading), `voidForSourceEvent`, `history`. |
+| `repair.RepairEvents.*` | Created, corrected, voided, part added (with snapshots for the audit trail). |
+| `garage.GarageDirectory`, `vehicle.VehicleDirectory` | Read-only summaries for other modules' responses. |
+
+Module dependencies (all through base-package APIs; no cycles, verified by `ModularityTest`):
+
+```text
+audit ──► repair ──► mileage ──► verification
+  │         │  └───► verification
+  │         ├──────► vehicle ──► garage ──► security ──► common
+  └─────────┴──────────────────────┴──────────┘
+```
+`audit` is a pure consumer: nothing depends on it. Phase 6 adds `document → repair` (through
+`RepairDocumentSupport`, the repair module's API for documents) and `audit → document`.
+
+Phase 7 adds `sharing`, a pure reader of the other modules: `sharing → vehicle, repair, mileage, document`, plus
+`audit → sharing` for its events. Nothing depends on `sharing`. The read APIs it uses deliberately skip
+authorization, because the share link *is* the authorization; they live in the modules' public API and are only
+called by `sharing`:
+
+| Type | Purpose |
+|---|---|
+| `vehicle.VehicleDirectory#publicProfile` → `VehiclePublicProfile` | Make, model, year, plate, owner count. No VIN, no owners. |
+| `repair.VehicleHistoryReader` → `VehicleHistory` | Full history incl. voided records and corrections, without access checks. |
+| `document.DocumentDirectory` → `DocumentSummary` | Document metadata per vehicle and presigned URLs by SHA-256, with neutral file names. |
+
+`common.crypto.OpaqueTokens` (moved from `security`) generates 256-bit random tokens and their SHA-256 hashes, for
+refresh tokens and share links.
+
+### Public sharing (Phase 7)
+
+- A `VehicleShare` is created by the current owner, valid 1–365 days, optionally including documents.
+- Status is derived, not stored: `REVOKED` > `EXPIRED` > `OWNER_CHANGED` > `ACTIVE`. A link only works while its
+  creator is still the owner, so selling the car automatically ends all old links (the next owner's history is never
+  exposed by the previous owner's links).
+- `PublicHistoryService` maps the internal history to `PublicHistory.Report`, a separate DTO tree with no IDs, so new
+  internal fields can never leak by accident.
+
+### Events and atomicity
+
+Modules publish Spring application events from inside their transaction. The audit module handles them with
+**synchronous `@EventListener`s**, so the mutation and its audit entry commit or roll back together (spec §34).
+After-commit or asynchronous listeners (`@TransactionalEventListener`, Modulith `@ApplicationModuleListener`) are
+deliberately not used for audit: an entry could be lost. The future outbox will be written the same way, in the same
+transaction.
+
+### Vehicle history model
+
+- `repair_event` is the history entry. Its provenance (source type + verification status) is set once, from a
+  `RecordingContext` established by authorization code, and is guarded again by a DB check constraint.
+- **Void** instead of delete: the record stays, with reason, and its mileage reading is voided.
+- **Correct** instead of update: one `repair_correction` row per field (original, corrected, reason, who, on behalf of
+  which garage). The current row holds the latest values, the correction rows reconstruct every earlier version.
+- **Mileage** is a separate projection (`mileage_record`). Anomalies are computed on read over the full timeline,
+  so a backdated entry can never leave stale flags behind.
+
+### `verification` table (Phase 6)
+
+A record's initial provenance is stored on `repair_event`. The `verification` table records changes **after**
+creation, with their evidence. The first (and so far only) such change: when the owner attaches an invoice, work order
+or inspection report to their own record, it goes from `OWNER/UNVERIFIED` to `OWNER_DOCUMENT/DOCUMENTED`
+(`VerificationMethod.DOCUMENT_ATTACHED`, `evidence_id` = the document). `VerificationService` stays a pure policy;
+`VerificationLog` persists the changes.
 
 Controllers obtain the caller with `@AuthenticationPrincipal AuthenticatedUser` and pass it explicitly into
 application services. Services never read `SecurityContextHolder` themselves: authorization inputs stay
@@ -95,6 +181,10 @@ extractable. Foreign keys still exist at the database level while we share one d
 | Business errors extend `common.error.ApplicationException` with an `ErrorCategory` | Modules express *what* went wrong; only `GlobalExceptionHandler` knows HTTP statuses. |
 | Stateless JWT access tokens + rotating opaque refresh tokens (Phase 2) | Mobile-friendly, no server session; refresh tokens stay revocable. Details in SECURITY.md. |
 | Platform roles on the user; garage roles on garage membership | A global `MECHANIC` role cannot express "mechanic *at garage X*". |
+| Multi-row invariants guarded by locking the aggregate root row (`findByIdForUpdate`) | e.g. "a garage keeps at least one admin" cannot be broken by two concurrent removals. |
+| Memberships and other history-bearing rows are ended, never deleted | Past work stays attributable to the person and garage that did it. |
+| `common.time.BusinessCalendar` for "now"/"today" | Instants in UTC; user-entered dates judged in Europe/Amsterdam (`repairtrack.business-time-zone`). |
+| VIN is identity, license plate is an attribute | A vehicle keeps its history through plate changes and owners. |
 | Entities get their UUID at construction; `@Version` on entities | ID is known before persisting (events, links); `@Version` gives optimistic locking and lets Spring Data detect new entities without an extra SELECT. |
 
 ## Domain model (target)
@@ -112,15 +202,27 @@ AuditEvent (any entity)
 
 Details are specified per phase and documented here as each module is implemented.
 
-## Object storage
+## Object storage (Phase 6)
 
-Documents will be stored in private S3-compatible object storage, accessed via presigned URLs
-(Phase 6). The application codes against the S3 API only, so the provider is swappable.
+Documents are stored in a **private** S3-compatible bucket; PostgreSQL holds metadata only.
 
-**Note on MinIO:** in late 2025 MinIO stopped publishing community-edition Docker images and the
-open-source repository was later archived. Before Phase 6 we choose the local S3-compatible
-emulator deliberately (options: a pinned last-published MinIO image, or a maintained alternative
-such as SeaweedFS, Garage or LocalStack). Production uses AWS S3 or another S3-compatible provider.
+- **Local and tests:** Garage v2.3.0 (single node). Chosen over MinIO, which stopped publishing community images in
+  late 2025. **Production:** AWS S3 or any S3-compatible store, through configuration only.
+- **Client:** AWS SDK for Java v2 (`s3`, sync Apache client), path-style addressing, checksums only when required
+  (recent SDKs add CRC checksums by default that not every S3-compatible server accepts).
+- **Port:** `DocumentStorage` (put, open, presign, compensating delete) with one implementation, `S3DocumentStorage`.
+
+Upload flow (`DocumentService`, one transaction):
+
+1. authorize via `RepairDocumentSupport.requireCanAttachDocument` (same rules as correcting the record);
+2. check size (20 MB) and **detect the type from the first bytes** (PDF, JPEG, PNG); name and client
+   Content-Type are ignored;
+3. stream to storage under `repair-events/{repairId}/{documentId}` while computing **SHA-256**;
+4. store metadata; an evidentiary document on an owner record raises it to `DOCUMENTED`;
+5. publish `DocumentUploaded` (audit). If the transaction rolls back, the stored object is removed again.
+
+Downloads use presigned GET URLs (5 minutes, `Content-Disposition: attachment`). `GET /documents/{id}/integrity`
+re-hashes the stored object and compares it with the upload hash.
 
 ## Future service extraction
 

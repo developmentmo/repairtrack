@@ -45,8 +45,37 @@ Business codes:
 | `INVALID_CREDENTIALS` | 401 | Login: wrong email or password (identical for both) |
 | `INVALID_REFRESH_TOKEN` | 401 | Refresh: unknown, expired, revoked or replayed token |
 | `ACCOUNT_BLOCKED` | 403 | Login/refresh of a blocked account (login: only after a correct password) |
-| `USER_NOT_FOUND` | 404 | |
+| `USER_NOT_FOUND` | 404 | No (active) account for the given user / email |
 | `EMAIL_ALREADY_REGISTERED` | 409 | Registration with an existing email (case-insensitive) |
+| `INVALID_GARAGE_DATA` | 400 | Garage data rejected by domain validation |
+| `GARAGE_ACCESS_DENIED` | 403 | Not a (sufficiently privileged) member of the garage |
+| `GARAGE_SUSPENDED` | 403 | Suspended garage tries to record work |
+| `SYSTEM_ADMIN_REQUIRED` | 403 | Verification decisions |
+| `GARAGE_NOT_FOUND` | 404 | |
+| `GARAGE_MEMBER_NOT_FOUND` | 404 | User has no active membership in that garage |
+| `ALREADY_GARAGE_MEMBER` | 409 | User already has an active membership |
+| `INVALID_VERIFICATION_TRANSITION` | 422 | Status change not allowed from the current status |
+| `LAST_GARAGE_ADMIN` | 422 | Removing the garage's last admin |
+| `INVALID_VEHICLE_DATA` | 400 | Invalid VIN, plate, model year, or a date in the future |
+| `INVALID_VEHICLE_SEARCH` | 400 | Search without, or with both, `vin` and `licensePlate` |
+| `VEHICLE_ACCESS_DENIED` | 403 | Not allowed to edit the vehicle / not its current owner |
+| `OWNERSHIP_PROOF_INVALID` | 403 | Claim with a VIN that does not match |
+| `VEHICLE_NOT_FOUND` | 404 | |
+| `VEHICLE_ALREADY_REGISTERED` | 409 | A vehicle with this VIN exists: search and claim it instead |
+| `VEHICLE_ALREADY_OWNED` | 409 | Vehicle has an active owner |
+| `ALREADY_VEHICLE_OWNER` | 409 | Caller already owns it |
+| `INVALID_OWNERSHIP_PERIOD` | 422 | Start in the future, end before start, or overlapping the previous owner |
+| `INVALID_REPAIR_DATA` | 400 | Future event date, implausible mileage, missing title/reason, invalid part |
+| `NO_CHANGES` | 400 | Correction that changes nothing |
+| `REPAIR_ACCESS_DENIED` | 403 | Not allowed to see the vehicle history or to change this record |
+| `REPAIR_NOT_FOUND` | 404 | |
+| `REPAIR_ALREADY_VOIDED` | 422 | Voided records cannot be voided, corrected or extended again |
+| `EMPTY_FILE` | 400 | Uploaded file has no content |
+| `DOCUMENT_NOT_FOUND` | 404 | |
+| `FILE_TOO_LARGE` | 413 | Upload larger than 20 MB |
+| `UNSUPPORTED_FILE_TYPE` | 415 | Content is not PDF, JPEG or PNG (decided by the file's bytes) |
+| `INVALID_SHARE` | 400 | Share validity outside 1–365 days |
+| `SHARE_NOT_FOUND` | 404 | Unknown, expired, revoked or ownership-ended link (one answer for all), or another owner's share |
 
 ## Authentication
 
@@ -82,6 +111,177 @@ Registration never accepts roles or status; every new account is an active `OWNE
 | GET | `/api/v1/users/me` | authenticated | 200 `UserResponse` |
 
 `UserResponse`: `{id, email, firstName, lastName, status, roles, createdAt}`. Never contains credentials.
+
+## Garages
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/garages` | any user (becomes GARAGE_ADMIN) | `{name, kvkNumber, address, postalCode, city, phone?, email?}` | 201 `GarageResponse` (status `PENDING`) |
+| GET | `/api/v1/garages/mine` | any user | | 200 `[{garageId, name, city, verificationStatus, role, memberSince}]` |
+| GET | `/api/v1/garages/{garageId}` | any user | | 200 `GarageResponse` |
+| POST | `/api/v1/garages/{garageId}/verification-request` | garage admin | | 200; `UNVERIFIED` &rarr; `PENDING` |
+| POST | `/api/v1/garages/{garageId}/verification` | SYSTEM_ADMIN | `{status, note?}` | 200 `GarageResponse` |
+
+Validation: `kvkNumber` 8 digits; `postalCode` Dutch format (`1234AB` / `1234 AB`, stored as `1234 AB`).
+
+Verification transitions (system admin): `PENDING → VERIFIED|UNVERIFIED`, `VERIFIED → SUSPENDED|UNVERIFIED`,
+`SUSPENDED → VERIFIED|UNVERIFIED`. Garage admin: `UNVERIFIED → PENDING`.
+
+`GarageResponse`: `{id, name, kvkNumber, address, postalCode, city, phone, email, verificationStatus, verificationChangedAt, createdAt}`
+
+### Garage members
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/garages/{garageId}/users` | garage admin | `{email, role}` (`GARAGE_ADMIN` / `MECHANIC`) | 201 member |
+| GET | `/api/v1/garages/{garageId}/users` | members, SYSTEM_ADMIN | | 200 `[{userId, email, firstName, lastName, role, memberSince}]` |
+| DELETE | `/api/v1/garages/{garageId}/users/{userId}` | garage admin, or the member themselves | | 204 |
+
+The added user must already have an account. DELETE ends the membership; the row is kept as history.
+A garage always keeps at least one garage admin.
+
+`GET /api/v1/garages/{garageId}/vehicles` from the original plan follows with repairs (Phase 5): it lists the
+vehicles a garage has worked on.
+
+## Vehicles
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vehicles` | any user; with `garageId`: garage member | `{vin, licensePlate?, make, model, modelYear?, firstRegistrationDate?, garageId?, ownedSince?}` | 201 `VehicleResponse` |
+| GET | `/api/v1/vehicles` | any user | | 200 `[VehicleResponse]`: vehicles the caller currently owns |
+| GET | `/api/v1/vehicles/search?vin=…` or `?licensePlate=…` | any user | | 200 `[{id, licensePlate, make, model, modelYear}]` (exact match, never a VIN) |
+| GET | `/api/v1/vehicles/{vehicleId}` | any user | | 200 `VehicleResponse` |
+| PUT | `/api/v1/vehicles/{vehicleId}` | see below | `{licensePlate?, make, model, modelYear?, firstRegistrationDate?}` | 200 `VehicleResponse` |
+| POST | `/api/v1/vehicles/{vehicleId}/claim` | any user | `{vin, ownedSince?}` | 201 `OwnershipResponse` |
+| POST | `/api/v1/vehicles/{vehicleId}/ownership/end` | current owner | `{endDate?}` (optional body) | 200 `OwnershipResponse` |
+
+`VehicleResponse`: `{id, vin, licensePlate, make, model, modelYear, firstRegistrationDate, status, ownedByMe, canEdit, createdAt, updatedAt}`.
+`vin` is `null` unless the caller is the current owner, a SYSTEM_ADMIN, or a member of the garage that registered
+the vehicle. No response ever contains owner identity.
+
+`OwnershipResponse`: `{vehicleId, startDate, endDate, status}`.
+
+Rules:
+- **Registration without `garageId`**: the caller becomes owner from `ownedSince` (default: today).
+  **With `garageId`**: the caller must be an active member of that non-suspended garage; the vehicle has no owner.
+- VIN: 17 characters, no I/O/Q, case and spaces ignored, unique, immutable (not part of PUT).
+  License plate: stored without dashes/spaces, upper-case; searched the same way.
+- **PUT** allowed for the current owner, SYSTEM_ADMIN, or a member of the registering garage *while the vehicle has no owner*.
+- **Claim**: only when the vehicle has no active owner, with the correct VIN as proof. `ownedSince` must not
+  be before the previous owner's end date.
+- All "not in the future" checks use today's date in Europe/Amsterdam.
+
+## Vehicle history (repairs)
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vehicles/{vehicleId}/repairs` | current owner; with `garageId`: garage member | `CreateRepairRequest` | 201 `RepairResponse` (+ `warnings`) |
+| GET | `/api/v1/vehicles/{vehicleId}/repairs` | history viewers¹ | | 200 `[RepairResponse]`, newest first, **including voided** |
+| GET | `/api/v1/vehicles/{vehicleId}/mileage` | history viewers¹ | | 200 `{readings, anomalies}` |
+| GET | `/api/v1/repairs/{repairId}` | history viewers¹ | | 200 `RepairResponse` |
+| POST | `/api/v1/repairs/{repairId}/void` | record's author side² or SYSTEM_ADMIN | `{reason}` | 200 `RepairResponse` (status `VOIDED`) |
+| POST | `/api/v1/repairs/{repairId}/corrections` | record's author side² | `{eventType?, eventDate?, mileage?, title?, description?, reason}` | 200 `RepairResponse` (+ `warnings`) |
+| POST | `/api/v1/repairs/{repairId}/parts` | record's author side² | `{parts: [PartRequest]}` | 201 `RepairResponse` |
+| GET | `/api/v1/repairs/{repairId}/parts` | history viewers¹ | | 200 `[PartResponse]` |
+| GET | `/api/v1/garages/{garageId}/vehicles` | garage members, SYSTEM_ADMIN | | 200 `[{id, licensePlate, make, model, modelYear}]` |
+
+¹ current owner, SYSTEM_ADMIN, members of a garage that registered the vehicle or recorded work on it.
+² garage record: active member of **that** garage (not suspended). Owner record: the owner who created it, while
+still the current owner. An owner can never change a garage record and vice versa.
+
+There is **no DELETE** for repairs (`405`). Records are voided (stay visible, with reason) or corrected
+(original values stay visible).
+
+`CreateRepairRequest`:
+```json
+{
+  "eventType": "REPAIR",               // MAINTENANCE, REPAIR, INSPECTION, TYRE_CHANGE, DAMAGE_REPAIR, APK, RECALL, OTHER
+  "eventDate": "2026-09-14",           // not in the future (Europe/Amsterdam)
+  "mileage": 183421,                   // 0..2,000,000
+  "title": "Brake replacement",
+  "description": "Front discs and pads",
+  "garageId": "…",                     // omit to record as owner
+  "parts": [{"partNumber": "0986494521", "brand": "Bosch", "description": "Brake pads", "quantity": 1}]
+}
+```
+There are no `sourceType` / `verificationStatus` fields. The backend derives them:
+
+| Recorded by | sourceType | verificationStatus |
+|---|---|---|
+| current owner | `OWNER` | `UNVERIFIED` |
+| garage, not verified | `GARAGE` | `GARAGE_VERIFIED` |
+| verified garage | `VERIFIED_GARAGE` | `GARAGE_VERIFIED` |
+| owner + document (Phase 6) | `OWNER_DOCUMENT` | `DOCUMENTED` |
+| RDW / manufacturer import (future) | `RDW` / `MANUFACTURER` | `OFFICIAL_SOURCE` |
+
+`RepairResponse`: `{id, vehicleId, eventType, eventDate, mileage, title, description, sourceType, verificationStatus,
+status, garage: {id, name, city, verificationStatus} | null, parts: [...], corrections: [{field, originalValue,
+correctedValue, reason, correctedByGarage | null (= owner), correctedAt}], voidedAt, voidReason, createdAt, updatedAt,
+warnings: [...]}`.
+
+**Mileage warnings** never block a request. A reading lower than the preceding reading (by date) produces
+`{code: "MILEAGE_DECREASE", message, earlier: {date, mileage, sourceType}, later: {...}}`. It is reported as an
+inconsistency, never as fraud.
+
+## Documents
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/repairs/{repairId}/documents` | record's author side² | `multipart/form-data`: `file`, `documentType` | 201 `DocumentResponse` |
+| GET | `/api/v1/repairs/{repairId}/documents` | history viewers¹ | | 200 `[DocumentResponse]` |
+| GET | `/api/v1/documents/{documentId}` | history viewers¹ | | 200 `DocumentResponse` with `downloadUrl` |
+| GET | `/api/v1/documents/{documentId}/integrity` | history viewers¹ | | 200 `{documentId, expectedSha256, actualSha256, intact, checkedAt}` |
+
+`documentType`: `INVOICE`, `WORK_ORDER`, `INSPECTION_REPORT`, `PHOTO`, `OTHER`. Accepted content: PDF, JPEG, PNG
+(detected from the bytes), max 20 MB. No update or delete (`405`): documents are part of the history.
+
+`DocumentResponse`: `{id, repairEventId, documentType, fileName, mimeType, fileSize, sha256, uploadedAt,
+repairVerificationRaised, downloadUrl, downloadUrlExpiresAt}`. `downloadUrl` is a presigned URL to the private bucket,
+valid for 5 minutes. Request a new one via `GET /documents/{id}` when it expires. `sha256` is computed by the server
+over the stored bytes.
+
+**Effect on verification:** an `INVOICE`, `WORK_ORDER` or `INSPECTION_REPORT` uploaded by the owner to their own
+`OWNER`/`UNVERIFIED` record raises it to `OWNER_DOCUMENT`/`DOCUMENTED` (`repairVerificationRaised: true`).
+Photos and "other" files do not. Garage records are unaffected.
+
+## Sharing
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vehicles/{vehicleId}/shares` | current owner | optional `{validDays (1–365, default 30), includeDocuments (default false)}` | 201 `{share, token, url}` |
+| GET | `/api/v1/vehicles/{vehicleId}/shares` | current owner | | 200 `[ShareResponse]` (own links only) |
+| POST | `/api/v1/shares/{shareId}/revoke` | current owner who created it | | 200 `ShareResponse` (idempotent) |
+
+`ShareResponse`: `{id, createdAt, expiresAt, includeDocuments, status, accessCount, lastAccessedAt}`, `status` one of
+`ACTIVE`, `EXPIRED`, `REVOKED`, `OWNER_CHANGED`. The `token` and `url` (`{PUBLIC_BASE_URL}/v/{token}`) are returned
+**only once**, on creation: the server stores only a hash. Links are never deleted, only revoked.
+
+### Public vehicle history (no authentication)
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/api/v1/public/vehicles/{token}` | 200 `Report` |
+| GET | `/api/v1/public/vehicles/{token}/documents/{reference}` | 200 `{downloadUrl, expiresAt}` (presigned, 5 minutes) |
+
+`Report`: `{vehicle {make, model, modelYear, firstRegistrationDate, licensePlate, registeredOwnerCount}, summary
+{totalRecords, voidedRecords, recordsByVerification, firstEventDate, lastEventDate, lastRecordedMileage,
+mileageInconsistencies, documentCount}, history [Entry], mileage {readings, inconsistencies}, documentsDownloadable,
+generatedAt, linkValidUntil}`.
+
+`Entry`: `{eventType, eventDate, mileage, title, description, sourceType, verificationStatus, voided, voidReason,
+garage {name, city, verificationStatus} | null, parts, corrections [{field, originalValue, correctedValue, reason,
+correctedBy ("OWNER" or garage name), correctedAt}], documents [{documentType, mimeType, fileSize, uploadedAt,
+downloadable, reference}]}`.
+
+Deliberately absent: internal IDs, VIN, owner and user identities, file names. Voided records stay visible (marked)
+so the history cannot be cleaned up silently. `reference` (the document's SHA-256) is only set when the link allows
+downloads. Every view increments the link's `accessCount`. Any invalid link returns `404 SHARE_NOT_FOUND`.
+
+## Audit
+
+| Method | Path | Who | Response |
+|---|---|---|---|
+| GET | `/api/v1/audit-events?entityType=USER\|GARAGE\|VEHICLE\|REPAIR_EVENT\|DOCUMENT\|VEHICLE_SHARE&entityId=…` | SYSTEM_ADMIN | 200 `[{id, entityType, entityId, action, actorId, oldValue, newValue, createdAt}]` |
 
 ## Operational
 

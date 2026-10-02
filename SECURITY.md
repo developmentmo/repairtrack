@@ -39,7 +39,7 @@ Two layers:
    Everything else requires a valid access token.
 2. **Application layer**: every use case receives the caller as an explicit `AuthenticatedUser` parameter and
    checks permissions against **data**, not just roles (e.g. `vehicleAccessService.canModify(user, vehicle)`,
-   `garageAccessService.validateCanCreateRepair(...)`, from Phases 3 to 5). URL patterns are never used for
+   `garageAccessService.validateCanRecordWork(...)`, from Phases 3 to 5). URL patterns are never used for
    business authorization.
 
 ### Roles
@@ -51,6 +51,99 @@ Two layers:
 | `GARAGE_ADMIN`, `MECHANIC` | **one garage** | garage membership (`garage_user`, Phase 3) |
 
 Garage roles are not global user roles: a person can be a mechanic at garage A and nobody at garage B.
+
+### Garage authorization (Phase 3)
+
+All garage checks live in `GarageAccessService` and are based on the caller's **active membership of that
+specific garage**:
+
+| Action | Rule |
+|---|---|
+| Register garage | any authenticated user; becomes its first `GARAGE_ADMIN`; status always `PENDING` |
+| View garage profile | any authenticated user (business information) |
+| List members | active member of that garage, or `SYSTEM_ADMIN` |
+| Add member / remove other member | active `GARAGE_ADMIN` of that garage |
+| Leave garage | the member themselves (not the last admin) |
+| Re-apply for verification | active `GARAGE_ADMIN`, only from `UNVERIFIED` |
+| Verification decision | `SYSTEM_ADMIN` only |
+| Record work (Phase 5) | `validateCanRecordWork`: active member (admin or mechanic) **and** garage not `SUSPENDED` |
+
+A `SYSTEM_ADMIN` is not implicitly a garage member and cannot record work for a garage.
+Adding members by email reveals to garage admins whether an account exists (accepted; an invitation
+flow can replace this later).
+
+### Vehicle authorization (Phase 4)
+
+| Action | Rule |
+|---|---|
+| Register as owner | any user; becomes owner. VIN must not exist yet. |
+| Register for a garage | `GarageAccessService.validateCanRecordWork` (active member, garage not suspended); no owner is created |
+| View vehicle / search | any authenticated user; **VIN hidden** except for current owner, SYSTEM_ADMIN, members of the registering garage |
+| Edit details | current owner, SYSTEM_ADMIN, or registering-garage member **while unowned**. VIN never editable. |
+| Claim | vehicle has no active owner **and** caller supplies the correct VIN |
+| End ownership | current owner only |
+
+Claim proof is intentionally modest in V1: the VIN is never revealed by the API to non-owners, so knowing it
+suggests access to the car or its registration documents. It does not prove legal ownership (a VIN is also
+visible on the car itself). Mitigations: one active owner at a time, ownership changes are evented (audit), and
+the design allows stronger proofs later (document review, RDW) without API changes.
+Owner identity is never exposed through any vehicle endpoint.
+
+### Vehicle history authorization (Phase 5)
+
+Rules live in `RepairAccessPolicy` (one class, reviewable as a whole):
+
+| Action | Rule |
+|---|---|
+| Create owner record | current owner of the vehicle |
+| Create garage record | `GarageAccessService.validateCanRecordWork(actor, garageId)`: active member, garage not suspended. Any registered vehicle (the garage has the car). |
+| View history / mileage / parts | current owner, SYSTEM_ADMIN, members of a garage that registered the vehicle or recorded work on it |
+| Correct / add parts | garage record: active member of the **recording** garage (not suspended). Owner record: its creator while still the current owner. |
+| Void | as correct, plus SYSTEM_ADMIN (moderation) |
+| Delete | **not possible** (no endpoint; `405`) |
+
+Source type and verification status are decided only by `VerificationService` from a server-built
+`RecordingContext`; the request DTOs have no such fields and a database check constraint rejects any combination the
+service cannot produce. Previous owners lose access to the history when their ownership ends, including through share links they created.
+
+### Audit trail
+
+- Written in the same transaction as the change (synchronous listeners); a failed audit write rolls the change back.
+- `audit_event` is append-only, enforced by a database trigger (UPDATE/DELETE raise an error).
+- Entries contain IDs and business values only, never emails, names or credentials (covered by `AuditTrailIT`).
+- Readable by SYSTEM_ADMIN only.
+
+### Documents (Phase 6)
+
+- **Private bucket.** Files are only reachable through presigned URLs (5 minutes) handed out after the same
+  authorization as viewing the vehicle history. URLs are not stored and not logged.
+- **Upload rights** equal correction rights for the record (owner never on garage records and vice versa);
+  voided records accept no documents.
+- **Type checking by content.** PDF/JPEG/PNG are recognised from their magic bytes; the client's file name and
+  Content-Type are ignored. Downloads are served as `Content-Disposition: attachment` with the detected type, so a
+  stored file is never rendered as HTML in the browser.
+- **Size limits** in the servlet container (20 MB) and the service.
+- **File names** are sanitized (no paths, quotes or control characters), stored for display only and never used in
+  storage keys; they are not written to the audit trail (they may contain personal data).
+- **Integrity:** SHA-256 computed by the server while receiving the upload. `GET /documents/{id}/integrity`
+  detects any later change or loss of the stored object.
+- **Credentials:** static keys only for local/test; in production prefer the AWS default credentials chain (IAM role).
+
+### Public share links (Phase 7)
+
+- **Tokens:** 256 bits from `SecureRandom` (43 URL-safe characters), returned once on creation. Only the SHA-256
+  hash is stored, so a database leak exposes no working links. Internal UUIDs are never public identifiers.
+- **Lifetime:** 1–365 days (default 30); revocable at any time by the owner; dead as soon as the creator stops being
+  the owner. Only the current owner can create, list (own links only) and revoke links.
+- **One answer for every invalid link** (`404 SHARE_NOT_FOUND`): unknown, expired, revoked and ownership-ended links
+  are indistinguishable, so the endpoint reveals nothing about which tokens exist(ed).
+- **Data minimisation:** the report has no VIN, internal IDs, owner/user identities, emails or file names; only the
+  number of registered owners. Garages appear by name and city (public business data).
+- **Documents** are hidden unless the owner chose `includeDocuments`; even then only via short presigned URLs with a
+  neutral file name (`invoice-2026-10-02.pdf`), referenced by SHA-256.
+- **Referrer-Policy: no-referrer** on all responses, so the token in the URL does not leak to linked sites.
+- Creation and revocation are audited (`SHARE_CREATED`, `SHARE_REVOKED`); the token never appears in audit entries or
+  logs (`toString()` overrides). Views are counted per link (`access_count`), not audited per view.
 
 ### Never trusted from clients
 
@@ -72,3 +165,10 @@ fields for server-decided values; unknown JSON properties can never set them.
 - No cleanup job for expired refresh tokens.
 - CORS not configured (only needed for Flutter web; mobile apps don't use it).
 - No admin endpoints to block users or grant roles (done directly in the database for now).
+- Changes made before Phase 5 have no audit entries (no production data existed).
+- No malware scanning of uploads; no periodic integrity sweep yet (integrity is checked on demand).
+- Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.
+- No rate limiting on vehicle claims (VIN guessing is impractical, but should be throttled).
+- No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).
+- No rate limiting on the public share endpoints (guessing 256-bit tokens is infeasible, but scraping should be throttled).
+- Share tokens are part of the URL path: reverse proxies / access logs in production must not log full paths for `/api/v1/public/**` and `/v/**`.

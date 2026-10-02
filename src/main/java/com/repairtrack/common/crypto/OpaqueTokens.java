@@ -1,4 +1,4 @@
-package com.repairtrack.security.application;
+package com.repairtrack.common.crypto;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -12,9 +12,9 @@ import java.util.HexFormat;
  * <p>
  * 256 bits of entropy make a fast hash (SHA-256) sufficient for storage: unlike passwords,
  * these values cannot be brute-forced, so a slow hash like BCrypt would add cost without benefit.
- * Reused later for public share links (Phase 7).
+ * Used for refresh tokens and public share links.
  */
-final class OpaqueTokens {
+public final class OpaqueTokens {
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int TOKEN_BYTES = 32;
@@ -22,13 +22,14 @@ final class OpaqueTokens {
     private OpaqueTokens() {
     }
 
-    static String generate() {
+    /** 256-bit token, base64url without padding (43 characters). */
+    public static String generate() {
         byte[] bytes = new byte[TOKEN_BYTES];
         RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    static String sha256Hex(String token) {
+    public static String sha256Hex(String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));

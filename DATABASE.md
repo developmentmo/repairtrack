@@ -10,10 +10,19 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V1 | `V1__baseline.sql` | Baseline; no tables. Establishes the migration pipeline. |
 | V2 | `V2__create_app_user.sql` | `app_user`, `app_user_role` (platform roles only) |
 | V3 | `V3__create_refresh_token.sql` | `refresh_token` (hashed, rotating refresh tokens) |
-
-Planned, in phase order (version numbers are assigned when each migration is written):
-garage, garage_user (Phase 3) · vehicle, vehicle_ownership (Phase 4) · repair_event, repair_part,
-mileage_record, verification, audit_event (Phase 5) · document (Phase 6) · vehicle_share (Phase 7).
+| V4 | `V4__create_garage.sql` | `garage` |
+| V5 | `V5__create_garage_user.sql` | `garage_user` (memberships) |
+| V6 | `V6__create_vehicle.sql` | `vehicle` |
+| V7 | `V7__create_vehicle_ownership.sql` | `vehicle_ownership` |
+| V8 | `V8__index_vehicle_registered_by_garage.sql` | index for "vehicles of a garage" |
+| V9 | `V9__create_repair_event.sql` | `repair_event` |
+| V10 | `V10__create_repair_part.sql` | `repair_part` |
+| V11 | `V11__create_repair_correction.sql` | `repair_correction` |
+| V12 | `V12__create_mileage_record.sql` | `mileage_record` |
+| V13 | `V13__create_audit_event.sql` | `audit_event` + append-only trigger |
+| V14 | `V14__create_document.sql` | `document` (metadata; bytes in object storage) |
+| V15 | `V15__create_verification.sql` | `verification` (provenance changes after creation) |
+| V16 | `V16__create_vehicle_share.sql` | `vehicle_share` (public share links, hashed tokens) |
 
 ## Tables
 
@@ -43,6 +52,95 @@ mileage_record, verification, audit_event (Phase 5) · document (Phase 6) · veh
 | replaced_by_id | UUID | FK refresh_token: rotation chain |
 | version | BIGINT | optimistic locking |
 
+### garage
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| name | VARCHAR(150) | |
+| kvk_number | VARCHAR(8) | 8 digits (check). Indexed, **not unique**: one KvK registration can have several branches. |
+| address, postal_code, city | | postal code stored as `1234 AB` (check) |
+| phone, email | | optional |
+| verification_status | VARCHAR(20) | UNVERIFIED, PENDING, VERIFIED, SUSPENDED. Indexed (admin review queue). |
+| verification_changed_at / _by / _note | | latest verification change; full history via audit (Phase 5) |
+| created_by | UUID | FK app_user |
+| created_at, updated_at, version | | |
+
+### garage_user
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| garage_id | UUID | FK garage |
+| user_id | UUID | FK app_user |
+| role | VARCHAR(20) | GARAGE_ADMIN, MECHANIC |
+| status | VARCHAR(20) | ACTIVE, ENDED. Rows are never deleted. |
+| added_by, created_at | | |
+| ended_by, ended_at | | set iff ENDED (check constraint) |
+| version | BIGINT | |
+
+Partial unique index `uk_garage_user_active_membership (garage_id, user_id) WHERE status = 'ACTIVE'`:
+one active membership per user and garage; re-joining creates a new row.
+
+### vehicle
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| vin | VARCHAR(17) | **unique** (`uk_vehicle_vin`), immutable, ISO 3779 check (no I/O/Q), upper-case |
+| license_plate | VARCHAR(12) | normalized (upper-case, no dashes); indexed (`ix_vehicle_license_plate`), not unique |
+| make, model | VARCHAR(100) | |
+| model_year | INTEGER | 1886..2100 (check); the application also limits it to next year |
+| first_registration_date | DATE | |
+| status | VARCHAR(20) | ACTIVE, ARCHIVED |
+| registered_by | UUID | FK app_user |
+| registered_by_garage_id | UUID | FK garage, when a garage registered the vehicle |
+| created_at, updated_at, version | | |
+
+No owner column. Ownership lives in `vehicle_ownership`.
+
+### vehicle_ownership
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| vehicle_id | UUID | FK vehicle; indexed |
+| user_id | UUID | FK app_user; indexed ("my vehicles") |
+| start_date, end_date | DATE | `end_date >= start_date` (check) |
+| status | VARCHAR(20) | ACTIVE, ENDED; end_date/ended_at set iff ENDED (check) |
+| created_at, ended_at, version | | |
+
+Partial unique index `uk_vehicle_ownership_active (vehicle_id) WHERE status = 'ACTIVE'`: at most one current owner.
+
+### repair_event
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK |
+| vehicle_id | UUID | FK vehicle |
+| garage_id | UUID | FK garage; set iff source is GARAGE/VERIFIED_GARAGE |
+| created_by | UUID | FK app_user |
+| event_type | VARCHAR(20) | MAINTENANCE … OTHER (check) |
+| source_type, verification_status | VARCHAR(20) | **check constraint allows only the combinations the VerificationService produces** |
+| event_date | DATE | |
+| mileage | INTEGER | 0..2,000,000 |
+| title, description | VARCHAR(150), VARCHAR(5000) | |
+| status | VARCHAR(20) | ACTIVE, VOIDED; voided_at/voided_by/void_reason set iff VOIDED (check) |
+| created_at, updated_at, version | | |
+
+Indexes: `vehicle_id`, `(vehicle_id, event_date)`, `(vehicle_id, mileage)`, `garage_id`. Never deleted.
+
+### repair_part
+`id, repair_event_id (FK), part_number?, brand?, description, quantity (1..999), added_by, created_at`. Append-only.
+
+### repair_correction
+One row per corrected field: `repair_event_id, field (EVENT_TYPE|EVENT_DATE|MILEAGE|TITLE|DESCRIPTION), old_value,
+new_value, reason, corrected_by, corrected_by_garage_id (null = owner), created_at`. Append-only.
+
+### mileage_record
+`id, vehicle_id, mileage, recorded_date, source_type, source_event_id (no FK: future RDW readings have no event),
+status (ACTIVE|VOIDED), created_at, voided_at, version`. Index `(vehicle_id, recorded_date)`. A corrected or voided
+repair voids its reading; corrections add a new one. Anomalies are computed on read, not stored.
+
+### audit_event
+`id, sequence_number (identity: strict order), entity_type, entity_id, action, actor_id, old_value JSONB,
+new_value JSONB, created_at`. No foreign keys. **A trigger rejects every UPDATE and DELETE.**
+
 ## Conventions
 
 - Singular, snake_case table names (`app_user`, `repair_event`); `user` is reserved in PostgreSQL.
@@ -61,3 +159,18 @@ docker compose up -d                                   # start
 docker exec -it repairtrack-postgres psql -U repairtrack -d repairtrack
 docker compose down -v                                 # stop and DELETE all local data
 ```
+
+### document
+`id, repair_event_id (FK), vehicle_id (FK, for per-vehicle queries), document_type, file_name (sanitized display
+name), storage_key (unique; only IDs: repair-events/{repairId}/{documentId}), mime_type (pdf/jpeg/png, check),
+file_size (> 0), sha256 (CHAR(64), lower-case hex, check), uploaded_by, uploaded_at`. Append-only.
+The file bytes are never stored in PostgreSQL.
+
+### verification
+`id, repair_event_id (FK), previous_source_type, previous_status, new_source_type, new_status, method
+(DOCUMENT_ATTACHED), evidence_id (document id), changed_by, created_at`. Append-only.
+
+### vehicle_share
+`id, vehicle_id (FK), token_hash (VARCHAR(64), unique, lower-case hex SHA-256 of the token; the token itself is never
+stored), include_documents, expires_at (> created_at), created_by (FK), created_at, revoked_at / revoked_by (both or
+neither), access_count (incremented atomically per view), last_accessed_at, version`. Never deleted; revoked instead.

@@ -22,5 +22,11 @@ public enum ErrorCategory {
     CONFLICT,
 
     /** Request is well-formed but breaks a domain rule (422). */
-    BUSINESS_RULE_VIOLATION
+    BUSINESS_RULE_VIOLATION,
+
+    /** Uploaded content is too large (413). */
+    PAYLOAD_TOO_LARGE,
+
+    /** Uploaded content is of a type we do not accept (415). */
+    UNSUPPORTED_MEDIA_TYPE
 }
