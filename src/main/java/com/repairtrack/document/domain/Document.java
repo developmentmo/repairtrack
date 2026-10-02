@@ -14,6 +14,8 @@ import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.domain.Persistable;
 
 import com.repairtrack.document.DocumentType;
@@ -52,6 +54,8 @@ public class Document implements Persistable<UUID> {
     @Column(name = "file_size", nullable = false, updatable = false)
     private long fileSize;
 
+    /** Fixed-length CHAR(64) in the database (V14), so mapped as CHAR rather than the default VARCHAR. */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "sha256", nullable = false, updatable = false, length = 64)
     private String sha256;
 
