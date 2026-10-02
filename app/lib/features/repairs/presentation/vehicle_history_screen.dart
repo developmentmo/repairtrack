@@ -25,8 +25,10 @@ class VehicleHistoryScreen extends ConsumerWidget {
     final canAdd = vehicle.hasValue && vehicle.requireValue.ownedByMe;
 
     Future<void> refresh() async {
-      ref.invalidate(mileageHistoryProvider(vehicleId));
-      await ref.refresh(vehicleRepairsProvider(vehicleId).future);
+      ref
+        ..invalidate(mileageHistoryProvider(vehicleId))
+        ..invalidate(vehicleRepairsProvider(vehicleId));
+      await ref.read(vehicleRepairsProvider(vehicleId).future);
     }
 
     return Scaffold(

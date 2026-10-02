@@ -54,12 +54,12 @@ void main() {
   });
 
   test('a new repair is sent without provenance fields and with a plain date', () {
-    final json = const NewRepair(
+    final json = NewRepair(
       eventType: RepairEventType.apk,
       eventDate: DateTime(2026, 3, 5),
       mileage: 1000,
       title: 'APK',
-      parts: [NewPart(description: 'Wisserblad', quantity: 2)],
+      parts: const [NewPart(description: 'Wisserblad', quantity: 2)],
     ).toJson();
 
     expect(json['eventType'], 'APK');
