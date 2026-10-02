@@ -70,6 +70,10 @@ Business codes:
 | `REPAIR_ACCESS_DENIED` | 403 | Not allowed to see the vehicle history or to change this record |
 | `REPAIR_NOT_FOUND` | 404 | |
 | `REPAIR_ALREADY_VOIDED` | 422 | Voided records cannot be voided, corrected or extended again |
+| `EMPTY_FILE` | 400 | Uploaded file has no content |
+| `DOCUMENT_NOT_FOUND` | 404 | |
+| `FILE_TOO_LARGE` | 413 | Upload larger than 20 MB |
+| `UNSUPPORTED_FILE_TYPE` | 415 | Content is not PDF, JPEG or PNG (decided by the file's bytes) |
 
 ## Authentication
 
@@ -217,11 +221,32 @@ warnings: [...]}`.
 `{code: "MILEAGE_DECREASE", message, earlier: {date, mileage, sourceType}, later: {...}}`. It is reported as an
 inconsistency, never as fraud.
 
+## Documents
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/repairs/{repairId}/documents` | record's author side² | `multipart/form-data`: `file`, `documentType` | 201 `DocumentResponse` |
+| GET | `/api/v1/repairs/{repairId}/documents` | history viewers¹ | | 200 `[DocumentResponse]` |
+| GET | `/api/v1/documents/{documentId}` | history viewers¹ | | 200 `DocumentResponse` with `downloadUrl` |
+| GET | `/api/v1/documents/{documentId}/integrity` | history viewers¹ | | 200 `{documentId, expectedSha256, actualSha256, intact, checkedAt}` |
+
+`documentType`: `INVOICE`, `WORK_ORDER`, `INSPECTION_REPORT`, `PHOTO`, `OTHER`. Accepted content: PDF, JPEG, PNG
+(detected from the bytes), max 20 MB. No update or delete (`405`): documents are part of the history.
+
+`DocumentResponse`: `{id, repairEventId, documentType, fileName, mimeType, fileSize, sha256, uploadedAt,
+repairVerificationRaised, downloadUrl, downloadUrlExpiresAt}`. `downloadUrl` is a presigned URL to the private bucket,
+valid for 5 minutes. Request a new one via `GET /documents/{id}` when it expires. `sha256` is computed by the server
+over the stored bytes.
+
+**Effect on verification:** an `INVOICE`, `WORK_ORDER` or `INSPECTION_REPORT` uploaded by the owner to their own
+`OWNER`/`UNVERIFIED` record raises it to `OWNER_DOCUMENT`/`DOCUMENTED` (`repairVerificationRaised: true`).
+Photos and "other" files do not. Garage records are unaffected.
+
 ## Audit
 
 | Method | Path | Who | Response |
 |---|---|---|---|
-| GET | `/api/v1/audit-events?entityType=USER\|GARAGE\|VEHICLE\|REPAIR_EVENT&entityId=…` | SYSTEM_ADMIN | 200 `[{id, entityType, entityId, action, actorId, oldValue, newValue, createdAt}]` |
+| GET | `/api/v1/audit-events?entityType=USER\|GARAGE\|VEHICLE\|REPAIR_EVENT\|DOCUMENT&entityId=…` | SYSTEM_ADMIN | 200 `[{id, entityType, entityId, action, actorId, oldValue, newValue, createdAt}]` |
 
 ## Operational
 

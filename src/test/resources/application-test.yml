@@ -12,3 +12,7 @@ repairtrack:
   security:
     jwt:
       secret: test-secret-only-used-by-automated-tests-0123456789
+  # Real values are supplied at runtime from the Garage Testcontainer (TestcontainersConfiguration).
+  storage:
+    region: garage
+    bucket: repairtrack-test

@@ -58,7 +58,7 @@ public class RepairEvent {
     private RepairEventType eventType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_type", nullable = false, updatable = false, length = 20)
+    @Column(name = "source_type", nullable = false, length = 20)
     private SourceType sourceType;
 
     @Enumerated(EnumType.STRING)
@@ -181,6 +181,30 @@ public class RepairEvent {
         }
         updatedAt = now;
         return List.copyOf(corrections);
+    }
+
+    /**
+     * Raises an owner record to "owner + document" when a supporting document is attached.
+     * This is the only provenance change after creation; the previous provenance is kept by the
+     * verification log and the audit trail.
+     *
+     * @return the provenance before the change, or {@code null} if nothing changed (not an owner record,
+     *         or already documented)
+     */
+    public Provenance applyDocumentEvidence(Provenance documented, Instant now) {
+        requireActive();
+        if (documented.sourceType() != SourceType.OWNER_DOCUMENT
+                || documented.verificationStatus() != VerificationStatus.DOCUMENTED) {
+            throw new IllegalArgumentException("Document evidence can only lead to OWNER_DOCUMENT/DOCUMENTED");
+        }
+        if (sourceType != SourceType.OWNER) {
+            return null;
+        }
+        Provenance previous = new Provenance(sourceType, verificationStatus);
+        sourceType = documented.sourceType();
+        verificationStatus = documented.verificationStatus();
+        updatedAt = now;
+        return previous;
     }
 
     /** Marks the record as invalid. It remains in the history, flagged, with the reason. */

@@ -37,6 +37,13 @@ public final class RepairEvents {
     public record RepairVoided(UUID repairId, UUID vehicleId, UUID voidedBy, String reason, Instant occurredAt) {
     }
 
+    /** Provenance raised after creation, e.g. OWNER/UNVERIFIED -> OWNER_DOCUMENT/DOCUMENTED. */
+    public record RepairProvenanceChanged(UUID repairId, UUID vehicleId, SourceType fromSource,
+                                          VerificationStatus fromStatus, SourceType toSource,
+                                          VerificationStatus toStatus, UUID evidenceDocumentId, UUID changedBy,
+                                          Instant occurredAt) {
+    }
+
     public record RepairPartAdded(UUID repairId, UUID partId, UUID addedBy, String partNumber, String brand,
                                   String description, int quantity, Instant occurredAt) {
     }

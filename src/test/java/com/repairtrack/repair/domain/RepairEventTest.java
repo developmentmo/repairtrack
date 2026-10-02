@@ -98,6 +98,32 @@ class RepairEventTest {
     }
 
     @Test
+    void documentEvidenceRaisesOnlyOwnerRecords() {
+        Provenance documented = new Provenance(SourceType.OWNER_DOCUMENT, VerificationStatus.DOCUMENTED);
+        RepairEvent ownerRecord = RepairEvent.record(UUID.randomUUID(), null, mechanic, RepairEventType.MAINTENANCE,
+                OWNER, TODAY, 1000, "Oil change", null, NOW, TODAY);
+        RepairEvent garageRecord = garageRecord(1000);
+
+        Provenance previous = ownerRecord.applyDocumentEvidence(documented, NOW.plusSeconds(5));
+
+        assertThat(previous).isEqualTo(OWNER);
+        assertThat(ownerRecord.getSourceType()).isEqualTo(SourceType.OWNER_DOCUMENT);
+        assertThat(ownerRecord.getVerificationStatus()).isEqualTo(VerificationStatus.DOCUMENTED);
+        assertThat(ownerRecord.applyDocumentEvidence(documented, NOW)).isNull(); // already documented
+        assertThat(garageRecord.applyDocumentEvidence(documented, NOW)).isNull();
+        assertThat(garageRecord.getSourceType()).isEqualTo(SourceType.GARAGE);
+    }
+
+    @Test
+    void documentEvidenceCannotRaiseToAnythingElse() {
+        RepairEvent ownerRecord = RepairEvent.record(UUID.randomUUID(), null, mechanic, RepairEventType.MAINTENANCE,
+                OWNER, TODAY, 1000, "Oil change", null, NOW, TODAY);
+
+        assertThatThrownBy(() -> ownerRecord.applyDocumentEvidence(GARAGE, NOW))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void partsNeedDescriptionAndSaneQuantity() {
         UUID repairId = UUID.randomUUID();
 

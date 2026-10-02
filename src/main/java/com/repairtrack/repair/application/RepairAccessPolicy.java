@@ -34,14 +34,14 @@ import com.repairtrack.vehicle.VehicleDirectory;
  * same as correct, plus SYSTEM_ADMIN (moderation).
  */
 @Component
-class RepairAccessPolicy {
+public class RepairAccessPolicy {
 
     private final VehicleAccessService vehicleAccess;
     private final VehicleDirectory vehicleDirectory;
     private final GarageAccessService garageAccess;
     private final RepairEventRepository repairs;
 
-    RepairAccessPolicy(VehicleAccessService vehicleAccess, VehicleDirectory vehicleDirectory,
+    public RepairAccessPolicy(VehicleAccessService vehicleAccess, VehicleDirectory vehicleDirectory,
                        GarageAccessService garageAccess, RepairEventRepository repairs) {
         this.vehicleAccess = vehicleAccess;
         this.vehicleDirectory = vehicleDirectory;
@@ -49,14 +49,14 @@ class RepairAccessPolicy {
         this.repairs = repairs;
     }
 
-    void requireCanViewHistory(AuthenticatedUser actor, UUID vehicleId) {
+    public void requireCanViewHistory(AuthenticatedUser actor, UUID vehicleId) {
         vehicleAccess.requireExists(vehicleId);
         if (!canViewHistory(actor, vehicleId)) {
             throw new RepairAccessDeniedException("You are not allowed to see this vehicle's history.");
         }
     }
 
-    boolean canViewHistory(AuthenticatedUser actor, UUID vehicleId) {
+    public boolean canViewHistory(AuthenticatedUser actor, UUID vehicleId) {
         if (actor.hasRole(Role.SYSTEM_ADMIN) || vehicleAccess.isActiveOwner(actor.id(), vehicleId)) {
             return true;
         }
@@ -74,7 +74,7 @@ class RepairAccessPolicy {
     /**
      * @return the garage on whose behalf the change is made, or {@code null} for the owner
      */
-    UUID requireCanModify(AuthenticatedUser actor, RepairEvent event) {
+    public UUID requireCanModify(AuthenticatedUser actor, RepairEvent event) {
         if (event.isGarageRecord()) {
             if (!garageAccess.isActiveMember(actor.id(), event.getGarageId())) {
                 throw new RepairAccessDeniedException("Only the garage that recorded this work can change it.");
@@ -88,7 +88,7 @@ class RepairAccessPolicy {
         throw new RepairAccessDeniedException("Only the owner who created this record can change it.");
     }
 
-    void requireCanVoid(AuthenticatedUser actor, RepairEvent event) {
+    public void requireCanVoid(AuthenticatedUser actor, RepairEvent event) {
         if (actor.hasRole(Role.SYSTEM_ADMIN)) {
             return;
         }

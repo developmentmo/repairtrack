@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import com.repairtrack.audit.domain.AuditAction;
 import com.repairtrack.audit.domain.AuditEntityType;
+import com.repairtrack.document.DocumentEvents;
 import com.repairtrack.garage.GarageEvents;
 import com.repairtrack.repair.RepairEvents;
 import com.repairtrack.security.UserRegisteredEvent;
@@ -137,6 +138,28 @@ class AuditRecorder {
     void on(RepairEvents.RepairVoided event) {
         trail.record(AuditEntityType.REPAIR_EVENT, event.repairId(), AuditAction.REPAIR_VOIDED, event.voidedBy(),
                 values("status", "ACTIVE"), values("status", "VOIDED", "reason", event.reason()),
+                event.occurredAt());
+    }
+
+    @EventListener
+    void on(RepairEvents.RepairProvenanceChanged event) {
+        trail.record(AuditEntityType.REPAIR_EVENT, event.repairId(), AuditAction.REPAIR_VERIFICATION_RAISED,
+                event.changedBy(),
+                values("sourceType", event.fromSource(), "verificationStatus", event.fromStatus()),
+                values("sourceType", event.toSource(), "verificationStatus", event.toStatus(),
+                        "evidenceDocumentId", event.evidenceDocumentId()),
+                event.occurredAt());
+    }
+
+    // ---------- document ----------
+
+    /** File names are deliberately not audited (they may contain personal data). */
+    @EventListener
+    void on(DocumentEvents.DocumentUploaded event) {
+        trail.record(AuditEntityType.DOCUMENT, event.documentId(), AuditAction.DOCUMENT_UPLOADED, event.uploadedBy(),
+                null, values("repairEventId", event.repairEventId(), "vehicleId", event.vehicleId(),
+                        "documentType", event.documentType(), "mimeType", event.mimeType(),
+                        "fileSize", event.fileSize(), "sha256", event.sha256()),
                 event.occurredAt());
     }
 

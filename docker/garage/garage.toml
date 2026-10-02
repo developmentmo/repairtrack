@@ -1,0 +1,22 @@
+# Garage (S3-compatible object storage) for LOCAL DEVELOPMENT ONLY.
+# Single node, no replication. The secrets below are throwaway development values.
+# Docs: https://garagehq.deuxfleurs.fr/documentation/quick-start/
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+rpc_secret = "5c1a7d3f0e9b8a2c4d6e8f0a1b3c5d7e9f1a2b4c6d8e0f1a3b5c7d9e1f2a4b6c"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+[admin]
+api_bind_addr = "[::]:3903"
+admin_token = "local-development-admin-token"

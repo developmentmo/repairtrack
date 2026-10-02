@@ -20,9 +20,10 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V11 | `V11__create_repair_correction.sql` | `repair_correction` |
 | V12 | `V12__create_mileage_record.sql` | `mileage_record` |
 | V13 | `V13__create_audit_event.sql` | `audit_event` + append-only trigger |
+| V14 | `V14__create_document.sql` | `document` (metadata; bytes in object storage) |
+| V15 | `V15__create_verification.sql` | `verification` (provenance changes after creation) |
 
-Planned, in phase order (version numbers are assigned when each migration is written):
-document, verification (Phase 6) · vehicle_share (Phase 7).
+Planned: vehicle_share (Phase 7).
 
 ## Tables
 
@@ -159,3 +160,13 @@ docker compose up -d                                   # start
 docker exec -it repairtrack-postgres psql -U repairtrack -d repairtrack
 docker compose down -v                                 # stop and DELETE all local data
 ```
+
+### document
+`id, repair_event_id (FK), vehicle_id (FK, for per-vehicle queries), document_type, file_name (sanitized display
+name), storage_key (unique; only IDs: repair-events/{repairId}/{documentId}), mime_type (pdf/jpeg/png, check),
+file_size (> 0), sha256 (CHAR(64), lower-case hex, check), uploaded_by, uploaded_at`. Append-only.
+The file bytes are never stored in PostgreSQL.
+
+### verification
+`id, repair_event_id (FK), previous_source_type, previous_status, new_source_type, new_status, method
+(DOCUMENT_ATTACHED), evidence_id (document id), changed_by, created_at`. Append-only.

@@ -84,7 +84,8 @@ audit ──► repair ──► mileage ──► verification
   │         ├──────► vehicle ──► garage ──► security ──► common
   └─────────┴──────────────────────┴──────────┘
 ```
-`audit` is a pure consumer: nothing depends on it.
+`audit` is a pure consumer: nothing depends on it. Phase 6 adds `document → repair` (through
+`RepairDocumentSupport`, the repair module's API for documents) and `audit → document`.
 
 ### Events and atomicity
 
@@ -104,12 +105,13 @@ transaction.
 - **Mileage** is a separate projection (`mileage_record`). Anomalies are computed on read over the full timeline,
   so a backdated entry can never leave stale flags behind.
 
-### Deferred: `verification` table
+### `verification` table (Phase 6)
 
-The original plan lists a `verification` table. In Phase 5 a record's verification status is fully determined at
-creation and stored on `repair_event`, and every change is in `audit_event`. A separate table would duplicate that.
-It becomes useful when a record's status can change *after* creation (Phase 6: an owner record upgraded to
-`DOCUMENTED` by attaching a document; later: a garage confirming an owner record) and is introduced then.
+A record's initial provenance is stored on `repair_event`. The `verification` table records changes **after**
+creation, with their evidence. The first (and so far only) such change: when the owner attaches an invoice, work order
+or inspection report to their own record, it goes from `OWNER/UNVERIFIED` to `OWNER_DOCUMENT/DOCUMENTED`
+(`VerificationMethod.DOCUMENT_ATTACHED`, `evidence_id` = the document). `VerificationService` stays a pure policy;
+`VerificationLog` persists the changes.
 
 Controllers obtain the caller with `@AuthenticationPrincipal AuthenticatedUser` and pass it explicitly into
 application services. Services never read `SecurityContextHolder` themselves: authorization inputs stay
@@ -177,15 +179,27 @@ AuditEvent (any entity)
 
 Details are specified per phase and documented here as each module is implemented.
 
-## Object storage
+## Object storage (Phase 6)
 
-Documents will be stored in private S3-compatible object storage, accessed via presigned URLs
-(Phase 6). The application codes against the S3 API only, so the provider is swappable.
+Documents are stored in a **private** S3-compatible bucket; PostgreSQL holds metadata only.
 
-**Note on MinIO:** in late 2025 MinIO stopped publishing community-edition Docker images and the
-open-source repository was later archived. Before Phase 6 we choose the local S3-compatible
-emulator deliberately (options: a pinned last-published MinIO image, or a maintained alternative
-such as SeaweedFS, Garage or LocalStack). Production uses AWS S3 or another S3-compatible provider.
+- **Local and tests:** Garage v2.3.0 (single node). Chosen over MinIO, which stopped publishing community images in
+  late 2025. **Production:** AWS S3 or any S3-compatible store, through configuration only.
+- **Client:** AWS SDK for Java v2 (`s3`, sync Apache client), path-style addressing, checksums only when required
+  (recent SDKs add CRC checksums by default that not every S3-compatible server accepts).
+- **Port:** `DocumentStorage` (put, open, presign, compensating delete) with one implementation, `S3DocumentStorage`.
+
+Upload flow (`DocumentService`, one transaction):
+
+1. authorize via `RepairDocumentSupport.requireCanAttachDocument` (same rules as correcting the record);
+2. check size (20 MB) and **detect the type from the first bytes** (PDF, JPEG, PNG); name and client
+   Content-Type are ignored;
+3. stream to storage under `repair-events/{repairId}/{documentId}` while computing **SHA-256**;
+4. store metadata; an evidentiary document on an owner record raises it to `DOCUMENTED`;
+5. publish `DocumentUploaded` (audit). If the transaction rolls back, the stored object is removed again.
+
+Downloads use presigned GET URLs (5 minutes, `Content-Disposition: attachment`). `GET /documents/{id}/integrity`
+re-hashes the stored object and compares it with the upload hash.
 
 ## Future service extraction
 

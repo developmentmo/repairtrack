@@ -25,6 +25,12 @@ spring:
         jdbc:
           time_zone: UTC
 
+  servlet:
+    multipart:
+      # Hard limit enforced by the servlet container; the document service checks repairtrack.storage.max-file-size too.
+      max-file-size: 20MB
+      max-request-size: 21MB
+
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -53,6 +59,18 @@ repairtrack:
       issuer: ${JWT_ISSUER:repairtrack}
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
     refresh-token-ttl: ${REFRESH_TOKEN_TTL:30d}
+  storage:
+    # Empty endpoint = AWS default endpoint for the region. Empty access key = AWS default credentials chain.
+    endpoint: ${S3_ENDPOINT:}
+    # Endpoint as reachable by clients, used in presigned download URLs (defaults to endpoint).
+    public-endpoint: ${S3_PUBLIC_ENDPOINT:}
+    region: ${S3_REGION}
+    access-key: ${S3_ACCESS_KEY:}
+    secret-key: ${S3_SECRET_KEY:}
+    bucket: ${S3_BUCKET}
+    path-style-access: ${S3_PATH_STYLE_ACCESS:true}
+    presigned-url-ttl: 5m
+    max-file-size: 20MB
 
 management:
   endpoints:

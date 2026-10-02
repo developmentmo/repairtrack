@@ -1,5 +1,6 @@
 # Local development infrastructure. The application itself runs from the IDE.
-# Object storage (S3-compatible) is added in Phase 6.
+#   postgres: database
+#   garage:   S3-compatible object storage for documents (https://garagehq.deuxfleurs.fr)
 
 name: repairtrack
 
@@ -26,5 +27,28 @@ services:
       retries: 10
     restart: unless-stopped
 
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: repairtrack-garage
+    # --single-node: configure a one-node cluster automatically.
+    # --default-bucket: create the bucket and access key below on startup.
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    environment:
+      # Garage key format: "GK" + 32 hex characters; secret: 64 hex characters. Local values only.
+      GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY:-GK0123456789abcdef0123456789abcdef}
+      GARAGE_DEFAULT_SECRET_KEY: ${S3_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      GARAGE_DEFAULT_BUCKET: ${S3_BUCKET:-repairtrack-documents}
+    ports:
+      - "127.0.0.1:3900:3900" # S3 API
+      - "127.0.0.1:3903:3903" # admin API (/health)
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    # The image has no shell, so no in-container healthcheck; use: curl -s localhost:3903/health
+    restart: unless-stopped
+
 volumes:
   postgres-data:
+  garage-meta:
+  garage-data:

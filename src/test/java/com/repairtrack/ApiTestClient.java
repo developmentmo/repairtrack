@@ -1,5 +1,6 @@
 package com.repairtrack;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -7,6 +8,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.UUID;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -41,6 +45,41 @@ public final class ApiTestClient {
 
     public ApiResponse post(String path, Object body) {
         return post(path, body, null);
+    }
+
+    /** multipart/form-data with simple text fields and one file part named {@code file}. */
+    public ApiResponse postFile(String path, Map<String, String> fields, String fileName, String contentType,
+                                byte[] content, String bearerToken) {
+        String boundary = "----RepairTrackTest" + UUID.randomUUID().toString().replace("-", "");
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+        fields.forEach((name, value) -> write(body, "--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n" + value + "\r\n"));
+        write(body, "--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"\r\n"
+                + "Content-Type: " + contentType + "\r\n\r\n");
+        body.writeBytes(content);
+        write(body, "\r\n--" + boundary + "--\r\n");
+        HttpRequest.Builder builder = request(path, bearerToken)
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()));
+        return send(builder, bearerToken);
+    }
+
+    /** Plain GET of an absolute URL (e.g. a presigned download link), returning the raw bytes. */
+    public HttpResponse<byte[]> download(String absoluteUrl) {
+        try {
+            return httpClient.send(HttpRequest.newBuilder(URI.create(absoluteUrl)).GET().build(),
+                    HttpResponse.BodyHandlers.ofByteArray());
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    private static void write(ByteArrayOutputStream out, String text) {
+        out.writeBytes(text.getBytes(StandardCharsets.UTF_8));
     }
 
     public ApiResponse put(String path, Object body, String bearerToken) {

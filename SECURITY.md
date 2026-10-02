@@ -113,6 +113,22 @@ service cannot produce. Previous owners lose access to the history when their ow
 - Entries contain IDs and business values only, never emails, names or credentials (covered by `AuditTrailIT`).
 - Readable by SYSTEM_ADMIN only.
 
+### Documents (Phase 6)
+
+- **Private bucket.** Files are only reachable through presigned URLs (5 minutes) handed out after the same
+  authorization as viewing the vehicle history. URLs are not stored and not logged.
+- **Upload rights** equal correction rights for the record (owner never on garage records and vice versa);
+  voided records accept no documents.
+- **Type checking by content.** PDF/JPEG/PNG are recognised from their magic bytes; the client's file name and
+  Content-Type are ignored. Downloads are served as `Content-Disposition: attachment` with the detected type, so a
+  stored file is never rendered as HTML in the browser.
+- **Size limits** in the servlet container (20 MB) and the service.
+- **File names** are sanitized (no paths, quotes or control characters), stored for display only and never used in
+  storage keys; they are not written to the audit trail (they may contain personal data).
+- **Integrity:** SHA-256 computed by the server while receiving the upload. `GET /documents/{id}/integrity`
+  detects any later change or loss of the stored object.
+- **Credentials:** static keys only for local/test; in production prefer the AWS default credentials chain (IAM role).
+
 ### Never trusted from clients
 
 Roles, account status, verification status, source type, garage IDs and ownership claims. Request DTOs don't have
@@ -134,5 +150,7 @@ fields for server-decided values; unknown JSON properties can never set them.
 - CORS not configured (only needed for Flutter web; mobile apps don't use it).
 - No admin endpoints to block users or grant roles (done directly in the database for now).
 - Changes made before Phase 5 have no audit entries (no production data existed).
+- No malware scanning of uploads; no periodic integrity sweep yet (integrity is checked on demand).
+- Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.
 - No rate limiting on vehicle claims (VIN guessing is impractical, but should be throttled).
 - No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).
