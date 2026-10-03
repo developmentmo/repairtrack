@@ -1,11 +1,11 @@
 {
-    "name": "repairtrack_app",
-    "short_name": "repairtrack_app",
+    "name": "RepairTrack",
+    "short_name": "RepairTrack",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Verifieerbare onderhoudshistorie van je voertuig",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

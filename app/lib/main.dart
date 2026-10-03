@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
@@ -29,6 +30,10 @@ class RepairTrackApp extends ConsumerWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       routerConfig: ref.watch(routerProvider),
+      // Dutch everywhere: our own texts are Dutch, and these make date pickers, dialogs and tooltips Dutch too.
+      locale: const Locale('nl', 'NL'),
+      supportedLocales: const [Locale('nl', 'NL')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       debugShowCheckedModeBanner: false,
     );
   }

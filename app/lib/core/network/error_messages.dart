@@ -37,6 +37,8 @@ String userMessage(Object error) {
     'REPAIR_ALREADY_VOIDED' => 'Deze registratie is al ongeldig verklaard en kan niet meer worden gewijzigd.',
     'EMPTY_FILE' => 'Het bestand is leeg.',
     'FILE_TOO_LARGE' => 'Het bestand is groter dan 20 MB.',
+    'MALWARE_DETECTED' => 'Het bestand is geweigerd: er is een virus of andere malware in gevonden.',
+    'SCANNER_UNAVAILABLE' => 'Bestanden kunnen nu niet op virussen worden gecontroleerd. Probeer het later opnieuw.',
     'UNSUPPORTED_FILE_TYPE' => 'Alleen PDF, JPEG en PNG zijn toegestaan.',
     'DOCUMENT_NOT_FOUND' => 'Document niet gevonden.',
     'VALIDATION_FAILED' || 'INVALID_VEHICLE_DATA' || 'INVALID_REPAIR_DATA' || 'INVALID_GARAGE_DATA' =>
