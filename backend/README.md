@@ -17,7 +17,7 @@ JUnit · Mockito · Testcontainers · Maven
 ## Prerequisites
 
 - JDK 21
-- Maven 3.9+ (or generate the wrapper once: `mvn wrapper:wrapper`, then use `./mvnw`)
+- Maven: use the wrapper `./mvnw` (no separate installation needed)
 - Docker (for PostgreSQL and for Testcontainers)
 
 ## Run locally

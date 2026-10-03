@@ -47,7 +47,7 @@ jobs:
           java-version: '21'
           cache: maven
       # Unit tests, module boundaries and integration tests (Testcontainers uses the runner's Docker).
-      - run: mvn --batch-mode --no-transfer-progress verify
+      - run: ./mvnw --batch-mode --no-transfer-progress verify
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
