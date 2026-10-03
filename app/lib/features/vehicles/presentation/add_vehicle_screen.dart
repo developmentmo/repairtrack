@@ -99,6 +99,11 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
   bool _busy = false;
   String? _error;
 
+  /// RDW data for the plate as it was when looked up; cleared when the plate changes.
+  RegistryVehicle? _registry;
+  bool _lookingUp = false;
+  String? _lookupMessage;
+
   @override
   void dispose() {
     for (final controller in [_vin, _plate, _make, _model, _year]) {
@@ -123,6 +128,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
               model: _model.text.trim(),
               licensePlate: _plate.text.trim().isEmpty ? null : _plate.text.trim(),
               modelYear: int.tryParse(_year.text),
+              firstRegistrationDate: _registry?.firstRegistrationDate,
               ownedSince: widget.garageId == null ? _ownedSince : null,
               garageId: widget.garageId,
             ),
@@ -151,6 +157,42 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
     }
   }
 
+  /// Fills make and model from the RDW. Only a suggestion: the user can still change everything.
+  Future<void> _lookup() async {
+    if (_plate.text.trim().isEmpty) {
+      setState(() => _lookupMessage = 'Vul eerst een kenteken in.');
+      return;
+    }
+    setState(() {
+      _lookingUp = true;
+      _lookupMessage = null;
+      _registry = null;
+    });
+    try {
+      final vehicle = await ref.read(vehicleApiProvider).registryLookup(_plate.text);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _registry = vehicle;
+        if (vehicle.make != null) {
+          _make.text = vehicle.make!;
+        }
+        if (vehicle.model != null) {
+          _model.text = vehicle.model!;
+        }
+      });
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _lookupMessage = userMessage(e));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _lookingUp = false);
+      }
+    }
+  }
+
   Future<void> _pickOwnedSince() async {
     final picked = await showDatePicker(
       context: context,
@@ -174,6 +216,41 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextFormField(
+            key: const Key('vehicle-plate'),
+            controller: _plate,
+            decoration: InputDecoration(
+              labelText: 'Kenteken (optioneel)',
+              helperText: 'Haal merk en model op bij de RDW',
+              suffixIcon: _lookingUp
+                  ? const Padding(padding: EdgeInsets.all(12), child: ButtonProgress())
+                  : IconButton(
+                      key: const Key('rdw-lookup'),
+                      tooltip: 'Ophalen bij RDW',
+                      icon: const Icon(Icons.travel_explore),
+                      onPressed: _lookup,
+                    ),
+            ),
+            textCapitalization: TextCapitalization.characters,
+            onChanged: (_) {
+              if (_registry != null || _lookupMessage != null) {
+                setState(() {
+                  _registry = null;
+                  _lookupMessage = null;
+                });
+              }
+            },
+            onFieldSubmitted: (_) => _lookup(),
+          ),
+          if (_lookupMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(_lookupMessage!, key: const Key('rdw-message')),
+          ],
+          if (_registry != null) ...[
+            const SizedBox(height: 8),
+            _RegistrySummary(vehicle: _registry!),
+          ],
+          const SizedBox(height: 16),
+          TextFormField(
             controller: _vin,
             decoration: const InputDecoration(
               labelText: 'VIN (chassisnummer)',
@@ -184,18 +261,14 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
           ),
           const SizedBox(height: 16),
           TextFormField(
-            controller: _plate,
-            decoration: const InputDecoration(labelText: 'Kenteken (optioneel)'),
-            textCapitalization: TextCapitalization.characters,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
+            key: const Key('vehicle-make'),
             controller: _make,
             decoration: const InputDecoration(labelText: 'Merk'),
             validator: _required,
           ),
           const SizedBox(height: 16),
           TextFormField(
+            key: const Key('vehicle-model'),
             controller: _model,
             decoration: const InputDecoration(labelText: 'Model'),
             validator: _required,
@@ -227,6 +300,35 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
             child: _busy ? const ButtonProgress() : const Text('Registreren'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// What the RDW told us, so the user can check it. The VIN is not in the RDW open data.
+class _RegistrySummary extends StatelessWidget {
+  const _RegistrySummary({required this.vehicle});
+
+  final RegistryVehicle vehicle;
+
+  @override
+  Widget build(BuildContext context) {
+    final facts = <String>[
+      if (vehicle.vehicleType != null) vehicle.vehicleType!,
+      if (vehicle.primaryColor != null) vehicle.primaryColor!.toLowerCase(),
+      if (vehicle.fuelTypes.isNotEmpty) vehicle.fuelTypes.join(' / ').toLowerCase(),
+      if (vehicle.firstRegistrationDate != null) 'eerste toelating ${formatDate(vehicle.firstRegistrationDate!)}',
+      if (vehicle.apkExpiryDate != null) 'APK tot ${formatDate(vehicle.apkExpiryDate!)}',
+    ];
+    return Card(
+      key: const Key('rdw-summary'),
+      child: ListTile(
+        leading: const Icon(Icons.fact_check_outlined),
+        title: Text('Gevonden bij de RDW: ${[vehicle.make, vehicle.model].whereType<String>().join(' ')}'),
+        subtitle: Text([
+          if (facts.isNotEmpty) facts.join(' · '),
+          'Controleer de gegevens; je kunt ze nog aanpassen.',
+        ].join('\n')),
       ),
     );
   }

@@ -27,6 +27,8 @@ String userMessage(Object error) {
     'INVALID_OWNERSHIP_PERIOD' => 'Deze datum overlapt met de vorige eigenaar of ligt in de toekomst.',
     'INVALID_VEHICLE_SEARCH' => 'Vul een kenteken in.',
     'VEHICLE_NOT_FOUND' => 'Voertuig niet gevonden.',
+    'REGISTRY_VEHICLE_NOT_FOUND' => 'De RDW kent dit kenteken niet. Vul de gegevens zelf in.',
+    'REGISTRY_UNAVAILABLE' => 'De RDW-gegevens zijn nu niet beschikbaar. Vul de gegevens zelf in.',
     'REPAIR_NOT_FOUND' => 'Registratie niet gevonden.',
     'FORBIDDEN' || 'VEHICLE_ACCESS_DENIED' || 'REPAIR_ACCESS_DENIED' => 'Je hebt geen toegang tot deze gegevens.',
     'GARAGE_ACCESS_DENIED' => 'Je bent geen (beheerder van dit) garagelid.',

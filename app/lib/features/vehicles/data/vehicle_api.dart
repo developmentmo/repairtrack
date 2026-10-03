@@ -37,6 +37,15 @@ class VehicleApi {
         return response.data!.map((json) => VehicleSearchResult.fromJson(json as Map<String, dynamic>)).toList();
       });
 
+  /// Public RDW data for a plate (404 REGISTRY_VEHICLE_NOT_FOUND, 503 REGISTRY_UNAVAILABLE).
+  Future<RegistryVehicle> registryLookup(String licensePlate) => guardApi(() async {
+        final plate = licensePlate.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
+        final response = await _dio.get<Map<String, dynamic>>(
+          '/api/v1/vehicle-registry/${Uri.encodeComponent(plate)}',
+        );
+        return RegistryVehicle.fromJson(response.data!);
+      });
+
   /// Take ownership of an unowned vehicle; the full VIN is the proof.
   Future<void> claim(String vehicleId, {required String vin, DateTime? ownedSince}) => guardApi(() async {
         await _dio.post<void>(

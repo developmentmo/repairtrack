@@ -59,6 +59,42 @@ class VehicleSearchResult {
   String get displayName => '$make $model';
 }
 
+/// `GET /vehicle-registry/{plate}`: public RDW data to pre-fill the form. A suggestion the user checks,
+/// never proof of ownership.
+@JsonSerializable(createToJson: false)
+class RegistryVehicle {
+  const RegistryVehicle({
+    required this.licensePlate,
+    this.make,
+    this.model,
+    this.vehicleType,
+    this.firstRegistrationDate,
+    this.apkExpiryDate,
+    this.primaryColor,
+    this.fuelTypes = const [],
+  });
+
+  factory RegistryVehicle.fromJson(Map<String, dynamic> json) => _$RegistryVehicleFromJson(json);
+
+  final String licensePlate;
+  final String? make;
+
+  /// Trade name, e.g. "GOLF".
+  final String? model;
+  final String? vehicleType;
+
+  /// First admission anywhere (for imported cars: abroad).
+  @NullableDateOnlyConverter()
+  final DateTime? firstRegistrationDate;
+
+  /// Expiry of the Dutch periodic inspection (APK).
+  @NullableDateOnlyConverter()
+  final DateTime? apkExpiryDate;
+  final String? primaryColor;
+  @JsonKey(defaultValue: <String>[])
+  final List<String> fuelTypes;
+}
+
 /// Body of `POST /vehicles`.
 class NewVehicle {
   const NewVehicle({
