@@ -62,7 +62,7 @@ class _RepairDocumentsSectionState extends ConsumerState<RepairDocumentsSection>
     if (type == null) {
       return;
     }
-    final picked = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: allowedDocumentExtensions,
       withData: true,
