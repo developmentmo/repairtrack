@@ -53,7 +53,8 @@ services:
   clamav:
     # Malware scanner for uploads (clamd on 3310). Needs ~1.5 GB RAM; the first start downloads the virus
     # definitions and takes a few minutes. Skip it with MALWARE_SCAN_MODE=disabled for the backend.
-    image: clamav/clamav:1.4
+    # clamav-debian is multi-arch (amd64 + arm64/Apple Silicon); the alpine-based clamav/clamav is amd64 only.
+    image: clamav/clamav-debian:1.4
     container_name: repairtrack-clamav
     ports:
       - "127.0.0.1:3310:3310"
