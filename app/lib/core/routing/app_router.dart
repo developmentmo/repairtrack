@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin/presentation/admin_screen.dart';
+import '../../features/authentication/presentation/account_link_screens.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/register_screen.dart';
 import '../../features/authentication/presentation/splash_screen.dart';
@@ -32,6 +34,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (context, state) => const LoginScreen()),
       GoRoute(path: Routes.register, builder: (context, state) => const RegisterScreen()),
+      GoRoute(path: Routes.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
+      GoRoute(
+        path: Routes.verifyEmail,
+        builder: (context, state) => VerifyEmailScreen(token: state.uri.queryParameters['token'] ?? ''),
+      ),
+      GoRoute(
+        path: Routes.resetPassword,
+        builder: (context, state) => ResetPasswordScreen(token: state.uri.queryParameters['token'] ?? ''),
+      ),
       GoRoute(
         path: '/v/:token',
         builder: (context, state) => PublicReportScreen(token: state.pathParameters['token']!),
@@ -41,6 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OwnerDashboardScreen(),
         routes: [
           GoRoute(path: 'vehicles/add', builder: (context, state) => const AddVehicleScreen()),
+          GoRoute(path: 'admin', builder: (context, state) => const AdminScreen()),
           GoRoute(
             path: 'vehicles/:vehicleId',
             builder: (context, state) => VehicleDetailScreen(vehicleId: state.pathParameters['vehicleId']!),
@@ -119,10 +131,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 @visibleForTesting
 String? redirectFor(SessionState session, String location) {
   // The public report is for anyone with the link, logged in or not, and never waits for the session.
-  if (location.startsWith(Routes.publicPrefix)) {
+  // Email links work whether or not someone is logged in on this device.
+  if (location.startsWith(Routes.publicPrefix) || location == Routes.verifyEmail || location == Routes.resetPassword) {
     return null;
   }
-  final onAuthPage = location == Routes.login || location == Routes.register;
+  final onAuthPage = location == Routes.login || location == Routes.register || location == Routes.forgotPassword;
   return switch (session) {
     SessionRestoring() || SessionOffline() => location == Routes.splash ? null : Routes.splash,
     SignedOut() => onAuthPage ? null : Routes.login,

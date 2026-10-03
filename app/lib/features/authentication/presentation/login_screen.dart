@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/session_controller.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/form_widgets.dart';
+import 'account_link_screens.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _busy = false;
   String? _error;
+  bool _unverified = false;
 
   @override
   void dispose() {
@@ -35,13 +38,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _unverified = false;
     });
     try {
       // On success the router redirects to the dashboard.
       await ref.read(sessionControllerProvider.notifier).login(email: _email.text.trim(), password: _password.text);
     } catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() {
+          _error = userMessage(e);
+          _unverified = e is ApiException && e.code == 'EMAIL_NOT_VERIFIED';
+        });
       }
     } finally {
       if (mounted) {
@@ -93,6 +100,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ErrorText(message: _error!),
                 const SizedBox(height: 16),
               ],
+              if (_unverified) ...[
+                ResendVerificationButton(email: _email.text.trim()),
+                const SizedBox(height: 16),
+              ],
               FilledButton(
                 key: const Key('login-submit'),
                 onPressed: _busy ? null : _submit,
@@ -102,6 +113,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               TextButton(
                 onPressed: _busy ? null : () => context.go(Routes.register),
                 child: const Text('Nog geen account? Registreren'),
+              ),
+              TextButton(
+                key: const Key('login-forgot'),
+                onPressed: _busy ? null : () => context.go(Routes.forgotPassword),
+                child: const Text('Wachtwoord vergeten?'),
               ),
             ],
           ),

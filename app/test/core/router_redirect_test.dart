@@ -30,4 +30,14 @@ void main() {
     expect(redirectFor(const SignedOut(), link), isNull);
     expect(redirectFor(const SignedIn(user), link), isNull);
   });
+
+  test('email links work in every session state; forgot-password is an auth page', () {
+    for (final session in [const SessionRestoring(), const SignedOut(), const SignedIn(user)]) {
+      expect(redirectFor(session, Routes.verifyEmail), isNull);
+      expect(redirectFor(session, Routes.resetPassword), isNull);
+    }
+    expect(redirectFor(const SignedOut(), Routes.forgotPassword), isNull);
+    expect(redirectFor(const SignedIn(user), Routes.forgotPassword), Routes.home);
+    expect(redirectFor(const SignedOut(), Routes.admin), Routes.login);
+  });
 }

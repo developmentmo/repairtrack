@@ -19,6 +19,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);
     final firstName = session is SignedIn ? session.user.firstName : '';
+    final isSystemAdmin = session is SignedIn && session.user.isSystemAdmin;
     final vehicles = ref.watch(myVehiclesProvider);
     final garages = ref.watch(myGaragesProvider);
     final myGarages = garages.hasValue ? garages.requireValue : const <MyGarage>[];
@@ -31,13 +32,16 @@ class OwnerDashboardScreen extends ConsumerWidget {
             onSelected: (value) {
               if (value == 'garage') {
                 context.go(Routes.newGarage);
+              } else if (value == 'admin') {
+                context.go(Routes.admin);
               } else {
                 ref.read(sessionControllerProvider.notifier).logout();
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'garage', child: Text('Garage aanmelden')),
-              PopupMenuItem(value: 'logout', child: Text('Uitloggen')),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'garage', child: Text('Garage aanmelden')),
+              if (isSystemAdmin) const PopupMenuItem(value: 'admin', child: Text('Beheer')),
+              const PopupMenuItem(value: 'logout', child: Text('Uitloggen')),
             ],
           ),
         ],

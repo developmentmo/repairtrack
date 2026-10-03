@@ -47,4 +47,26 @@ class AuthApi {
         final response = await _dio.get<Map<String, dynamic>>('/api/v1/users/me');
         return User.fromJson(response.data!);
       });
+
+  /// Always succeeds (202), whether or not the address has an unverified account.
+  Future<void> resendVerification(String email) => guardApi(() async {
+        await _dio.post<void>('/api/v1/auth/resend-verification', data: {'email': email}, options: _public());
+      });
+
+  Future<void> verifyEmail(String token) => guardApi(() async {
+        await _dio.post<void>('/api/v1/auth/verify-email', data: {'token': token}, options: _public());
+      });
+
+  /// Always succeeds (202), whether or not the address has an account.
+  Future<void> forgotPassword(String email) => guardApi(() async {
+        await _dio.post<void>('/api/v1/auth/forgot-password', data: {'email': email}, options: _public());
+      });
+
+  Future<void> resetPassword({required String token, required String newPassword}) => guardApi(() async {
+        await _dio.post<void>(
+          '/api/v1/auth/reset-password',
+          data: {'token': token, 'newPassword': newPassword},
+          options: _public(),
+        );
+      });
 }

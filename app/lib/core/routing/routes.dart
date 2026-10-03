@@ -6,6 +6,14 @@ class Routes {
   static const login = '/login';
   static const register = '/register';
   static const home = '/';
+  static const forgotPassword = '/forgot-password';
+
+  // Opened from email links ({PUBLIC_BASE_URL}/verify-email?token=..., /reset-password?token=...); web app.
+  static const verifyEmail = '/verify-email';
+  static const resetPassword = '/reset-password';
+
+  // SYSTEM_ADMIN
+  static const admin = '/admin';
 
   // Owner
   static const addVehicle = '/vehicles/add';

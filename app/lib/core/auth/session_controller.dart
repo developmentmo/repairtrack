@@ -71,7 +71,7 @@ class SessionController extends Notifier<SessionState> {
     state = SignedIn(await _api.me());
   }
 
-  /// Creates an account and logs in. Throws [ApiException] on failure.
+  /// Creates an account. Login is possible only after the emailed link is followed. Throws [ApiException].
   Future<void> register({
     required String email,
     required String password,
@@ -79,7 +79,6 @@ class SessionController extends Notifier<SessionState> {
     required String lastName,
   }) async {
     await _api.register(email: email, password: password, firstName: firstName, lastName: lastName);
-    await login(email: email, password: password);
   }
 
   Future<void> logout() async {

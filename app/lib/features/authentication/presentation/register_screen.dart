@@ -6,6 +6,7 @@ import '../../../core/auth/session_controller.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/form_widgets.dart';
+import 'account_link_screens.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -25,6 +26,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _password = TextEditingController();
   bool _busy = false;
   String? _error;
+
+  /// Set after a successful registration: the user must confirm the address before logging in.
+  String? _registeredEmail;
 
   @override
   void dispose() {
@@ -49,6 +53,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             firstName: _firstName.text.trim(),
             lastName: _lastName.text.trim(),
           );
+      if (mounted) {
+        setState(() => _registeredEmail = _email.text.trim());
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _error = userMessage(e));
@@ -64,6 +71,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final registered = _registeredEmail;
+    if (registered != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Bevestig je e-mailadres')),
+        body: CenteredForm(child: CheckYourMail(email: registered)),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Account aanmaken')),
       body: CenteredForm(
