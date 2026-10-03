@@ -23,6 +23,9 @@ repairtrack:
   # Integration tests use FakeMalwareScanner (TestcontainersConfiguration); ClamAvScannerTest covers the protocol.
   malware-scan:
     mode: disabled
+  # Tests never call the real RDW; RdwOpenDataRegistryTest covers the client against a fake server.
+  vehicle-registry:
+    mode: disabled
   storage:
     integrity-sweep-cron: "-"
     region: garage

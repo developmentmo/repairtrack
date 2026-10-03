@@ -86,6 +86,13 @@ repairtrack:
     mode: ${MALWARE_SCAN_MODE:clamav}
     host: ${CLAMAV_HOST:localhost}
     port: ${CLAMAV_PORT:3310}
+  # Public RDW data to pre-fill the vehicle form (a suggestion, never proof). `rdw` (default) or `disabled`.
+  vehicle-registry:
+    mode: ${RDW_MODE:rdw}
+    base-url: ${RDW_BASE_URL:https://opendata.rdw.nl}
+    # Optional Socrata app token for higher RDW rate limits.
+    app-token: ${RDW_APP_TOKEN:}
+    cache-ttl: 24h
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
     login:

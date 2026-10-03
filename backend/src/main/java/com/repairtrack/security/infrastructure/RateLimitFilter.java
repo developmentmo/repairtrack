@@ -20,7 +20,7 @@ import com.repairtrack.security.infrastructure.RateLimitProperties.Limit;
 
 /**
  * Per-IP limits on endpoints that can be abused without an account: login, register, refresh, claim (VIN
- * guessing), the public share-link report (scraping) and the account-email endpoints (mail bombing). Over the limit: {@code 429 RATE_LIMITED} with
+ * guessing), the public share-link report (scraping), the account-email endpoints (mail bombing) and RDW lookups. Over the limit: {@code 429 RATE_LIMITED} with
  * {@code Retry-After}. The client IP is {@link HttpServletRequest#getRemoteAddr()}; behind a reverse proxy set
  * {@code FORWARD_HEADERS_STRATEGY=framework} so it is the real client, not the proxy.
  */
@@ -37,7 +37,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
         RESEND_VERIFICATION("POST", path -> path.equals("/api/v1/auth/resend-verification")),
         FORGOT_PASSWORD("POST", path -> path.equals("/api/v1/auth/forgot-password")),
         VERIFY_EMAIL("POST", path -> path.equals("/api/v1/auth/verify-email")),
-        RESET_PASSWORD("POST", path -> path.equals("/api/v1/auth/reset-password"));
+        RESET_PASSWORD("POST", path -> path.equals("/api/v1/auth/reset-password")),
+        REGISTRY_LOOKUP("GET", path -> path.startsWith("/api/v1/vehicle-registry/"));
 
         private final String method;
         private final Predicate<String> path;
@@ -66,6 +67,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
         limiters.put(Rule.FORGOT_PASSWORD, limiter(properties.accountEmails(), clock));
         limiters.put(Rule.VERIFY_EMAIL, limiter(properties.accountTokens(), clock));
         limiters.put(Rule.RESET_PASSWORD, limiter(properties.accountTokens(), clock));
+        limiters.put(Rule.REGISTRY_LOOKUP, limiter(properties.registryLookup(), clock));
     }
 
     @Override

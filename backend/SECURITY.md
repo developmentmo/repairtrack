@@ -197,6 +197,17 @@ header. Mobile apps are not affected by CORS.
 - **Health:** `/actuator/health` includes `storage` (bucket reachable) and `malwareScanner` (clamd answers PING).
   Details are only shown in `local`; liveness/readiness probes are not affected.
 
+### RDW vehicle data (Phase 10)
+
+- `GET /api/v1/vehicle-registry/{plate}` (signed-in users) returns public RDW Open Data (make, trade name, type,
+  colour, fuel, first admission, APK expiry) to pre-fill the registration form. It is **a suggestion only**: nothing
+  is stored from it, and it never counts as proof of ownership, provenance or verification. The VIN stays the identity
+  and the only ownership proof for a claim.
+- The RDW open data has no owner details; plates are never logged. Answers (also "unknown plate") are cached in memory
+  for 24 h; failures are not cached. Timeouts: 2 s connect, 4 s per answer; RDW down → `503 REGISTRY_UNAVAILABLE`,
+  and the user fills in the form by hand. Per-IP limit 60/min (`RATE_LIMITED`).
+- `RDW_MODE=disabled` switches lookups off (tests never call the RDW).
+
 ### Never trusted from clients
 
 Roles, account status, verification status, source type, garage IDs and ownership claims. Request DTOs don't have
@@ -210,10 +221,11 @@ fields for server-decided values; unknown JSON properties can never set them.
 - DTOs, commands and token records override `toString()` so passwords and tokens never end up in logs.
 - Local PostgreSQL bound to `127.0.0.1`; `flyway clean` disabled.
 
-## Known gaps (planned hardening, Phase 9)
+## Known gaps
 
 - No API to grant SYSTEM_ADMIN (deliberately: done directly in the database).
 - Changes made before Phase 5 have no audit entries (no production data existed).
 - Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.
 - No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).
 - Share tokens are part of the URL path: reverse proxies / access logs in production must not log full paths for `/api/v1/public/**` and `/v/**`.
+- Rate limits and the RDW cache are in memory per instance; several instances would need a shared store (e.g. Redis).

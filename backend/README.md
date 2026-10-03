@@ -96,6 +96,9 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `MALWARE_SCAN_MODE` | no (default `clamav`) | `clamav`: scan every upload (fail closed); `disabled`: development only |
 | `CLAMAV_HOST`, `CLAMAV_PORT` | no (default `localhost:3310`) | clamd address |
 | `INTEGRITY_SWEEP_CRON` | no (default `0 0 4 * * SUN`) | Weekly SHA-256 re-check of all stored documents (`-` disables) |
+| `RDW_MODE` | no (default `rdw`) | `rdw`: look up public vehicle data by plate at RDW Open Data; `disabled`: lookups answer 503 |
+| `RDW_BASE_URL` | no (default `https://opendata.rdw.nl`) | RDW Open Data host |
+| `RDW_APP_TOKEN` | no | Optional Socrata app token for higher RDW rate limits |
 | `RATE_LIMIT_ENABLED` | no (default `true`) | Per-IP limits on login, register, refresh, claim and public reports |
 | `FORWARD_HEADERS_STRATEGY` | no (default `none`) | `framework` behind a trusted reverse proxy, so limits see the real client IP |
 | `REFRESH_TOKEN_CLEANUP_CRON` | no (default `0 30 3 * * *`) | Daily deletion of expired refresh tokens (`-` disables) |
