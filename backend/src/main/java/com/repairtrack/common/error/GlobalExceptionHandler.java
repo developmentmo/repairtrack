@@ -155,6 +155,7 @@ public class GlobalExceptionHandler {
             case PAYLOAD_TOO_LARGE -> HttpStatus.valueOf(413);
             case UNSUPPORTED_MEDIA_TYPE -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
             case TOO_MANY_REQUESTS -> HttpStatus.TOO_MANY_REQUESTS;
+            case SERVICE_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
         };
     }
 

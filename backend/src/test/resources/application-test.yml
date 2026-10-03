@@ -20,7 +20,11 @@ repairtrack:
   rate-limit:
     enabled: false
   # Real values are supplied at runtime from the Garage Testcontainer (TestcontainersConfiguration).
+  # Integration tests use FakeMalwareScanner (TestcontainersConfiguration); ClamAvScannerTest covers the protocol.
+  malware-scan:
+    mode: disabled
   storage:
+    integrity-sweep-cron: "-"
     region: garage
     bucket: repairtrack-test
   sharing:

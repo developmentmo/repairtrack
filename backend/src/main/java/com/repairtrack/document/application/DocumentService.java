@@ -36,6 +36,7 @@ import com.repairtrack.document.domain.FileTooLargeException;
 import com.repairtrack.document.domain.UnsupportedFileTypeException;
 import com.repairtrack.document.infrastructure.DocumentRepository;
 import com.repairtrack.document.infrastructure.DocumentStorage;
+import com.repairtrack.document.infrastructure.MalwareScanner;
 import com.repairtrack.document.infrastructure.StorageProperties;
 import com.repairtrack.repair.RepairDocumentSupport;
 import com.repairtrack.repair.RepairDocumentSupport.AttachmentTarget;
@@ -44,8 +45,9 @@ import com.repairtrack.security.AuthenticatedUser;
 /**
  * Documents attached to history records.
  * <p>
- * Upload: authorize &rarr; check size &rarr; detect the type from the content &rarr; stream to object
- * storage while computing SHA-256 &rarr; store metadata &rarr; possibly raise the record to DOCUMENTED.
+ * Upload: authorize &rarr; check size &rarr; detect the type from the content &rarr; scan for malware &rarr;
+ * stream to object storage while computing SHA-256 &rarr; store metadata &rarr; possibly raise the record to
+ * DOCUMENTED.
  * The hash is computed by the backend over the exact bytes stored, so it can later prove whether
  * the stored file was changed.
  */
@@ -56,23 +58,26 @@ public class DocumentService {
 
     private final DocumentRepository documents;
     private final DocumentStorage storage;
+    private final MalwareScanner scanner;
     private final StorageProperties properties;
     private final RepairDocumentSupport repairSupport;
     private final ApplicationEventPublisher events;
     private final BusinessCalendar calendar;
 
-    public DocumentService(DocumentRepository documents, DocumentStorage storage, StorageProperties properties,
-                           RepairDocumentSupport repairSupport, ApplicationEventPublisher events,
-                           BusinessCalendar calendar) {
+    public DocumentService(DocumentRepository documents, DocumentStorage storage, MalwareScanner scanner,
+                           StorageProperties properties, RepairDocumentSupport repairSupport,
+                           ApplicationEventPublisher events, BusinessCalendar calendar) {
         this.documents = documents;
         this.storage = storage;
+        this.scanner = scanner;
         this.properties = properties;
         this.repairSupport = repairSupport;
         this.events = events;
         this.calendar = calendar;
     }
 
-    @Transactional
+    /** {@code noRollbackFor}: the audit entry of a rejected (malware) upload must be kept; nothing else was written. */
+    @Transactional(noRollbackFor = MalwareDetectedException.class)
     public DocumentView upload(AuthenticatedUser actor, UUID repairId, DocumentType documentType, IncomingFile file) {
         AttachmentTarget target = repairSupport.requireCanAttachDocument(actor, repairId);
         if (file.size() <= 0) {
@@ -82,13 +87,17 @@ public class DocumentService {
             throw new FileTooLargeException();
         }
 
-        BufferedInputStream content = new BufferedInputStream(file.content());
-        DetectedFileType type = detectType(content);
+        DetectedFileType type = detectType(file);
+        scanForMalware(actor, repairId, file);
 
         UUID documentId = UUID.randomUUID();
         String key = Document.storageKeyFor(repairId, documentId);
         MessageDigest digest = sha256();
-        storage.put(key, new DigestInputStream(content, digest), file.size(), type.mimeType());
+        try (InputStream content = file.content().open()) {
+            storage.put(key, new DigestInputStream(content, digest), file.size(), type.mimeType());
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
         removeObjectIfTransactionRollsBack(key);
         String sha256 = HexFormat.of().formatHex(digest.digest());
 
@@ -142,14 +151,28 @@ public class DocumentService {
         return document;
     }
 
-    private static DetectedFileType detectType(BufferedInputStream content) {
-        try {
-            content.mark(DetectedFileType.HEADER_LENGTH);
+    private static DetectedFileType detectType(IncomingFile file) {
+        try (InputStream content = file.content().open()) {
             byte[] header = content.readNBytes(DetectedFileType.HEADER_LENGTH);
-            content.reset();
             return DetectedFileType.detect(header).orElseThrow(UnsupportedFileTypeException::new);
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
+        }
+    }
+
+    /** Before anything is stored. Fails closed: no verdict means no upload. */
+    private void scanForMalware(AuthenticatedUser actor, UUID repairId, IncomingFile file) {
+        MalwareScanner.ScanResult result;
+        try (InputStream content = new BufferedInputStream(file.content().open())) {
+            result = scanner.scan(content);
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+        if (!result.clean()) {
+            log.warn("Upload rejected: malware '{}' (repair {}, user {})", result.signature(), repairId, actor.id());
+            events.publishEvent(new DocumentEvents.UploadRejectedAsMalware(repairId, actor.id(), result.signature(),
+                    calendar.now()));
+            throw new MalwareDetectedException();
         }
     }
 

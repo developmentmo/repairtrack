@@ -22,4 +22,7 @@ public interface DocumentStorage {
 
     /** Best-effort removal; used only to compensate a failed transaction, never to delete history. */
     void deleteQuietly(String key);
+
+    /** Throws when the bucket cannot be reached (health check). */
+    void checkAvailable();
 }

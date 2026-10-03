@@ -1,6 +1,7 @@
 # Local development infrastructure. The application itself runs from the IDE.
 #   postgres: database
 #   garage:   S3-compatible object storage for documents (https://garagehq.deuxfleurs.fr)
+#   clamav:   malware scanner for uploads (clamd, port 3310)
 #   mailpit:  catches outgoing email (http://localhost:8025)
 
 name: repairtrack
@@ -49,6 +50,17 @@ services:
     # The image has no shell, so no in-container healthcheck; use: curl -s localhost:3903/health
     restart: unless-stopped
 
+  clamav:
+    # Malware scanner for uploads (clamd on 3310). Needs ~1.5 GB RAM; the first start downloads the virus
+    # definitions and takes a few minutes. Skip it with MALWARE_SCAN_MODE=disabled for the backend.
+    image: clamav/clamav:1.4
+    container_name: repairtrack-clamav
+    ports:
+      - "127.0.0.1:3310:3310"
+    volumes:
+      - clamav-db:/var/lib/clamav
+    restart: unless-stopped
+
   mailpit:
     # Catches all outgoing email locally: open http://localhost:8025 to read verification and reset mails.
     image: axllent/mailpit:latest
@@ -59,6 +71,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  clamav-db:
   postgres-data:
   garage-meta:
   garage-data:

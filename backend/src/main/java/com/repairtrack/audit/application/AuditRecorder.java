@@ -189,6 +189,21 @@ class AuditRecorder {
                 event.occurredAt());
     }
 
+    /** Rejected upload: recorded on the record the file was meant for. Only the signature, never file content. */
+    @EventListener
+    void on(DocumentEvents.UploadRejectedAsMalware event) {
+        trail.record(AuditEntityType.REPAIR_EVENT, event.repairEventId(), AuditAction.DOCUMENT_MALWARE_REJECTED,
+                event.uploadedBy(), null, values("signature", event.signature()), event.occurredAt());
+    }
+
+    /** Found by the system (no actor). */
+    @EventListener
+    void on(DocumentEvents.IntegrityCheckFailed event) {
+        trail.record(AuditEntityType.DOCUMENT, event.documentId(), AuditAction.DOCUMENT_INTEGRITY_FAILED, null,
+                null, values("reason", event.reason(), "repairEventId", event.repairEventId().toString()),
+                event.occurredAt());
+    }
+
     // ---------- sharing (never the token or its hash) ----------
 
     @EventListener

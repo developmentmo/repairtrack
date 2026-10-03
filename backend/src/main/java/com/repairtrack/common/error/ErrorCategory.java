@@ -31,5 +31,8 @@ public enum ErrorCategory {
     UNSUPPORTED_MEDIA_TYPE,
 
     /** Too many attempts; the client should wait (429, with {@code Retry-After} when known). */
-    TOO_MANY_REQUESTS
+    TOO_MANY_REQUESTS,
+
+    /** A required dependency (e.g. the malware scanner) is unavailable; try again later (503). */
+    SERVICE_UNAVAILABLE
 }

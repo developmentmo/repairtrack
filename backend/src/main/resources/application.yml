@@ -81,6 +81,11 @@ repairtrack:
     from: ${MAIL_FROM}
     # Links in emails open the web app: {link-base-url}/verify-email?token=... and /reset-password?token=...
     link-base-url: ${PUBLIC_BASE_URL}
+  # Malware scan of every upload before it is stored. `clamav` (default, fail closed) or `disabled`.
+  malware-scan:
+    mode: ${MALWARE_SCAN_MODE:clamav}
+    host: ${CLAMAV_HOST:localhost}
+    port: ${CLAMAV_PORT:3310}
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
     login:
@@ -90,6 +95,8 @@ repairtrack:
       requests: 10
       per: 15m
   storage:
+    # Weekly re-check of every stored document's SHA-256 ("-" disables it).
+    integrity-sweep-cron: ${INTEGRITY_SWEEP_CRON:0 0 4 * * SUN}
     # Empty endpoint = AWS default endpoint for the region. Empty access key = AWS default credentials chain.
     endpoint: ${S3_ENDPOINT:}
     # Endpoint as reachable by clients, used in presigned download URLs (defaults to endpoint).

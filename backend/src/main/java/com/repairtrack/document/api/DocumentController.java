@@ -1,7 +1,5 @@
 package com.repairtrack.document.api;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -44,11 +42,10 @@ class DocumentController {
     DocumentResponse upload(@AuthenticationPrincipal AuthenticatedUser actor,
                             @PathVariable("repairId") UUID repairId,
                             @RequestParam("documentType") DocumentType documentType,
-                            @RequestPart("file") MultipartFile file) throws IOException {
-        try (InputStream content = file.getInputStream()) {
-            var incoming = new IncomingFile(file.getOriginalFilename(), file.getSize(), content);
-            return DocumentResponse.from(documentService.upload(actor, repairId, documentType, incoming));
-        }
+                            @RequestPart("file") MultipartFile file) {
+        // The multipart file is spooled by the servlet container, so it can be read more than once.
+        var incoming = new IncomingFile(file.getOriginalFilename(), file.getSize(), file::getInputStream);
+        return DocumentResponse.from(documentService.upload(actor, repairId, documentType, incoming));
     }
 
     @GetMapping("/api/v1/repairs/{repairId}/documents")

@@ -73,6 +73,8 @@ Business codes:
 | `EMPTY_FILE` | 400 | Uploaded file has no content |
 | `DOCUMENT_NOT_FOUND` | 404 | |
 | `FILE_TOO_LARGE` | 413 | Upload larger than 20 MB |
+| `MALWARE_DETECTED` | 422 | Upload contains malware (nothing stored; audited on the record) |
+| `SCANNER_UNAVAILABLE` | 503 | The malware scanner gave no verdict; upload refused, try again later |
 | `UNSUPPORTED_FILE_TYPE` | 415 | Content is not PDF, JPEG or PNG (decided by the file's bytes) |
 | `INVALID_SHARE` | 400 | Share validity outside 1–365 days |
 | `EMAIL_NOT_VERIFIED` | 403 | Login before the email link was followed |

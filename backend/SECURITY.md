@@ -185,6 +185,18 @@ Only the origins in `CORS_ALLOWED_ORIGINS` (the Flutter web app) may call `/api/
 none and `*` is rejected at startup. Credentials (cookies) are not allowed: tokens travel in the `Authorization`
 header. Mobile apps are not affected by CORS.
 
+### Malware scan and integrity sweep (Phase 9c)
+
+- **Every upload is scanned by ClamAV (clamd, `INSTREAM`) before it is stored.** Infected: `422 MALWARE_DETECTED`,
+  nothing stored, logged and audited on the record (`DOCUMENT_MALWARE_REJECTED`, with the signature only).
+  No verdict (clamd down, error, timeout): `503 SCANNER_UNAVAILABLE` (fail closed: never stored unscanned).
+- `MALWARE_SCAN_MODE=disabled` switches scanning off (logged as a warning at startup); for development only.
+- **Integrity sweep** (weekly, Sunday 04:00 Europe/Amsterdam, `INTEGRITY_SWEEP_CRON`): every stored object is
+  re-hashed and compared with the SHA-256 from the upload. Missing or changed objects are logged as errors and
+  audited (`DOCUMENT_INTEGRITY_FAILED`, no actor); nothing is repaired automatically, the stored hash is the evidence.
+- **Health:** `/actuator/health` includes `storage` (bucket reachable) and `malwareScanner` (clamd answers PING).
+  Details are only shown in `local`; liveness/readiness probes are not affected.
+
 ### Never trusted from clients
 
 Roles, account status, verification status, source type, garage IDs and ownership claims. Request DTOs don't have
@@ -202,7 +214,6 @@ fields for server-decided values; unknown JSON properties can never set them.
 
 - No API to grant SYSTEM_ADMIN (deliberately: done directly in the database).
 - Changes made before Phase 5 have no audit entries (no production data existed).
-- No malware scanning of uploads; no periodic integrity sweep yet (integrity is checked on demand).
 - Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.
 - No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).
 - Share tokens are part of the URL path: reverse proxies / access logs in production must not log full paths for `/api/v1/public/**` and `/v/**`.

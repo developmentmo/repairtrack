@@ -51,6 +51,13 @@ public class TestcontainersConfiguration {
                         .withStartupTimeout(Duration.ofMinutes(2)));
     }
 
+    /** Uploads containing FakeMalwareScanner.MARKER are treated as malware. */
+    @Bean
+    @Primary
+    FakeMalwareScanner fakeMalwareScanner() {
+        return new FakeMalwareScanner();
+    }
+
     /** Account emails are recorded instead of sent; tests read the links from here. */
     @Bean
     @Primary

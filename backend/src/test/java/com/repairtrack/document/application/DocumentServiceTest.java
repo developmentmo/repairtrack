@@ -34,6 +34,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.util.unit.DataSize;
 
 import com.repairtrack.common.time.BusinessCalendar;
+import com.repairtrack.document.DocumentEvents;
 import com.repairtrack.document.DocumentType;
 import com.repairtrack.document.application.DocumentViews.DocumentView;
 import com.repairtrack.document.domain.Document;
@@ -42,6 +43,7 @@ import com.repairtrack.document.domain.FileTooLargeException;
 import com.repairtrack.document.domain.UnsupportedFileTypeException;
 import com.repairtrack.document.infrastructure.DocumentRepository;
 import com.repairtrack.document.infrastructure.DocumentStorage;
+import com.repairtrack.document.infrastructure.MalwareScanner;
 import com.repairtrack.document.infrastructure.StorageProperties;
 import com.repairtrack.repair.RepairDocumentSupport;
 import com.repairtrack.repair.RepairDocumentSupport.AttachmentTarget;
@@ -64,6 +66,17 @@ class DocumentServiceTest {
     @Mock
     private ApplicationEventPublisher events;
 
+    /** Flags content that contains the test marker, like FakeMalwareScanner in the integration tests. */
+    private final MalwareScanner scanner = content -> {
+        try {
+            return new String(content.readAllBytes(), StandardCharsets.US_ASCII).contains("MALWARE-MARKER")
+                    ? MalwareScanner.ScanResult.infected("Test.Marker")
+                    : MalwareScanner.ScanResult.CLEAN;
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    };
+
     private DocumentService service;
     private final UUID repairId = UUID.randomUUID();
     private final UUID vehicleId = UUID.randomUUID();
@@ -74,7 +87,7 @@ class DocumentServiceTest {
         StorageProperties properties = new StorageProperties("http://localhost:3900", null, "garage", "GK", "s",
                 "bucket", true, Duration.ofMinutes(5), DataSize.ofKilobytes(1));
         BusinessCalendar calendar = new BusinessCalendar(Clock.fixed(NOW, ZoneOffset.UTC), ZoneId.of("Europe/Amsterdam"));
-        service = new DocumentService(documents, storage, properties, repairSupport, events, calendar);
+        service = new DocumentService(documents, storage, scanner, properties, repairSupport, events, calendar);
         when(repairSupport.requireCanAttachDocument(owner, repairId))
                 .thenReturn(new AttachmentTarget(repairId, vehicleId, SourceType.OWNER));
     }
@@ -126,6 +139,17 @@ class DocumentServiceTest {
     }
 
     @Test
+    void malwareIsRejectedBeforeAnythingIsStoredAndReported() {
+        byte[] infected = "%PDF-1.4\n% MALWARE-MARKER\n%%EOF\n".getBytes(StandardCharsets.US_ASCII);
+
+        assertThatThrownBy(() -> service.upload(owner, repairId, DocumentType.INVOICE, file("f.pdf", infected)))
+                .isInstanceOf(MalwareDetectedException.class);
+        verify(storage, never()).put(anyString(), any(), anyLong(), anyString());
+        verify(documents, never()).save(any());
+        verify(events).publishEvent(any(DocumentEvents.UploadRejectedAsMalware.class));
+    }
+
+    @Test
     void emptyAndOversizedFilesAreRejected() {
         assertThatThrownBy(() -> service.upload(owner, repairId, DocumentType.INVOICE, file("e.pdf", new byte[0])))
                 .isInstanceOf(EmptyFileException.class);
@@ -143,6 +167,6 @@ class DocumentServiceTest {
     }
 
     private static IncomingFile file(String name, byte[] content) {
-        return new IncomingFile(name, content.length, new ByteArrayInputStream(content));
+        return new IncomingFile(name, content.length, () -> new ByteArrayInputStream(content));
     }
 }

@@ -26,11 +26,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 import com.repairtrack.ApiTestClient;
 import com.repairtrack.ApiTestClient.ApiResponse;
+import com.repairtrack.FakeMalwareScanner;
 import com.repairtrack.IntegrationTest;
 import com.repairtrack.TestAccounts;
 import com.repairtrack.TestAccounts.Account;
 import com.repairtrack.TestVins;
 import com.repairtrack.TestcontainersConfiguration;
+import com.repairtrack.document.application.DocumentIntegritySweep;
 
 /** Document upload, download, integrity and provenance effects against real PostgreSQL and Garage. */
 @IntegrationTest
@@ -52,6 +54,9 @@ class DocumentFlowIT {
 
     @Autowired
     private S3Client s3;
+
+    @Autowired
+    private DocumentIntegritySweep integritySweep;
 
     private ApiTestClient api;
     private TestAccounts accounts;
@@ -151,6 +156,36 @@ class DocumentFlowIT {
         assertThat(after.body().get("intact").asBoolean()).isFalse();
         assertThat(after.field("expectedSha256")).isEqualTo(sha256(PDF));
         assertThat(after.field("actualSha256")).isEqualTo(sha256(forged));
+    }
+
+    @Test
+    void malwareIsRejectedAndAuditedWithoutStoringAnything() {
+        byte[] infected = ("%PDF-1.4\n% " + FakeMalwareScanner.MARKER + "\n%%EOF\n").getBytes(StandardCharsets.US_ASCII);
+
+        ApiResponse response = upload(owner, ownerRepairId, "INVOICE", "factuur.pdf", infected);
+
+        assertThat(response.status()).isEqualTo(422);
+        assertThat(response.field("code")).isEqualTo("MALWARE_DETECTED");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from document where repair_event_id = ?",
+                Integer.class, UUID.fromString(ownerRepairId))).isZero();
+        assertThat(auditActions("REPAIR_EVENT", ownerRepairId)).contains("DOCUMENT_MALWARE_REJECTED");
+        assertThat(api.get("/api/v1/repairs/" + ownerRepairId, owner.token()).field("verificationStatus"))
+                .isEqualTo("UNVERIFIED");
+    }
+
+    @Test
+    void integritySweepReportsChangedObjectsInTheAuditTrail() {
+        String documentId = upload(owner, ownerRepairId, "INVOICE", "factuur.pdf", PDF).field("id");
+        String key = jdbcTemplate.queryForObject("select storage_key from document where id = ?", String.class,
+                UUID.fromString(documentId));
+        s3.putObject(PutObjectRequest.builder().bucket(TestcontainersConfiguration.GARAGE_BUCKET).key(key).build(),
+                RequestBody.fromBytes("%PDF-1.4\n%tampered\n%%EOF\n".getBytes(StandardCharsets.US_ASCII)));
+
+        DocumentIntegritySweep.Result result = integritySweep.run();
+
+        assertThat(result.checked()).isPositive();
+        assertThat(result.failed()).isPositive();
+        assertThat(auditActions("DOCUMENT", documentId)).contains("DOCUMENT_INTEGRITY_FAILED");
     }
 
     @Test

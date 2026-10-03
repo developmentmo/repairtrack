@@ -93,6 +93,9 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | no | SMTP credentials |
 | `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS` | no (default `true`) | SMTP options |
 | `MAIL_FROM` | yes (outside `local`) | Sender, e.g. `RepairTrack <noreply@repairtrack.nl>` |
+| `MALWARE_SCAN_MODE` | no (default `clamav`) | `clamav`: scan every upload (fail closed); `disabled`: development only |
+| `CLAMAV_HOST`, `CLAMAV_PORT` | no (default `localhost:3310`) | clamd address |
+| `INTEGRITY_SWEEP_CRON` | no (default `0 0 4 * * SUN`) | Weekly SHA-256 re-check of all stored documents (`-` disables) |
 | `RATE_LIMIT_ENABLED` | no (default `true`) | Per-IP limits on login, register, refresh, claim and public reports |
 | `FORWARD_HEADERS_STRATEGY` | no (default `none`) | `framework` behind a trusted reverse proxy, so limits see the real client IP |
 | `REFRESH_TOKEN_CLEANUP_CRON` | no (default `0 30 3 * * *`) | Daily deletion of expired refresh tokens (`-` disables) |
@@ -128,6 +131,14 @@ S3-compatible store; only configuration changes.
 - Android emulator: set `S3_PUBLIC_ENDPOINT=http://10.0.2.2:3900` so presigned URLs point at the host
 
 Integration tests start their own Garage container (Testcontainers), no setup needed.
+
+## Malware scanning (ClamAV)
+
+`docker compose` also starts ClamAV (`clamd` on `localhost:3310`). It needs about 1.5 GB of memory and downloads its
+virus definitions on the first start, which takes a few minutes; until then uploads answer `503 SCANNER_UNAVAILABLE`.
+Check it with `docker logs repairtrack-clamav` (wait for "socket found, clamd started"). If your machine cannot spare
+the memory, run the backend with `MALWARE_SCAN_MODE=disabled` (development only). Integration tests use a fake scanner;
+`ClamAvScannerTest` covers the clamd protocol.
 
 ## Email (Mailpit)
 
