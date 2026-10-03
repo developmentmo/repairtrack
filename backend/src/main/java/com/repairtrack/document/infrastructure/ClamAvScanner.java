@@ -8,6 +8,9 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Minimal clamd client (TCP, {@code INSTREAM} and {@code PING}); no extra library. The content is sent in chunks
  * of {@value #CHUNK_SIZE} bytes, each prefixed with its length as a 4-byte big-endian integer, ended by a zero
@@ -16,6 +19,8 @@ import java.nio.charset.StandardCharsets;
  * clamd's {@code StreamMaxLength} must be at least the upload limit (20 MB); the default is 25 MB.
  */
 public class ClamAvScanner implements MalwareScanner {
+
+    private static final Logger log = LoggerFactory.getLogger(ClamAvScanner.class);
 
     static final int CHUNK_SIZE = 64 * 1024;
     private static final byte[] INSTREAM = "zINSTREAM\0".getBytes(StandardCharsets.US_ASCII);
@@ -43,9 +48,15 @@ public class ClamAvScanner implements MalwareScanner {
             out.flush();
             reply = readReply(socket);
         } catch (IOException e) {
+            log.warn("ClamAV at {}:{} gave no verdict: {}", properties.host(), properties.port(), e.toString());
             throw new MalwareScannerUnavailableException(e);
         }
-        return interpret(reply);
+        ScanResult result = interpret(reply);
+        if (result == null) {
+            log.warn("ClamAV at {}:{} answered with an error: {}", properties.host(), properties.port(), reply);
+            throw new MalwareScannerUnavailableException(new IOException("clamd: " + reply));
+        }
+        return result;
     }
 
     /** True when clamd answers {@code PONG}. Used by the health indicator. */
@@ -59,6 +70,7 @@ public class ClamAvScanner implements MalwareScanner {
         }
     }
 
+    /** @return the verdict, or null when clamd answered with an error */
     static ScanResult interpret(String reply) {
         if (reply.endsWith(" OK") || reply.equals("OK")) {
             return ScanResult.CLEAN;
@@ -68,8 +80,8 @@ public class ClamAvScanner implements MalwareScanner {
             int colon = withoutSuffix.indexOf(": ");
             return ScanResult.infected(colon >= 0 ? withoutSuffix.substring(colon + 2) : withoutSuffix);
         }
-        // e.g. "INSTREAM size limit exceeded. ERROR": no verdict, so fail closed
-        throw new MalwareScannerUnavailableException(new IOException("clamd: " + reply));
+        // e.g. "INSTREAM size limit exceeded. ERROR": no verdict, so the caller fails closed
+        return null;
     }
 
     private Socket connect() throws IOException {
