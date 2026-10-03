@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -13,16 +14,19 @@ import 'repair_labels.dart';
 
 /// The full history of a vehicle, newest first. Voided records stay visible.
 class VehicleHistoryScreen extends ConsumerWidget {
-  const VehicleHistoryScreen({super.key, required this.vehicleId});
+  const VehicleHistoryScreen({super.key, required this.vehicleId, this.garageId});
 
   final String vehicleId;
+
+  /// Set when a garage member views the history on behalf of that garage.
+  final String? garageId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repairs = ref.watch(vehicleRepairsProvider(vehicleId));
     final mileage = ref.watch(mileageHistoryProvider(vehicleId));
     final vehicle = ref.watch(vehicleProvider(vehicleId));
-    final canAdd = vehicle.hasValue && vehicle.requireValue.ownedByMe;
+    final canAdd = garageId != null || (vehicle.hasValue && vehicle.requireValue.ownedByMe);
 
     Future<void> refresh() async {
       ref
@@ -36,13 +40,21 @@ class VehicleHistoryScreen extends ConsumerWidget {
       floatingActionButton: canAdd
           ? FloatingActionButton(
               tooltip: 'Toevoegen',
-              onPressed: () => context.go(Routes.newRepair(vehicleId)),
+              onPressed: () => context.go(Routes.newRepairFor(garageId, vehicleId)),
               child: const Icon(Icons.add),
             )
           : null,
       body: RefreshIndicator(
         onRefresh: refresh,
-        child: AsyncValueView(
+        child: _garageCannotSeeHistoryYet(repairs)
+            ? const Padding(
+                padding: EdgeInsets.all(16),
+                child: InfoBanner(
+                  message: 'De historie van dit voertuig is zichtbaar voor je garage zodra je er werk aan hebt '
+                      'vastgelegd of het hebt geregistreerd.',
+                ),
+              )
+            : AsyncValueView(
           value: repairs,
           onRetry: () => ref.invalidate(vehicleRepairsProvider(vehicleId)),
           data: (list) {
@@ -66,6 +78,11 @@ class VehicleHistoryScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  bool _garageCannotSeeHistoryYet(AsyncValue<List<Repair>> repairs) {
+    final error = repairs.error;
+    return garageId != null && error is ApiException && error.code == 'REPAIR_ACCESS_DENIED';
   }
 }
 

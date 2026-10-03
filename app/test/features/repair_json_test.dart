@@ -33,6 +33,8 @@ void main() {
       'voidReason': 'Wrong vehicle',
       'createdAt': '2026-09-14T10:00:00Z',
       'updatedAt': '2026-09-16T08:00:00Z',
+      'canCorrect': false,
+      'canVoid': true,
       'warnings': [],
     });
 
@@ -45,6 +47,8 @@ void main() {
     expect(repair.parts.single.quantity, 4);
     expect(repair.corrections.single.correctedByGarage, isNull);
     expect(repair.createdAt.isUtc, isTrue);
+    expect(repair.canCorrect, isFalse);
+    expect(repair.canVoid, isTrue);
   });
 
   test('unknown enum values from a newer backend do not break parsing', () {

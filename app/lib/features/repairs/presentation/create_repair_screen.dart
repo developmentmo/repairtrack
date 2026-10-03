@@ -7,9 +7,11 @@ import '../../../core/format/formatters.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/form_widgets.dart';
+import '../../garages/application/garage_providers.dart';
 import '../application/repair_providers.dart';
 import '../data/repair_api.dart';
 import '../domain/repair.dart';
+import 'part_dialog.dart';
 import 'repair_labels.dart';
 
 /// Record maintenance or a repair. Used by the owner now and by garages in Phase 8b ([garageId]).
@@ -59,7 +61,7 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
   }
 
   Future<void> _addPart() async {
-    final part = await showDialog<NewPart>(context: context, builder: (context) => const _PartDialog());
+    final part = await showDialog<NewPart>(context: context, builder: (context) => const PartDialog());
     if (part != null) {
       setState(() => _parts.add(part));
     }
@@ -89,6 +91,9 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
       ref
         ..invalidate(vehicleRepairsProvider(widget.vehicleId))
         ..invalidate(mileageHistoryProvider(widget.vehicleId));
+      if (widget.garageId != null) {
+        ref.invalidate(garageVehiclesProvider(widget.garageId!));
+      }
       if (!mounted) {
         return;
       }
@@ -96,7 +101,8 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
         await _showWarnings(created.warnings);
       }
       if (mounted) {
-        context.go(Routes.vehicleHistory(widget.vehicleId));
+        // Show the saved record: documents can be added there ("confirm repair" step).
+        context.pushReplacement(Routes.repair(created.id));
       }
     } catch (e) {
       if (mounted) {
@@ -131,7 +137,7 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Onderhoud toevoegen')),
+      appBar: AppBar(title: Text(widget.garageId == null ? 'Onderhoud toevoegen' : 'Werk vastleggen')),
       body: CenteredForm(
         maxWidth: 560,
         child: Form(
@@ -214,93 +220,13 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
                 widget.garageId == null
                     ? 'Je registreert dit als eigenaar. Het wordt getoond als "niet geverifieerd" tot er een factuur '
                         'of werkorder bij komt.'
-                    : 'Je registreert dit namens je garage.',
+                    : 'Je registreert dit namens je garage. Daarna kun je een factuur of werkorder toevoegen.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PartDialog extends StatefulWidget {
-  const _PartDialog();
-
-  @override
-  State<_PartDialog> createState() => _PartDialogState();
-}
-
-class _PartDialogState extends State<_PartDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _description = TextEditingController();
-  final _brand = TextEditingController();
-  final _partNumber = TextEditingController();
-  final _quantity = TextEditingController(text: '1');
-
-  @override
-  void dispose() {
-    for (final controller in [_description, _brand, _partNumber, _quantity]) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
-  void _save() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    Navigator.pop(
-      context,
-      NewPart(
-        description: _description.text.trim(),
-        brand: _brand.text.trim(),
-        partNumber: _partNumber.text.trim(),
-        quantity: int.parse(_quantity.text),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Onderdeel'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _description,
-              decoration: const InputDecoration(labelText: 'Omschrijving'),
-              validator: (value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(controller: _brand, decoration: const InputDecoration(labelText: 'Merk (optioneel)')),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _partNumber,
-              decoration: const InputDecoration(labelText: 'Onderdeelnummer (optioneel)'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _quantity,
-              decoration: const InputDecoration(labelText: 'Aantal'),
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (value) {
-                final quantity = int.tryParse(value ?? '');
-                return (quantity == null || quantity < 1 || quantity > 999) ? 'Tussen 1 en 999' : null;
-              },
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuleren')),
-        FilledButton(onPressed: _save, child: const Text('Toevoegen')),
-      ],
     );
   }
 }

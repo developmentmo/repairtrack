@@ -36,4 +36,32 @@ class RepairApi {
         );
         return Repair.fromJson(response.data!);
       });
+
+  /// The record stays visible, marked as voided with the reason.
+  Future<Repair> voidRepair(String repairId, String reason) => guardApi(() async {
+        final response = await _dio.post<Map<String, dynamic>>(
+          '/api/v1/repairs/$repairId/void',
+          data: {'reason': reason},
+        );
+        return Repair.fromJson(response.data!);
+      });
+
+  /// The original values stay visible as corrections. The response may carry mileage `warnings`.
+  Future<Repair> correct(String repairId, RepairCorrection correction) => guardApi(() async {
+        final response = await _dio.post<Map<String, dynamic>>(
+          '/api/v1/repairs/$repairId/corrections',
+          data: correction.toJson(),
+        );
+        return Repair.fromJson(response.data!);
+      });
+
+  Future<Repair> addParts(String repairId, List<NewPart> parts) => guardApi(() async {
+        final response = await _dio.post<Map<String, dynamic>>(
+          '/api/v1/repairs/$repairId/parts',
+          data: {
+            'parts': [for (final part in parts) part.toJson()],
+          },
+        );
+        return Repair.fromJson(response.data!);
+      });
 }

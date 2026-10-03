@@ -54,6 +54,8 @@ class Repair {
     this.corrections = const [],
     this.voidedAt,
     this.voidReason,
+    this.canCorrect = false,
+    this.canVoid = false,
     this.warnings = const [],
   });
 
@@ -82,6 +84,12 @@ class Repair {
   final DateTime? voidedAt;
   final String? voidReason;
   final DateTime createdAt;
+
+  /// May the caller correct this record, add parts and upload documents? Decided by the backend.
+  final bool canCorrect;
+
+  /// May the caller void this record? Decided by the backend.
+  final bool canVoid;
 
   /// Only filled in the response to a create/correct request.
   final List<MileageWarning> warnings;
@@ -223,5 +231,57 @@ class NewPart {
         if (brand != null && brand!.isNotEmpty) 'brand': brand,
         'description': description,
         'quantity': quantity,
+      };
+}
+
+/// Body of `POST /repairs/{id}/corrections`: only the changed fields, plus the mandatory reason.
+class RepairCorrection {
+  const RepairCorrection({
+    required this.reason,
+    this.eventType,
+    this.eventDate,
+    this.mileage,
+    this.title,
+    this.description,
+  });
+
+  /// Builds a correction with only the fields that differ from [original]; null when nothing changed.
+  static RepairCorrection? diff(
+    Repair original, {
+    required String reason,
+    required RepairEventType eventType,
+    required DateTime eventDate,
+    required int mileage,
+    required String title,
+    required String description,
+  }) {
+    final correction = RepairCorrection(
+      reason: reason,
+      eventType: eventType != original.eventType ? eventType : null,
+      eventDate: eventDate != original.eventDate ? eventDate : null,
+      mileage: mileage != original.mileage ? mileage : null,
+      title: title != original.title ? title : null,
+      description: description != (original.description ?? '') ? description : null,
+    );
+    return correction.isEmpty ? null : correction;
+  }
+
+  final String reason;
+  final RepairEventType? eventType;
+  final DateTime? eventDate;
+  final int? mileage;
+  final String? title;
+  final String? description;
+
+  bool get isEmpty =>
+      eventType == null && eventDate == null && mileage == null && title == null && description == null;
+
+  Map<String, dynamic> toJson() => {
+        if (eventType != null) 'eventType': eventType!.wireName,
+        if (eventDate != null) 'eventDate': const DateOnlyConverter().toJson(eventDate!),
+        if (mileage != null) 'mileage': mileage,
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        'reason': reason,
       };
 }

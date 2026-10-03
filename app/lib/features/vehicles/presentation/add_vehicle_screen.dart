@@ -8,6 +8,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/form_widgets.dart';
+import '../../garages/application/garage_providers.dart';
 import '../application/vehicle_providers.dart';
 import '../data/vehicle_api.dart';
 import '../domain/vehicle.dart';
@@ -17,7 +18,10 @@ enum _Mode { register, claim }
 /// Add a vehicle: register a new one (VIN not yet known) or claim one that is already in RepairTrack,
 /// e.g. registered by a garage or sold by its previous owner.
 class AddVehicleScreen extends ConsumerStatefulWidget {
-  const AddVehicleScreen({super.key});
+  const AddVehicleScreen({super.key, this.garageId});
+
+  /// Register on behalf of this garage: the vehicle gets no owner (the owner claims it later with the VIN).
+  final String? garageId;
 
   @override
   ConsumerState<AddVehicleScreen> createState() => _AddVehicleScreenState();
@@ -28,6 +32,25 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final garageId = widget.garageId;
+    if (garageId != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Voertuig registreren')),
+        body: CenteredForm(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const InfoBanner(
+                message: 'Je registreert dit voertuig namens je garage. Het krijgt nog geen eigenaar: '
+                    'de eigenaar claimt het later zelf met het VIN.',
+              ),
+              const SizedBox(height: 24),
+              _RegisterForm(garageId: garageId),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Voertuig toevoegen')),
       body: CenteredForm(
@@ -55,9 +78,11 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 }
 
 class _RegisterForm extends ConsumerStatefulWidget {
-  const _RegisterForm({required this.onAlreadyRegistered});
+  const _RegisterForm({this.onAlreadyRegistered, this.garageId});
 
-  final VoidCallback onAlreadyRegistered;
+  /// Owner: switch to "claim" when the VIN already exists.
+  final VoidCallback? onAlreadyRegistered;
+  final String? garageId;
 
   @override
   ConsumerState<_RegisterForm> createState() => _RegisterFormState();
@@ -98,17 +123,22 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
               model: _model.text.trim(),
               licensePlate: _plate.text.trim().isEmpty ? null : _plate.text.trim(),
               modelYear: int.tryParse(_year.text),
-              ownedSince: _ownedSince,
+              ownedSince: widget.garageId == null ? _ownedSince : null,
+              garageId: widget.garageId,
             ),
           );
       ref.invalidate(myVehiclesProvider);
+      if (widget.garageId != null) {
+        ref.invalidate(garageVehiclesProvider(widget.garageId!));
+      }
       if (mounted) {
-        context.go(Routes.vehicle(vehicle.id));
+        context.go(Routes.vehicleFor(widget.garageId, vehicle.id));
       }
     } on ApiException catch (e) {
-      if (e.code == 'VEHICLE_ALREADY_REGISTERED' && mounted) {
+      final onAlreadyRegistered = widget.onAlreadyRegistered;
+      if (e.code == 'VEHICLE_ALREADY_REGISTERED' && onAlreadyRegistered != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(userMessage(e))));
-        widget.onAlreadyRegistered();
+        onAlreadyRegistered();
         return;
       }
       if (mounted) {
@@ -177,12 +207,16 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
           ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: _pickOwnedSince,
-            icon: const Icon(Icons.event),
-            label: Text(_ownedSince == null ? 'Eigenaar sinds: vandaag' : 'Eigenaar sinds: ${formatDate(_ownedSince!)}'),
-          ),
+          if (widget.garageId == null) ...[
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _pickOwnedSince,
+              icon: const Icon(Icons.event),
+              label: Text(
+                _ownedSince == null ? 'Eigenaar sinds: vandaag' : 'Eigenaar sinds: ${formatDate(_ownedSince!)}',
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           if (_error != null) ...[
             ErrorText(message: _error!),

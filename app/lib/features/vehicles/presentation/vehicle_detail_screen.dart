@@ -11,10 +11,14 @@ import '../application/vehicle_providers.dart';
 import '../data/vehicle_api.dart';
 import '../domain/vehicle.dart';
 
+/// Vehicle details for the owner, or for a garage member when [garageId] is set.
 class VehicleDetailScreen extends ConsumerWidget {
-  const VehicleDetailScreen({super.key, required this.vehicleId});
+  const VehicleDetailScreen({super.key, required this.vehicleId, this.garageId});
 
   final String vehicleId;
+
+  /// Set when opened from a garage dashboard: actions are taken on behalf of that garage.
+  final String? garageId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,11 +52,19 @@ class VehicleDetailScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: () => context.go(Routes.vehicleHistory(vehicle.id)),
+              onPressed: () => context.go(Routes.vehicleHistoryFor(garageId, vehicle.id)),
               icon: const Icon(Icons.history),
               label: const Text('Onderhoudshistorie'),
             ),
-            if (vehicle.ownedByMe) ...[
+            if (garageId != null) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => context.go(Routes.garageNewRepair(garageId!, vehicle.id)),
+                icon: const Icon(Icons.build_outlined),
+                label: const Text('Werk vastleggen'),
+              ),
+            ],
+            if (garageId == null && vehicle.ownedByMe) ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () => context.go(Routes.newRepair(vehicle.id)),

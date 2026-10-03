@@ -67,6 +67,21 @@ void main() {
     expect(refreshCalls(), 1);
   });
 
+  test('a multipart upload is sent again after a refresh', () async {
+    final form = FormData.fromMap({
+      'documentType': 'INVOICE',
+      'file': MultipartFile.fromBytes([1, 2, 3], filename: 'factuur.pdf'),
+    });
+
+    final response = await dio.post<Map<String, dynamic>>('/api/v1/repairs/r1/documents', data: form);
+
+    expect(response.statusCode, 200);
+    expect(refreshCalls(), 1);
+    final uploads = adapter.requests.where((r) => r.path == '/api/v1/repairs/r1/documents').toList();
+    expect(uploads, hasLength(2));
+    expect(identical(uploads[0].data, uploads[1].data), isFalse);
+  });
+
   test('a rejected refresh token clears the session', () async {
     refreshSucceeds = false;
 

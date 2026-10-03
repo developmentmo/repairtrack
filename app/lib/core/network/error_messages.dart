@@ -22,7 +22,18 @@ String userMessage(Object error) {
     'VEHICLE_NOT_FOUND' => 'Voertuig niet gevonden.',
     'REPAIR_NOT_FOUND' => 'Registratie niet gevonden.',
     'FORBIDDEN' || 'VEHICLE_ACCESS_DENIED' || 'REPAIR_ACCESS_DENIED' => 'Je hebt geen toegang tot deze gegevens.',
-    'VALIDATION_FAILED' || 'INVALID_VEHICLE_DATA' || 'INVALID_REPAIR_DATA' => 'Controleer de invoer: ${error.message}',
+    'GARAGE_ACCESS_DENIED' => 'Je bent geen (beheerder van dit) garagelid.',
+    'GARAGE_SUSPENDED' => 'Deze garage is geschorst en kan geen werk vastleggen.',
+    'GARAGE_NOT_FOUND' => 'Garage niet gevonden.',
+    'INVALID_VERIFICATION_TRANSITION' => 'Deze statuswijziging is nu niet mogelijk.',
+    'NO_CHANGES' => 'Er is niets gewijzigd.',
+    'REPAIR_ALREADY_VOIDED' => 'Deze registratie is al ongeldig verklaard en kan niet meer worden gewijzigd.',
+    'EMPTY_FILE' => 'Het bestand is leeg.',
+    'FILE_TOO_LARGE' => 'Het bestand is groter dan 20 MB.',
+    'UNSUPPORTED_FILE_TYPE' => 'Alleen PDF, JPEG en PNG zijn toegestaan.',
+    'DOCUMENT_NOT_FOUND' => 'Document niet gevonden.',
+    'VALIDATION_FAILED' || 'INVALID_VEHICLE_DATA' || 'INVALID_REPAIR_DATA' || 'INVALID_GARAGE_DATA' =>
+      'Controleer de invoer: ${error.message}',
     _ => 'Er ging iets mis (${error.code}).',
   };
 }

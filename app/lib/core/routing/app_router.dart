@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/register_screen.dart';
 import '../../features/authentication/presentation/splash_screen.dart';
+import '../../features/garages/presentation/create_garage_screen.dart';
+import '../../features/garages/presentation/garage_dashboard_screen.dart';
+import '../../features/repairs/presentation/correct_repair_screen.dart';
 import '../../features/repairs/presentation/create_repair_screen.dart';
 import '../../features/repairs/presentation/repair_detail_screen.dart';
 import '../../features/repairs/presentation/vehicle_history_screen.dart';
@@ -46,9 +49,49 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          GoRoute(path: 'garages/new', builder: (context, state) => const CreateGarageScreen()),
+          GoRoute(
+            path: 'garages/:garageId',
+            builder: (context, state) => GarageDashboardScreen(garageId: state.pathParameters['garageId']!),
+            routes: [
+              GoRoute(
+                path: 'vehicles/add',
+                builder: (context, state) => AddVehicleScreen(garageId: state.pathParameters['garageId']),
+              ),
+              GoRoute(
+                path: 'vehicles/:vehicleId',
+                builder: (context, state) => VehicleDetailScreen(
+                  vehicleId: state.pathParameters['vehicleId']!,
+                  garageId: state.pathParameters['garageId'],
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'history',
+                    builder: (context, state) => VehicleHistoryScreen(
+                      vehicleId: state.pathParameters['vehicleId']!,
+                      garageId: state.pathParameters['garageId'],
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'repairs/new',
+                    builder: (context, state) => CreateRepairScreen(
+                      vehicleId: state.pathParameters['vehicleId']!,
+                      garageId: state.pathParameters['garageId'],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           GoRoute(
             path: 'repairs/:repairId',
             builder: (context, state) => RepairDetailScreen(repairId: state.pathParameters['repairId']!),
+            routes: [
+              GoRoute(
+                path: 'correct',
+                builder: (context, state) => CorrectRepairScreen(repairId: state.pathParameters['repairId']!),
+              ),
+            ],
           ),
         ],
       ),
