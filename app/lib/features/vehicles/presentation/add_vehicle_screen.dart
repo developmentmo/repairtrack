@@ -157,7 +157,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
     }
   }
 
-  /// Fills make and model from the RDW. Only a suggestion: the user can still change everything.
+  /// Fills make, model and model year from the RDW. Only a suggestion: the user can still change everything.
   Future<void> _lookup() async {
     if (_plate.text.trim().isEmpty) {
       setState(() => _lookupMessage = 'Vul eerst een kenteken in.');
@@ -180,6 +180,11 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
         }
         if (vehicle.model != null) {
           _model.text = vehicle.model!;
+        }
+        // The RDW has no model year; the year of first admission is the usual stand-in.
+        final firstRegistration = vehicle.firstRegistrationDate;
+        if (firstRegistration != null) {
+          _year.text = '${firstRegistration.year}';
         }
       });
     } on ApiException catch (e) {
@@ -220,7 +225,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
             controller: _plate,
             decoration: InputDecoration(
               labelText: 'Kenteken (optioneel)',
-              helperText: 'Haal merk en model op bij de RDW',
+              helperText: 'Haal merk, model en bouwjaar op bij de RDW',
               suffixIcon: _lookingUp
                   ? const Padding(padding: EdgeInsets.all(12), child: ButtonProgress())
                   : IconButton(
@@ -275,6 +280,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
           ),
           const SizedBox(height: 16),
           TextFormField(
+            key: const Key('vehicle-year'),
             controller: _year,
             decoration: const InputDecoration(labelText: 'Bouwjaar (optioneel)'),
             keyboardType: TextInputType.number,

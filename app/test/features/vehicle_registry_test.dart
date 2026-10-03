@@ -48,12 +48,13 @@ void main() {
     String fieldText(WidgetTester tester, String key) =>
         tester.widget<TextFormField>(find.byKey(Key(key))).controller!.text;
 
-    testWidgets('fills make and model from the RDW and shows what was found', (tester) async {
+    testWidgets('fills make, model and model year from the RDW and shows what was found', (tester) async {
       when(() => api.registryLookup(any())).thenAnswer(
         (_) async => RegistryVehicle(
           licensePlate: '12ABC3',
           make: 'VOLKSWAGEN',
           model: 'GOLF',
+          firstRegistrationDate: DateTime(2015, 3, 12),
           apkExpiryDate: DateTime(2027, 3, 12),
           fuelTypes: const ['Benzine'],
         ),
@@ -67,6 +68,7 @@ void main() {
       verify(() => api.registryLookup('12-abc-3')).called(1);
       expect(fieldText(tester, 'vehicle-make'), 'VOLKSWAGEN');
       expect(fieldText(tester, 'vehicle-model'), 'GOLF');
+      expect(fieldText(tester, 'vehicle-year'), '2015');
       expect(find.byKey(const Key('rdw-summary')), findsOneWidget);
       expect(find.textContaining('APK tot 12-03-2027'), findsOneWidget);
 
@@ -88,6 +90,7 @@ void main() {
 
       expect(find.text('De RDW-gegevens zijn nu niet beschikbaar. Vul de gegevens zelf in.'), findsOneWidget);
       expect(fieldText(tester, 'vehicle-make'), isEmpty);
+      expect(fieldText(tester, 'vehicle-year'), isEmpty);
     });
   });
 }
