@@ -1,6 +1,7 @@
 package com.repairtrack.vehicle.infrastructure;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,9 +21,15 @@ public interface VehicleOwnershipRepository extends JpaRepository<VehicleOwnersh
 
     List<VehicleOwnership> findByUserIdAndStatus(UUID userId, OwnershipStatus status);
 
-    long countByVehicleId(UUID vehicleId);
+    long countByVehicleIdAndStatusNot(UUID vehicleId, OwnershipStatus status);
 
-    /** End date of the most recent previous ownership; a new ownership may not start before it. */
-    @Query("select max(o.endDate) from VehicleOwnership o where o.vehicleId = :vehicleId")
+    List<VehicleOwnership> findByVehicleIdInAndStatus(Collection<UUID> vehicleIds, OwnershipStatus status);
+
+    /**
+     * End date of the most recent previous ownership; a new ownership may not start before it. Revoked periods
+     * (upheld disputes) do not count: that user was never the rightful owner.
+     */
+    @Query("select max(o.endDate) from VehicleOwnership o where o.vehicleId = :vehicleId "
+            + "and o.status <> com.repairtrack.vehicle.domain.OwnershipStatus.REVOKED")
     Optional<LocalDate> findLatestEndDate(@Param("vehicleId") UUID vehicleId);
 }

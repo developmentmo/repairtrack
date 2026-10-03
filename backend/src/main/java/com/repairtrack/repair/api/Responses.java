@@ -91,7 +91,8 @@ public final class Responses {
             Instant updatedAt,
             boolean canCorrect,
             boolean canVoid,
-            List<MileageWarningResponse> warnings
+            List<MileageWarningResponse> warnings,
+            boolean enteredDuringRevokedOwnership
     ) {
 
         static RepairResponse from(RepairView view, RepairPermissions permissions) {
@@ -105,7 +106,8 @@ public final class Responses {
                     v.corrections().stream().map(CorrectionResponse::from).toList(),
                     v.voidedAt(), v.voidReason(), v.createdAt(), v.updatedAt(),
                     permissions.canCorrect(), permissions.canVoid(),
-                    warnings.stream().map(MileageWarningResponse::from).toList());
+                    warnings.stream().map(MileageWarningResponse::from).toList(),
+                    v.enteredDuringRevokedOwnership());
         }
     }
 

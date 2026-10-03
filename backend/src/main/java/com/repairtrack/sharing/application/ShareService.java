@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.repairtrack.common.crypto.OpaqueTokens;
 import com.repairtrack.common.time.BusinessCalendar;
+import com.repairtrack.dispute.DisputeDirectory;
 import com.repairtrack.security.AuthenticatedUser;
 import com.repairtrack.sharing.SharingEvents;
 import com.repairtrack.sharing.application.ShareViews.CreatedShare;
@@ -26,14 +27,17 @@ public class ShareService {
 
     private final VehicleShareRepository shares;
     private final VehicleAccessService vehicleAccess;
+    private final DisputeDirectory disputeDirectory;
     private final SharingProperties properties;
     private final ApplicationEventPublisher events;
     private final BusinessCalendar calendar;
 
     public ShareService(VehicleShareRepository shares, VehicleAccessService vehicleAccess,
-                        SharingProperties properties, ApplicationEventPublisher events, BusinessCalendar calendar) {
+                        DisputeDirectory disputeDirectory, SharingProperties properties,
+                        ApplicationEventPublisher events, BusinessCalendar calendar) {
         this.shares = shares;
         this.vehicleAccess = vehicleAccess;
+        this.disputeDirectory = disputeDirectory;
         this.properties = properties;
         this.events = events;
         this.calendar = calendar;
@@ -41,11 +45,15 @@ public class ShareService {
 
     /**
      * Only the current owner can share. The token (256 bits, random) is returned once; only its
-     * SHA-256 hash is stored, so a database leak does not reveal working links.
+     * SHA-256 hash is stored, so a database leak does not reveal working links. Not while the ownership is
+     * disputed (existing links keep working and show that the ownership is under review).
      */
     @Transactional
     public CreatedShare create(AuthenticatedUser actor, UUID vehicleId, Integer validDays, boolean includeDocuments) {
         vehicleAccess.requireActiveOwner(actor, vehicleId);
+        if (disputeDirectory.isUnderDispute(vehicleId)) {
+            throw new VehicleUnderDisputeException();
+        }
         Duration validity = validDays == null ? properties.defaultValidity() : Duration.ofDays(validDays);
         Instant now = calendar.now();
         String token = OpaqueTokens.generate();

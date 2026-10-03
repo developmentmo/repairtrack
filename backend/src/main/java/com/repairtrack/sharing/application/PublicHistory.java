@@ -31,8 +31,9 @@ public final class PublicHistory {
     ) {
     }
 
+    /** {@code ownershipUnderReview}: an ownership dispute about this vehicle is undecided. */
     public record Vehicle(String make, String model, Integer modelYear, LocalDate firstRegistrationDate,
-                          String licensePlate, long registeredOwnerCount) {
+                          String licensePlate, long registeredOwnerCount, boolean ownershipUnderReview) {
     }
 
     public record Summary(int totalRecords, int voidedRecords, Map<VerificationStatus, Long> recordsByVerification,
@@ -53,7 +54,8 @@ public final class PublicHistory {
             Garage garage,
             List<Part> parts,
             List<Correction> corrections,
-            List<Document> documents
+            List<Document> documents,
+            boolean enteredDuringRevokedOwnership
     ) {
     }
 

@@ -25,6 +25,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import com.repairtrack.common.crypto.OpaqueTokens;
 import com.repairtrack.common.time.BusinessCalendar;
+import com.repairtrack.dispute.DisputeDirectory;
 import com.repairtrack.security.AuthenticatedUser;
 import com.repairtrack.security.Role;
 import com.repairtrack.sharing.application.ShareViews.CreatedShare;
@@ -45,6 +46,8 @@ class ShareServiceTest {
     @Mock
     private VehicleAccessService vehicleAccess;
     @Mock
+    private DisputeDirectory disputeDirectory;
+    @Mock
     private ApplicationEventPublisher events;
 
     private ShareService service;
@@ -54,8 +57,8 @@ class ShareServiceTest {
     @BeforeEach
     void setUp() {
         BusinessCalendar calendar = new BusinessCalendar(Clock.fixed(NOW, ZoneOffset.UTC), ZoneId.of("Europe/Amsterdam"));
-        service = new ShareService(shares, vehicleAccess, new SharingProperties("https://repairtrack.nl/", null),
-                events, calendar);
+        service = new ShareService(shares, vehicleAccess, disputeDirectory,
+                new SharingProperties("https://repairtrack.nl/", null), events, calendar);
     }
 
     @Test

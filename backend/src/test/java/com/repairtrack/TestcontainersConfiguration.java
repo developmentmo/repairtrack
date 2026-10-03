@@ -66,6 +66,12 @@ public class TestcontainersConfiguration {
     }
 
     @Bean
+    @Primary
+    RecordingDisputeMailer recordingDisputeMailer() {
+        return new RecordingDisputeMailer();
+    }
+
+    @Bean
     DynamicPropertyRegistrar garageStorageProperties(@Qualifier("garageContainer") GenericContainer<?> garage) {
         return registry -> {
             registry.add("repairtrack.storage.endpoint",

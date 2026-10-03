@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import com.repairtrack.audit.domain.AuditAction;
 import com.repairtrack.audit.domain.AuditEntityType;
+import com.repairtrack.dispute.DisputeEvents;
 import com.repairtrack.document.DocumentEvents;
 import com.repairtrack.garage.GarageEvents;
 import com.repairtrack.repair.RepairEvents;
@@ -131,6 +132,54 @@ class AuditRecorder {
     void on(VehicleEvents.VehicleOwnershipEnded event) {
         trail.record(AuditEntityType.VEHICLE, event.vehicleId(), AuditAction.VEHICLE_OWNERSHIP_ENDED, event.userId(),
                 values("ownerId", event.userId()), values("endDate", event.endDate()), event.occurredAt());
+    }
+
+    /** Upheld dispute: the actor is the system admin who decided. */
+    @EventListener
+    void on(VehicleEvents.VehicleOwnershipRevoked event) {
+        trail.record(AuditEntityType.VEHICLE, event.vehicleId(), AuditAction.VEHICLE_OWNERSHIP_REVOKED,
+                event.revokedBy(), values("ownerId", event.userId()),
+                values("endDate", event.endDate(), "disputeId", event.disputeId()), event.occurredAt());
+    }
+
+    @EventListener
+    void on(VehicleEvents.VehicleOwnershipAssigned event) {
+        trail.record(AuditEntityType.VEHICLE, event.vehicleId(), AuditAction.VEHICLE_OWNERSHIP_ASSIGNED,
+                event.assignedBy(), null,
+                values("ownerId", event.userId(), "startDate", event.startDate(), "disputeId", event.disputeId()),
+                event.occurredAt());
+    }
+
+    // ---------- dispute (never statements or file names) ----------
+
+    @EventListener
+    void on(DisputeEvents.DisputeOpened event) {
+        trail.record(AuditEntityType.OWNERSHIP_DISPUTE, event.disputeId(), AuditAction.DISPUTE_OPENED,
+                event.claimantId(), null,
+                values("vehicleId", event.vehicleId(), "contestedOwnerId", event.ownerId()), event.occurredAt());
+    }
+
+    @EventListener
+    void on(DisputeEvents.DisputeResponded event) {
+        trail.record(AuditEntityType.OWNERSHIP_DISPUTE, event.disputeId(), AuditAction.DISPUTE_RESPONDED,
+                event.ownerId(), null, values("vehicleId", event.vehicleId()), event.occurredAt());
+    }
+
+    @EventListener
+    void on(DisputeEvents.DisputeEvidenceAdded event) {
+        trail.record(AuditEntityType.OWNERSHIP_DISPUTE, event.disputeId(), AuditAction.DISPUTE_EVIDENCE_ADDED,
+                event.submittedBy(), null,
+                values("evidenceId", event.evidenceId(), "party", event.party(), "mimeType", event.mimeType(),
+                        "fileSize", event.fileSize(), "sha256", event.sha256()),
+                event.occurredAt());
+    }
+
+    @EventListener
+    void on(DisputeEvents.DisputeDecided event) {
+        trail.record(AuditEntityType.OWNERSHIP_DISPUTE, event.disputeId(),
+                event.upheld() ? AuditAction.DISPUTE_UPHELD : AuditAction.DISPUTE_REJECTED, event.decidedBy(),
+                null, values("vehicleId", event.vehicleId(), "newOwnerSince", event.newOwnerSince()),
+                event.occurredAt());
     }
 
     // ---------- repair ----------

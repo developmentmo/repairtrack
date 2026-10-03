@@ -2,14 +2,19 @@ package com.repairtrack.vehicle;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.repairtrack.vehicle.application.VehicleNotFoundException;
+import com.repairtrack.vehicle.domain.OwnershipStatus;
 import com.repairtrack.vehicle.domain.Vehicle;
+import com.repairtrack.vehicle.domain.VehicleOwnership;
 import com.repairtrack.vehicle.infrastructure.VehicleOwnershipRepository;
 import com.repairtrack.vehicle.infrastructure.VehicleRepository;
 
@@ -30,7 +35,27 @@ public class VehicleDirectory {
     public VehiclePublicProfile publicProfile(UUID vehicleId) {
         Vehicle vehicle = vehicles.findById(vehicleId).orElseThrow(VehicleNotFoundException::new);
         return new VehiclePublicProfile(vehicle.getMake(), vehicle.getModel(), vehicle.getModelYear(),
-                vehicle.getFirstRegistrationDate(), vehicle.getLicensePlate(), ownerships.countByVehicleId(vehicleId));
+                vehicle.getFirstRegistrationDate(), vehicle.getLicensePlate(),
+                ownerships.countByVehicleIdAndStatusNot(vehicleId, OwnershipStatus.REVOKED));
+    }
+
+    /**
+     * Per vehicle: users whose ownership was revoked after an upheld dispute. Records they entered as owner are
+     * labelled, and the rightful owner may void them.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, Set<UUID>> revokedOwnersByVehicle(Collection<UUID> vehicleIds) {
+        if (vehicleIds.isEmpty()) {
+            return Map.of();
+        }
+        return ownerships.findByVehicleIdInAndStatus(vehicleIds, OwnershipStatus.REVOKED).stream()
+                .collect(Collectors.groupingBy(VehicleOwnership::getVehicleId,
+                        Collectors.mapping(VehicleOwnership::getUserId, Collectors.toSet())));
+    }
+
+    @Transactional(readOnly = true)
+    public Set<UUID> revokedOwners(UUID vehicleId) {
+        return revokedOwnersByVehicle(List.of(vehicleId)).getOrDefault(vehicleId, Set.of());
     }
 
     @Transactional(readOnly = true)

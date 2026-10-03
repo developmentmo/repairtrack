@@ -32,7 +32,8 @@ public final class VehicleHistory {
             Instant voidedAt,
             GarageSummary garage,
             List<Part> parts,
-            List<Correction> corrections
+            List<Correction> corrections,
+            boolean enteredDuringRevokedOwnership
     ) {
     }
 

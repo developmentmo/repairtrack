@@ -73,7 +73,7 @@ public class VehicleOwnership {
 
     public void end(LocalDate endDate, Instant now, LocalDate today) {
         Objects.requireNonNull(endDate, "endDate");
-        if (status == OwnershipStatus.ENDED) {
+        if (status != OwnershipStatus.ACTIVE) {
             throw new IllegalStateException("Ownership already ended");
         }
         if (endDate.isBefore(startDate)) {
@@ -84,6 +84,16 @@ public class VehicleOwnership {
         }
         this.endDate = endDate;
         this.status = OwnershipStatus.ENDED;
+        this.endedAt = Objects.requireNonNull(now, "now");
+    }
+
+    /** An upheld dispute: ends today; the period stays in the history marked as revoked. */
+    public void revoke(Instant now, LocalDate today) {
+        if (status != OwnershipStatus.ACTIVE) {
+            throw new IllegalStateException("Only an active ownership can be revoked");
+        }
+        this.endDate = today.isBefore(startDate) ? startDate : today;
+        this.status = OwnershipStatus.REVOKED;
         this.endedAt = Objects.requireNonNull(now, "now");
     }
 

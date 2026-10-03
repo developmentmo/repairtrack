@@ -19,6 +19,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *                                (mail bombing), each endpoint counted separately
  * @param accountTokens           {@code POST /auth/verify-email} and {@code /auth/reset-password} per IP
  * @param registryLookup          {@code GET /vehicle-registry/{plate}} per IP (protects the RDW and our quota)
+ * @param disputes                {@code POST /vehicles/{id}/disputes} per IP (VIN guessing, harassment)
  */
 @ConfigurationProperties(prefix = "repairtrack.rate-limit")
 public record RateLimitProperties(
@@ -31,7 +32,8 @@ public record RateLimitProperties(
         Limit loginFailuresPerAccount,
         Limit accountEmails,
         Limit accountTokens,
-        Limit registryLookup
+        Limit registryLookup,
+        Limit disputes
 ) {
 
     public RateLimitProperties {
@@ -45,6 +47,7 @@ public record RateLimitProperties(
         accountEmails = orDefault(accountEmails, 5, Duration.ofHours(1));
         accountTokens = orDefault(accountTokens, 20, Duration.ofHours(1));
         registryLookup = orDefault(registryLookup, 60, Duration.ofMinutes(1));
+        disputes = orDefault(disputes, 5, Duration.ofDays(1));
     }
 
     /** At most {@code requests} per {@code per}. */

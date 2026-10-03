@@ -27,6 +27,7 @@ import com.repairtrack.security.infrastructure.RateLimitProperties.Limit;
 final class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Pattern CLAIM = Pattern.compile("^/api/v1/vehicles/[^/]+/claim$");
+    private static final Pattern DISPUTE = Pattern.compile("^/api/v1/vehicles/[^/]+/disputes$");
 
     enum Rule {
         LOGIN("POST", path -> path.equals("/api/v1/auth/login")),
@@ -38,7 +39,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
         FORGOT_PASSWORD("POST", path -> path.equals("/api/v1/auth/forgot-password")),
         VERIFY_EMAIL("POST", path -> path.equals("/api/v1/auth/verify-email")),
         RESET_PASSWORD("POST", path -> path.equals("/api/v1/auth/reset-password")),
-        REGISTRY_LOOKUP("GET", path -> path.startsWith("/api/v1/vehicle-registry/"));
+        REGISTRY_LOOKUP("GET", path -> path.startsWith("/api/v1/vehicle-registry/")),
+        OPEN_DISPUTE("POST", path -> DISPUTE.matcher(path).matches());
 
         private final String method;
         private final Predicate<String> path;
@@ -68,6 +70,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
         limiters.put(Rule.VERIFY_EMAIL, limiter(properties.accountTokens(), clock));
         limiters.put(Rule.RESET_PASSWORD, limiter(properties.accountTokens(), clock));
         limiters.put(Rule.REGISTRY_LOOKUP, limiter(properties.registryLookup(), clock));
+        limiters.put(Rule.OPEN_DISPUTE, limiter(properties.disputes(), clock));
     }
 
     @Override

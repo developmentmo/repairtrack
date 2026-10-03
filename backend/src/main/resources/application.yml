@@ -86,6 +86,11 @@ repairtrack:
     mode: ${MALWARE_SCAN_MODE:clamav}
     host: ${CLAMAV_HOST:localhost}
     port: ${CLAMAV_PORT:3310}
+  # Ownership disputes: how long the contested owner has to respond, and abuse limits.
+  disputes:
+    response-time: 14d
+    max-open-per-claimant: 3
+    max-evidence-per-party: 5
   # Public RDW data to pre-fill the vehicle form (a suggestion, never proof). `rdw` (default) or `disabled`.
   vehicle-registry:
     mode: ${RDW_MODE:rdw}

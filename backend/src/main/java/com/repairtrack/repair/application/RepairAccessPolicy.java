@@ -36,7 +36,8 @@ import com.repairtrack.vehicle.VehicleDirectory;
  * An owner can never change a garage record, and a garage never an owner record.
  *
  * <h2>Void</h2>
- * same as correct, plus SYSTEM_ADMIN (moderation).
+ * same as correct, plus SYSTEM_ADMIN (moderation), plus the current owner for owner records entered by a user
+ * whose ownership was revoked after an upheld dispute (they can never change those records otherwise).
  */
 @Component
 public class RepairAccessPolicy {
@@ -97,6 +98,10 @@ public class RepairAccessPolicy {
         if (actor.hasRole(Role.SYSTEM_ADMIN)) {
             return;
         }
+        if (!event.isGarageRecord() && vehicleAccess.isActiveOwner(actor.id(), event.getVehicleId())
+                && vehicleDirectory.revokedOwners(event.getVehicleId()).contains(event.getCreatedBy())) {
+            return;
+        }
         requireCanModify(actor, event);
     }
 
@@ -109,15 +114,23 @@ public class RepairAccessPolicy {
         boolean systemAdmin = actor.hasRole(Role.SYSTEM_ADMIN);
         Map<UUID, Boolean> garageMayWork = new HashMap<>();
         Map<UUID, Boolean> activeOwner = new HashMap<>();
+        Map<UUID, Set<UUID>> revokedOwners = new HashMap<>();
         return event -> {
             if (event.isVoided()) {
                 return RepairPermissions.NONE;
             }
-            boolean canModify = event.isGarageRecord()
-                    ? garageMayWork.computeIfAbsent(event.getGarageId(), garageId -> mayRecordWork(actor, garageId))
-                    : event.getCreatedBy().equals(actor.id()) && activeOwner.computeIfAbsent(event.getVehicleId(),
-                            vehicleId -> vehicleAccess.isActiveOwner(actor.id(), vehicleId));
-            return new RepairPermissions(canModify, canModify || systemAdmin);
+            if (event.isGarageRecord()) {
+                boolean canModify = garageMayWork.computeIfAbsent(event.getGarageId(),
+                        garageId -> mayRecordWork(actor, garageId));
+                return new RepairPermissions(canModify, canModify || systemAdmin);
+            }
+            boolean isActiveOwner = activeOwner.computeIfAbsent(event.getVehicleId(),
+                    vehicleId -> vehicleAccess.isActiveOwner(actor.id(), vehicleId));
+            boolean canModify = isActiveOwner && event.getCreatedBy().equals(actor.id());
+            boolean byRevokedOwner = isActiveOwner && revokedOwners
+                    .computeIfAbsent(event.getVehicleId(), vehicleDirectory::revokedOwners)
+                    .contains(event.getCreatedBy());
+            return new RepairPermissions(canModify, canModify || systemAdmin || byRevokedOwner);
         };
     }
 

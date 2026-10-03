@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.repairtrack.common.crypto.OpaqueTokens;
 import com.repairtrack.common.time.BusinessCalendar;
+import com.repairtrack.dispute.DisputeDirectory;
 import com.repairtrack.document.DocumentDirectory;
 import com.repairtrack.document.DocumentSummary;
 import com.repairtrack.garage.GarageSummary;
@@ -43,18 +44,20 @@ public class PublicHistoryService {
     private final VehicleHistoryReader historyReader;
     private final MileageService mileageService;
     private final DocumentDirectory documentDirectory;
+    private final DisputeDirectory disputeDirectory;
     private final BusinessCalendar calendar;
 
     public PublicHistoryService(VehicleShareRepository shares, VehicleAccessService vehicleAccess,
                                 VehicleDirectory vehicleDirectory, VehicleHistoryReader historyReader,
                                 MileageService mileageService, DocumentDirectory documentDirectory,
-                                BusinessCalendar calendar) {
+                                DisputeDirectory disputeDirectory, BusinessCalendar calendar) {
         this.shares = shares;
         this.vehicleAccess = vehicleAccess;
         this.vehicleDirectory = vehicleDirectory;
         this.historyReader = historyReader;
         this.mileageService = mileageService;
         this.documentDirectory = documentDirectory;
+        this.disputeDirectory = disputeDirectory;
         this.calendar = calendar;
     }
 
@@ -78,7 +81,8 @@ public class PublicHistoryService {
 
         return new Report(
                 new PublicHistory.Vehicle(profile.make(), profile.model(), profile.modelYear(),
-                        profile.firstRegistrationDate(), profile.licensePlate(), profile.registeredOwnerCount()),
+                        profile.firstRegistrationDate(), profile.licensePlate(), profile.registeredOwnerCount(),
+                        disputeDirectory.isUnderDispute(vehicleId)),
                 summary(entries, mileage),
                 entries,
                 new PublicHistory.Mileage(
@@ -129,7 +133,8 @@ public class PublicHistoryService {
                         c.correctedByGarage() == null ? "OWNER" : c.correctedByGarage().name(), c.correctedAt()))
                         .toList(),
                 documents.stream().map(d -> new PublicHistory.Document(d.documentType(), d.mimeType(), d.fileSize(),
-                        d.uploadedAt(), downloadable, downloadable ? d.sha256() : null)).toList());
+                        d.uploadedAt(), downloadable, downloadable ? d.sha256() : null)).toList(),
+                e.enteredDuringRevokedOwnership());
     }
 
     private static PublicHistory.Garage garage(GarageSummary garage) {

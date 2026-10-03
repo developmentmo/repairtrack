@@ -21,6 +21,7 @@ import com.repairtrack.repair.domain.RepairEvent;
 import com.repairtrack.repair.domain.RepairPart;
 import com.repairtrack.repair.infrastructure.RepairCorrectionRepository;
 import com.repairtrack.repair.infrastructure.RepairPartRepository;
+import com.repairtrack.vehicle.VehicleDirectory;
 
 /** Builds views for many events with a fixed number of queries (no N+1). */
 @Component
@@ -29,12 +30,14 @@ class RepairViewAssembler {
     private final RepairPartRepository parts;
     private final RepairCorrectionRepository corrections;
     private final GarageDirectory garageDirectory;
+    private final VehicleDirectory vehicleDirectory;
 
     RepairViewAssembler(RepairPartRepository parts, RepairCorrectionRepository corrections,
-                        GarageDirectory garageDirectory) {
+                        GarageDirectory garageDirectory, VehicleDirectory vehicleDirectory) {
         this.parts = parts;
         this.corrections = corrections;
         this.garageDirectory = garageDirectory;
+        this.vehicleDirectory = vehicleDirectory;
     }
 
     RepairView toView(RepairEvent event) {
@@ -57,6 +60,8 @@ class RepairViewAssembler {
         correctionsByEvent.values().stream().flatMap(List::stream)
                 .map(RepairCorrection::getCorrectedByGarageId).filter(Objects::nonNull).forEach(garageIds::add);
         Map<UUID, GarageSummary> garages = garageDirectory.findSummaries(garageIds);
+        Map<UUID, Set<UUID>> revokedOwners = vehicleDirectory.revokedOwnersByVehicle(
+                events.stream().map(RepairEvent::getVehicleId).collect(Collectors.toSet()));
 
         return events.stream().map(event -> new RepairView(
                 event.getId(),
@@ -82,6 +87,8 @@ class RepairViewAssembler {
                 event.getVoidedAt(),
                 event.getVoidReason(),
                 event.getCreatedAt(),
-                event.getUpdatedAt())).toList();
+                event.getUpdatedAt(),
+                !event.isGarageRecord() && revokedOwners.getOrDefault(event.getVehicleId(), Set.of())
+                        .contains(event.getCreatedBy()))).toList();
     }
 }

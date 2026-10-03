@@ -49,7 +49,9 @@ public final class Views {
             Instant voidedAt,
             String voidReason,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            /** An owner record by a user whose ownership was revoked after an upheld dispute. */
+            boolean enteredDuringRevokedOwnership
     ) {
     }
 

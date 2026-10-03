@@ -208,6 +208,26 @@ header. Mobile apps are not affected by CORS.
   and the user fills in the form by hand. Per-IP limit 60/min (`RATE_LIMITED`).
 - `RDW_MODE=disabled` switches lookups off (tests never call the RDW).
 
+### Ownership disputes (Phase 11)
+
+- **Filing** (`POST /api/v1/vehicles/{id}/disputes`, multipart): the full VIN (same proof as a claim, constant-time
+  compare), a statement and at least one evidence file. Only against a vehicle with an active owner other than the
+  caller; one undecided dispute per claimant and vehicle (partial unique index), at most 3 undecided per claimant,
+  5 filings per IP per day (`RATE_LIMITED`).
+- **Evidence** goes through the same pipeline as documents (size, PDF/JPEG/PNG by content, ClamAV, SHA-256), is stored
+  under `disputes/{id}/` in the private bucket and is **only downloadable by system admins** (presigned, 5 min). Parties
+  see only their own statement and files; the contested owner never learns who filed the dispute. Statements and file
+  names are never audited or logged. At most 5 files per party.
+- **Response**: only the contested owner, once, within 14 days (`repairtrack.disputes.response-time`).
+- **While undecided**: the owner keeps access but cannot create new share links (`409 VEHICLE_UNDER_DISPUTE`);
+  existing reports show `ownershipUnderReview`.
+- **Decision** (SYSTEM_ADMIN, after the response or the deadline; final): *upheld* revokes the contested ownership
+  (status `REVOKED`, kept in the history, not counted as an owner) and assigns the claimant from a date the admin
+  chooses; *rejected* changes nothing. Owner records entered by a revoked owner are labelled
+  `enteredDuringRevokedOwnership` (also on the public report) and the rightful owner may void them; nothing is deleted.
+- Audited: `DISPUTE_OPENED`, `DISPUTE_RESPONDED`, `DISPUTE_EVIDENCE_ADDED`, `DISPUTE_UPHELD`/`DISPUTE_REJECTED`,
+  `VEHICLE_OWNERSHIP_REVOKED`, `VEHICLE_OWNERSHIP_ASSIGNED`. Both parties get an email when it is filed and decided.
+
 ### Never trusted from clients
 
 Roles, account status, verification status, source type, garage IDs and ownership claims. Request DTOs don't have
@@ -226,6 +246,6 @@ fields for server-decided values; unknown JSON properties can never set them.
 - No API to grant SYSTEM_ADMIN (deliberately: done directly in the database).
 - Changes made before Phase 5 have no audit entries (no production data existed).
 - Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.
-- No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).
+- Dispute evidence is not covered by the weekly integrity sweep (its SHA-256 is stored and audited).
 - Share tokens are part of the URL path: reverse proxies / access logs in production must not log full paths for `/api/v1/public/**` and `/v/**`.
 - Rate limits and the RDW cache are in memory per instance; several instances would need a shared store (e.g. Redis).

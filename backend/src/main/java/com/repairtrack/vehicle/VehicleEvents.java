@@ -26,4 +26,14 @@ public final class VehicleEvents {
 
     public record VehicleOwnershipEnded(UUID vehicleId, UUID userId, LocalDate endDate, Instant occurredAt) {
     }
+
+    /** A system admin upheld an ownership dispute: {@code userId}'s ownership is revoked (not deleted). */
+    public record VehicleOwnershipRevoked(UUID vehicleId, UUID userId, LocalDate endDate, UUID revokedBy,
+                                          UUID disputeId, Instant occurredAt) {
+    }
+
+    /** After an upheld dispute a system admin made {@code userId} the owner from {@code startDate}. */
+    public record VehicleOwnershipAssigned(UUID vehicleId, UUID userId, LocalDate startDate, UUID assignedBy,
+                                           UUID disputeId, Instant occurredAt) {
+    }
 }

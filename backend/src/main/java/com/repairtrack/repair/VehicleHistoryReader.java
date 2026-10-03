@@ -34,7 +34,8 @@ public class VehicleHistoryReader {
                         v.parts().stream().map(p -> new VehicleHistory.Part(p.partNumber(), p.brand(), p.description(),
                                 p.quantity())).toList(),
                         v.corrections().stream().map(c -> new VehicleHistory.Correction(c.field().name(),
-                                c.oldValue(), c.newValue(), c.reason(), c.correctedByGarage(), c.correctedAt())).toList()))
+                                c.oldValue(), c.newValue(), c.reason(), c.correctedByGarage(), c.correctedAt())).toList(),
+                        v.enteredDuringRevokedOwnership()))
                 .toList();
     }
 }

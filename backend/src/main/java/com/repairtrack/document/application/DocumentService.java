@@ -1,13 +1,11 @@
 package com.repairtrack.document.application;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
@@ -19,8 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.repairtrack.common.time.BusinessCalendar;
 import com.repairtrack.document.DocumentEvents;
@@ -30,10 +26,7 @@ import com.repairtrack.document.application.DocumentViews.DownloadView;
 import com.repairtrack.document.application.DocumentViews.IntegrityView;
 import com.repairtrack.document.domain.DetectedFileType;
 import com.repairtrack.document.domain.Document;
-import com.repairtrack.document.domain.EmptyFileException;
 import com.repairtrack.document.domain.FileNames;
-import com.repairtrack.document.domain.FileTooLargeException;
-import com.repairtrack.document.domain.UnsupportedFileTypeException;
 import com.repairtrack.document.infrastructure.DocumentRepository;
 import com.repairtrack.document.infrastructure.DocumentStorage;
 import com.repairtrack.document.infrastructure.MalwareScanner;
@@ -58,7 +51,7 @@ public class DocumentService {
 
     private final DocumentRepository documents;
     private final DocumentStorage storage;
-    private final MalwareScanner scanner;
+    private final UploadPipeline pipeline;
     private final StorageProperties properties;
     private final RepairDocumentSupport repairSupport;
     private final ApplicationEventPublisher events;
@@ -69,7 +62,7 @@ public class DocumentService {
                            ApplicationEventPublisher events, BusinessCalendar calendar) {
         this.documents = documents;
         this.storage = storage;
-        this.scanner = scanner;
+        this.pipeline = new UploadPipeline(storage, scanner, properties);
         this.properties = properties;
         this.repairSupport = repairSupport;
         this.events = events;
@@ -80,26 +73,12 @@ public class DocumentService {
     @Transactional(noRollbackFor = MalwareDetectedException.class)
     public DocumentView upload(AuthenticatedUser actor, UUID repairId, DocumentType documentType, IncomingFile file) {
         AttachmentTarget target = repairSupport.requireCanAttachDocument(actor, repairId);
-        if (file.size() <= 0) {
-            throw new EmptyFileException();
-        }
-        if (file.size() > properties.maxFileSize().toBytes()) {
-            throw new FileTooLargeException();
-        }
-
-        DetectedFileType type = detectType(file);
+        DetectedFileType type = pipeline.check(file);
         scanForMalware(actor, repairId, file);
 
         UUID documentId = UUID.randomUUID();
         String key = Document.storageKeyFor(repairId, documentId);
-        MessageDigest digest = sha256();
-        try (InputStream content = file.content().open()) {
-            storage.put(key, new DigestInputStream(content, digest), file.size(), type.mimeType());
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
-        removeObjectIfTransactionRollsBack(key);
-        String sha256 = HexFormat.of().formatHex(digest.digest());
+        String sha256 = pipeline.store(key, file, type);
 
         Instant now = calendar.now();
         Document document = Document.create(documentId, repairId, target.vehicleId(), documentType,
@@ -151,23 +130,9 @@ public class DocumentService {
         return document;
     }
 
-    private static DetectedFileType detectType(IncomingFile file) {
-        try (InputStream content = file.content().open()) {
-            byte[] header = content.readNBytes(DetectedFileType.HEADER_LENGTH);
-            return DetectedFileType.detect(header).orElseThrow(UnsupportedFileTypeException::new);
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
-    }
-
     /** Before anything is stored. Fails closed: no verdict means no upload. */
     private void scanForMalware(AuthenticatedUser actor, UUID repairId, IncomingFile file) {
-        MalwareScanner.ScanResult result;
-        try (InputStream content = new BufferedInputStream(file.content().open())) {
-            result = scanner.scan(content);
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
+        MalwareScanner.ScanResult result = pipeline.scan(file);
         if (!result.clean()) {
             log.warn("Upload rejected: malware '{}' (repair {}, user {})", result.signature(), repairId, actor.id());
             events.publishEvent(new DocumentEvents.UploadRejectedAsMalware(repairId, actor.id(), result.signature(),
@@ -176,35 +141,13 @@ public class DocumentService {
         }
     }
 
-    /** Never leave an object without metadata behind when the database transaction fails. */
-    private void removeObjectIfTransactionRollsBack(String key) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCompletion(int status) {
-                    if (status == STATUS_ROLLED_BACK) {
-                        storage.deleteQuietly(key);
-                    }
-                }
-            });
-        }
-    }
-
     private static String sha256Of(InputStream stream) {
-        MessageDigest digest = sha256();
+        MessageDigest digest = UploadPipeline.sha256();
         try (InputStream in = new DigestInputStream(stream, digest)) {
             in.transferTo(OutputStream.nullOutputStream());
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
         }
         return HexFormat.of().formatHex(digest.digest());
-    }
-
-    private static MessageDigest sha256() {
-        try {
-            return MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 not available", ex);
-        }
     }
 }
