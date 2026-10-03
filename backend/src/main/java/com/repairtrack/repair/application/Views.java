@@ -19,6 +19,18 @@ public final class Views {
     private Views() {
     }
 
+    /**
+     * What the caller may do with a record, for display (e.g. which buttons an app shows). The backend still
+     * checks every change itself; these flags are derived from the same rules in {@link RepairAccessPolicy}.
+     */
+    public record RepairPermissions(boolean canCorrect, boolean canVoid) {
+
+        public static final RepairPermissions NONE = new RepairPermissions(false, false);
+    }
+
+    public record RepairEntry(RepairView repair, RepairPermissions permissions) {
+    }
+
     /** {@code garage} is null for owner records. */
     public record RepairView(
             UUID id,

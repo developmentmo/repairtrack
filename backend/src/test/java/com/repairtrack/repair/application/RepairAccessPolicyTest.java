@@ -3,6 +3,9 @@ package com.repairtrack.repair.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -16,8 +19,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.repairtrack.common.error.ApplicationException;
+import com.repairtrack.common.error.ErrorCategory;
 import com.repairtrack.garage.GarageAccessService;
 import com.repairtrack.repair.RepairEventType;
+import com.repairtrack.repair.application.Views.RepairPermissions;
 import com.repairtrack.repair.domain.RepairEvent;
 import com.repairtrack.repair.infrastructure.RepairEventRepository;
 import com.repairtrack.security.AuthenticatedUser;
@@ -122,6 +128,60 @@ class RepairAccessPolicyTest {
         when(repairs.existsByVehicleIdAndGarageIdIn(vehicleId, Set.of(garageA))).thenReturn(true);
 
         assertThat(policy().canViewHistory(mechanicA, vehicleId)).isTrue();
+    }
+
+    // ---------- permissions shown to clients: same rules, no exceptions ----------
+
+    @Test
+    void permissionsFollowTheModifyRules() {
+        RepairEvent ownerRecord = ownerRecord();
+        RepairEvent garageRecord = garageRecord();
+        when(vehicleAccess.isActiveOwner(owner.id(), vehicleId)).thenReturn(true);
+        when(garageAccess.isActiveMember(owner.id(), garageA)).thenReturn(false);
+        when(garageAccess.isActiveMember(mechanicA.id(), garageA)).thenReturn(true);
+
+        assertThat(policy().permissionsFor(owner).apply(ownerRecord)).isEqualTo(new RepairPermissions(true, true));
+        assertThat(policy().permissionsFor(owner).apply(garageRecord)).isEqualTo(RepairPermissions.NONE);
+        assertThat(policy().permissionsFor(mechanicA).apply(garageRecord)).isEqualTo(new RepairPermissions(true, true));
+        assertThat(policy().permissionsFor(mechanicA).apply(ownerRecord)).isEqualTo(RepairPermissions.NONE);
+    }
+
+    @Test
+    void suspendedGarageGetsNoPermissions() {
+        when(garageAccess.isActiveMember(mechanicA.id(), garageA)).thenReturn(true);
+        doThrow(new ApplicationException(ErrorCategory.FORBIDDEN, "GARAGE_SUSPENDED", "suspended") { })
+                .when(garageAccess).validateCanRecordWork(mechanicA, garageA);
+
+        assertThat(policy().permissionsFor(mechanicA).apply(garageRecord())).isEqualTo(RepairPermissions.NONE);
+    }
+
+    @Test
+    void systemAdminMayOnlyVoid() {
+        AuthenticatedUser admin = new AuthenticatedUser(UUID.randomUUID(), "ops@example.com",
+                Set.of(Role.OWNER, Role.SYSTEM_ADMIN));
+        when(garageAccess.isActiveMember(admin.id(), garageA)).thenReturn(false);
+
+        assertThat(policy().permissionsFor(admin).apply(garageRecord())).isEqualTo(new RepairPermissions(false, true));
+    }
+
+    @Test
+    void voidedRecordsCannotBeChangedAnymore() {
+        RepairEvent voided = ownerRecord();
+        voided.voidEvent("Wrong vehicle", owner.id(), NOW);
+
+        assertThat(policy().permissionsFor(owner).apply(voided)).isEqualTo(RepairPermissions.NONE);
+    }
+
+    @Test
+    void garageLookupsAreDoneOncePerHistory() {
+        when(garageAccess.isActiveMember(mechanicA.id(), garageA)).thenReturn(true);
+        var permissions = policy().permissionsFor(mechanicA);
+
+        permissions.apply(garageRecord());
+        permissions.apply(garageRecord());
+        permissions.apply(garageRecord());
+
+        verify(garageAccess, times(1)).isActiveMember(mechanicA.id(), garageA);
     }
 
     private RepairEvent garageRecord() {

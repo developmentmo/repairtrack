@@ -217,7 +217,11 @@ There are no `sourceType` / `verificationStatus` fields. The backend derives the
 `RepairResponse`: `{id, vehicleId, eventType, eventDate, mileage, title, description, sourceType, verificationStatus,
 status, garage: {id, name, city, verificationStatus} | null, parts: [...], corrections: [{field, originalValue,
 correctedValue, reason, correctedByGarage | null (= owner), correctedAt}], voidedAt, voidReason, createdAt, updatedAt,
-warnings: [...]}`.
+canCorrect, canVoid, warnings: [...]}`.
+
+`canCorrect` (correct, add parts, upload documents) and `canVoid` tell the caller which actions the rules above allow
+right now, so apps can show or hide buttons. They are derived from the same rules; the backend still checks every
+request. Both are `false` on voided records.
 
 **Mileage warnings** never block a request. A reading lower than the preceding reading (by date) produces
 `{code: "MILEAGE_DECREASE", message, earlier: {date, mileage, sourceType}, later: {...}}`. It is reported as an

@@ -13,6 +13,7 @@ import com.repairtrack.mileage.MileageReading;
 import com.repairtrack.repair.RepairEventType;
 import com.repairtrack.repair.application.Views.CorrectionView;
 import com.repairtrack.repair.application.Views.PartView;
+import com.repairtrack.repair.application.Views.RepairPermissions;
 import com.repairtrack.repair.application.Views.RepairView;
 import com.repairtrack.repair.domain.CorrectableField;
 import com.repairtrack.repair.domain.RepairStatus;
@@ -67,7 +68,8 @@ public final class Responses {
 
     /**
      * A history entry. {@code garage} is null for owner records. {@code warnings} is only filled on
-     * create/correct responses (non-blocking mileage inconsistencies).
+     * create/correct responses (non-blocking mileage inconsistencies). {@code canCorrect} / {@code canVoid} tell
+     * the caller which actions are allowed (for showing buttons); the backend still checks every change.
      */
     public record RepairResponse(
             UUID id,
@@ -87,19 +89,22 @@ public final class Responses {
             String voidReason,
             Instant createdAt,
             Instant updatedAt,
+            boolean canCorrect,
+            boolean canVoid,
             List<MileageWarningResponse> warnings
     ) {
 
-        static RepairResponse from(RepairView view) {
-            return from(view, List.of());
+        static RepairResponse from(RepairView view, RepairPermissions permissions) {
+            return from(view, permissions, List.of());
         }
 
-        static RepairResponse from(RepairView v, List<MileageAnomaly> warnings) {
+        static RepairResponse from(RepairView v, RepairPermissions permissions, List<MileageAnomaly> warnings) {
             return new RepairResponse(v.id(), v.vehicleId(), v.eventType(), v.eventDate(), v.mileage(), v.title(),
                     v.description(), v.sourceType(), v.verificationStatus(), v.status(), GarageInfo.from(v.garage()),
                     v.parts().stream().map(PartResponse::from).toList(),
                     v.corrections().stream().map(CorrectionResponse::from).toList(),
                     v.voidedAt(), v.voidReason(), v.createdAt(), v.updatedAt(),
+                    permissions.canCorrect(), permissions.canVoid(),
                     warnings.stream().map(MileageWarningResponse::from).toList());
         }
     }

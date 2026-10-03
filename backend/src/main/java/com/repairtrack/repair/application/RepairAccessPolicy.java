@@ -1,12 +1,17 @@
 package com.repairtrack.repair.application;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 import org.springframework.stereotype.Component;
 
+import com.repairtrack.common.error.ApplicationException;
 import com.repairtrack.garage.GarageAccessService;
+import com.repairtrack.repair.application.Views.RepairPermissions;
 import com.repairtrack.repair.domain.RepairEvent;
 import com.repairtrack.repair.infrastructure.RepairEventRepository;
 import com.repairtrack.security.AuthenticatedUser;
@@ -93,5 +98,38 @@ public class RepairAccessPolicy {
             return;
         }
         requireCanModify(actor, event);
+    }
+
+    /**
+     * What {@code actor} may do with each record: the non-throwing form of {@link #requireCanModify} and
+     * {@link #requireCanVoid}. Garage and ownership lookups are cached per returned function, so a whole history
+     * costs a few queries instead of a few per record. Voided records can no longer be changed.
+     */
+    public Function<RepairEvent, RepairPermissions> permissionsFor(AuthenticatedUser actor) {
+        boolean systemAdmin = actor.hasRole(Role.SYSTEM_ADMIN);
+        Map<UUID, Boolean> garageMayWork = new HashMap<>();
+        Map<UUID, Boolean> activeOwner = new HashMap<>();
+        return event -> {
+            if (event.isVoided()) {
+                return RepairPermissions.NONE;
+            }
+            boolean canModify = event.isGarageRecord()
+                    ? garageMayWork.computeIfAbsent(event.getGarageId(), garageId -> mayRecordWork(actor, garageId))
+                    : event.getCreatedBy().equals(actor.id()) && activeOwner.computeIfAbsent(event.getVehicleId(),
+                            vehicleId -> vehicleAccess.isActiveOwner(actor.id(), vehicleId));
+            return new RepairPermissions(canModify, canModify || systemAdmin);
+        };
+    }
+
+    private boolean mayRecordWork(AuthenticatedUser actor, UUID garageId) {
+        if (!garageAccess.isActiveMember(actor.id(), garageId)) {
+            return false;
+        }
+        try {
+            garageAccess.validateCanRecordWork(actor, garageId);
+            return true;
+        } catch (ApplicationException e) {
+            return false; // e.g. garage suspended
+        }
     }
 }

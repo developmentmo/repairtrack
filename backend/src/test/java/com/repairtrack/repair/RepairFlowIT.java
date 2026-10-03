@@ -292,7 +292,34 @@ class RepairFlowIT {
         assertThat(vehiclesOfAForB.status()).isEqualTo(403);
     }
 
+    @Test
+    void responsesTellTheCallerWhatTheyMayChange() {
+        String ownerRecord = create(owner, null, 1000, TODAY.minusDays(2)).field("id");
+        String garageRecord = create(mechanicA, garageA, 1200, TODAY.minusDays(1)).field("id");
+
+        JsonNode ownersView = api.get("/api/v1/vehicles/" + vehicleId + "/repairs", owner.token()).body();
+        assertThat(permissions(ownersView, ownerRecord)).containsExactly(true, true);
+        assertThat(permissions(ownersView, garageRecord)).containsExactly(false, false);
+
+        JsonNode mechanicsView = get(mechanicA, garageRecord).body();
+        assertThat(mechanicsView.get("canCorrect").asBoolean()).isTrue();
+        assertThat(mechanicsView.get("canVoid").asBoolean()).isTrue();
+
+        JsonNode afterVoid = voidRepair(owner, ownerRecord).body();
+        assertThat(afterVoid.get("canCorrect").asBoolean()).isFalse();
+        assertThat(afterVoid.get("canVoid").asBoolean()).isFalse();
+    }
+
     // ---------- helpers ----------
+
+    private static List<Boolean> permissions(JsonNode history, String repairId) {
+        for (JsonNode entry : history) {
+            if (entry.get("id").asString().equals(repairId)) {
+                return List.of(entry.get("canCorrect").asBoolean(), entry.get("canVoid").asBoolean());
+            }
+        }
+        throw new AssertionError("Record not in history: " + repairId);
+    }
 
     private ApiResponse create(Account actor, UUID garageId, int mileage, LocalDate date) {
         Map<String, Object> body = repairBody(mileage, date);

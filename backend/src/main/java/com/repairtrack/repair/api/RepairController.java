@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.repairtrack.mileage.MileageAnomaly;
 import com.repairtrack.repair.api.Requests.AddPartsRequest;
 import com.repairtrack.repair.api.Requests.CorrectRepairRequest;
 import com.repairtrack.repair.api.Requests.CreateRepairRequest;
@@ -26,7 +27,9 @@ import com.repairtrack.repair.api.Responses.RepairResponse;
 import com.repairtrack.repair.application.Commands;
 import com.repairtrack.repair.application.RepairQueryService;
 import com.repairtrack.repair.application.RepairService;
+import com.repairtrack.repair.application.Views.RepairEntry;
 import com.repairtrack.repair.application.Views.RepairResult;
+import com.repairtrack.repair.application.Views.RepairView;
 import com.repairtrack.repair.domain.RepairChanges;
 import com.repairtrack.security.AuthenticatedUser;
 
@@ -54,13 +57,15 @@ class RepairController {
         var command = new Commands.CreateRepair(request.eventType(), request.eventDate(), request.mileage(),
                 request.title(), request.description(), request.garageId(), toCommands(request.parts()));
         RepairResult result = repairService.create(actor, vehicleId, command);
-        return RepairResponse.from(result.repair(), result.warnings());
+        return respond(actor, result.repair(), result.warnings());
     }
 
     @GetMapping("/vehicles/{vehicleId}/repairs")
     List<RepairResponse> history(@AuthenticationPrincipal AuthenticatedUser actor,
                                  @PathVariable("vehicleId") UUID vehicleId) {
-        return queryService.history(actor, vehicleId).stream().map(RepairResponse::from).toList();
+        return queryService.history(actor, vehicleId).stream()
+                .map(entry -> RepairResponse.from(entry.repair(), entry.permissions()))
+                .toList();
     }
 
     @GetMapping("/vehicles/{vehicleId}/mileage")
@@ -71,14 +76,15 @@ class RepairController {
 
     @GetMapping("/repairs/{repairId}")
     RepairResponse get(@AuthenticationPrincipal AuthenticatedUser actor, @PathVariable("repairId") UUID repairId) {
-        return RepairResponse.from(queryService.get(actor, repairId));
+        RepairEntry entry = queryService.entry(actor, repairId);
+        return RepairResponse.from(entry.repair(), entry.permissions());
     }
 
     @PostMapping("/repairs/{repairId}/void")
     RepairResponse voidRepair(@AuthenticationPrincipal AuthenticatedUser actor,
                               @PathVariable("repairId") UUID repairId,
                               @Valid @RequestBody VoidRepairRequest request) {
-        return RepairResponse.from(repairService.voidRepair(actor, repairId, request.reason()));
+        return respond(actor, repairService.voidRepair(actor, repairId, request.reason()), List.of());
     }
 
     @PostMapping("/repairs/{repairId}/corrections")
@@ -88,7 +94,7 @@ class RepairController {
         var changes = new RepairChanges(request.eventType(), request.eventDate(), request.mileage(), request.title(),
                 request.description());
         RepairResult result = repairService.correct(actor, repairId, changes, request.reason());
-        return RepairResponse.from(result.repair(), result.warnings());
+        return respond(actor, result.repair(), result.warnings());
     }
 
     @PostMapping("/repairs/{repairId}/parts")
@@ -96,13 +102,18 @@ class RepairController {
     RepairResponse addParts(@AuthenticationPrincipal AuthenticatedUser actor,
                             @PathVariable("repairId") UUID repairId,
                             @Valid @RequestBody AddPartsRequest request) {
-        return RepairResponse.from(repairService.addParts(actor, repairId, toCommands(request.parts())));
+        return respond(actor, repairService.addParts(actor, repairId, toCommands(request.parts())), List.of());
     }
 
     @GetMapping("/repairs/{repairId}/parts")
     List<PartResponse> parts(@AuthenticationPrincipal AuthenticatedUser actor,
                              @PathVariable("repairId") UUID repairId) {
         return queryService.parts(actor, repairId).stream().map(PartResponse::from).toList();
+    }
+
+    /** Response after a change; the permissions reflect the record's new state (e.g. none after voiding). */
+    private RepairResponse respond(AuthenticatedUser actor, RepairView repair, List<MileageAnomaly> warnings) {
+        return RepairResponse.from(repair, queryService.permissions(actor, repair.id()), warnings);
     }
 
     private static List<Commands.AddPart> toCommands(List<PartRequest> parts) {

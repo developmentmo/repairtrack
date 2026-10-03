@@ -1,10 +1,13 @@
 package com.repairtrack.repair.application;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +16,8 @@ import com.repairtrack.garage.GarageAccessService;
 import com.repairtrack.mileage.MileageHistory;
 import com.repairtrack.mileage.MileageService;
 import com.repairtrack.repair.application.Views.PartView;
+import com.repairtrack.repair.application.Views.RepairEntry;
+import com.repairtrack.repair.application.Views.RepairPermissions;
 import com.repairtrack.repair.application.Views.RepairView;
 import com.repairtrack.repair.domain.RepairEvent;
 import com.repairtrack.repair.infrastructure.RepairEventRepository;
@@ -42,11 +47,11 @@ public class RepairQueryService {
         this.vehicleDirectory = vehicleDirectory;
     }
 
-    /** The complete history of a vehicle, newest first, including voided records. */
+    /** The complete history of a vehicle, newest first, including voided records, with the caller's permissions. */
     @Transactional(readOnly = true)
-    public List<RepairView> history(AuthenticatedUser actor, UUID vehicleId) {
+    public List<RepairEntry> history(AuthenticatedUser actor, UUID vehicleId) {
         access.requireCanViewHistory(actor, vehicleId);
-        return assembler.toViews(repairs.findByVehicleIdOrderByEventDateDescCreatedAtDesc(vehicleId));
+        return withPermissions(actor, repairs.findByVehicleIdOrderByEventDateDescCreatedAtDesc(vehicleId));
     }
 
     /** For {@code VehicleHistoryReader} only: the caller has authorized access by other means. */
@@ -60,6 +65,21 @@ public class RepairQueryService {
         RepairEvent event = repairs.findById(repairId).orElseThrow(RepairNotFoundException::new);
         access.requireCanViewHistory(actor, event.getVehicleId());
         return assembler.toView(event);
+    }
+
+    /** One record with the caller's permissions. */
+    @Transactional(readOnly = true)
+    public RepairEntry entry(AuthenticatedUser actor, UUID repairId) {
+        RepairEvent event = repairs.findById(repairId).orElseThrow(RepairNotFoundException::new);
+        access.requireCanViewHistory(actor, event.getVehicleId());
+        return withPermissions(actor, List.of(event)).getFirst();
+    }
+
+    /** The caller's permissions on a record they have just changed. */
+    @Transactional(readOnly = true)
+    public RepairPermissions permissions(AuthenticatedUser actor, UUID repairId) {
+        RepairEvent event = repairs.findById(repairId).orElseThrow(RepairNotFoundException::new);
+        return access.permissionsFor(actor).apply(event);
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +102,15 @@ public class RepairQueryService {
         return vehicleDirectory.findSummaries(ids).stream()
                 .sorted(Comparator.comparing(VehicleSummary::make, String.CASE_INSENSITIVE_ORDER)
                         .thenComparing(VehicleSummary::model, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    private List<RepairEntry> withPermissions(AuthenticatedUser actor, List<RepairEvent> events) {
+        Function<RepairEvent, RepairPermissions> permissionsOf = access.permissionsFor(actor);
+        Map<UUID, RepairPermissions> byId = new HashMap<>();
+        events.forEach(event -> byId.put(event.getId(), permissionsOf.apply(event)));
+        return assembler.toViews(events).stream()
+                .map(view -> new RepairEntry(view, byId.get(view.id())))
                 .toList();
     }
 }
