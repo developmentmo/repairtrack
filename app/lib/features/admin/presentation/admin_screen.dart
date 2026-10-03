@@ -5,24 +5,25 @@ import '../../../core/format/formatters.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/form_widgets.dart';
+import '../../disputes/presentation/admin_disputes_tab.dart';
 import '../../garages/domain/garage.dart';
 import '../data/admin_api.dart';
 import '../domain/admin_user.dart';
 
-/// SYSTEM_ADMIN: garage verification queue and user blocking. Every action is audited by the backend.
+/// SYSTEM_ADMIN: garage verification queue, user blocking and ownership disputes. Every action is audited by the backend.
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Beheer'),
-          bottom: const TabBar(tabs: [Tab(text: 'Garages'), Tab(text: 'Gebruikers')]),
+          bottom: const TabBar(tabs: [Tab(text: 'Garages'), Tab(text: 'Gebruikers'), Tab(text: 'Geschillen')]),
         ),
-        body: const TabBarView(children: [_GarageQueue(), _UserAdmin()]),
+        body: const TabBarView(children: [_GarageQueue(), _UserAdmin(), AdminDisputesTab()]),
       ),
     );
   }

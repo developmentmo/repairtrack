@@ -355,6 +355,9 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
   bool _busy = false;
   String? _error;
 
+  /// The selected vehicle already has an owner: offer to dispute that ownership.
+  bool _ownedBySomeoneElse = false;
+
   @override
   void dispose() {
     _plate.dispose();
@@ -399,6 +402,7 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
     setState(() {
       _busy = true;
       _error = null;
+      _ownedBySomeoneElse = false;
     });
     try {
       await ref.read(vehicleApiProvider).claim(selected.id, vin: normalizeVin(_vin.text));
@@ -408,7 +412,10 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() {
+          _error = userMessage(e);
+          _ownedBySomeoneElse = e.code == 'VEHICLE_ALREADY_OWNED';
+        });
       }
     } finally {
       if (mounted) {
@@ -443,7 +450,10 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
                 leading: Icon(_selected?.id == result.id ? Icons.radio_button_checked : Icons.radio_button_unchecked),
                 title: Text(result.displayName),
                 subtitle: Text([result.licensePlate, result.modelYear?.toString()].whereType<String>().join(' · ')),
-                onTap: () => setState(() => _selected = result),
+                onTap: () => setState(() {
+                  _selected = result;
+                  _ownedBySomeoneElse = false;
+                }),
               ),
             ),
         if (_selected != null) ...[
@@ -462,6 +472,17 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
         if (_error != null) ...[
           const SizedBox(height: 16),
           ErrorText(message: _error!),
+        ],
+        if (_ownedBySomeoneElse && _selected != null) ...[
+          const SizedBox(height: 8),
+          const Text('Is dit voertuig van jou, maar staat het op naam van iemand anders? Dan kun je het eigendom '
+              'betwisten. RepairTrack beoordeelt dat.'),
+          TextButton.icon(
+            key: const Key('open-dispute'),
+            onPressed: () => context.go(Routes.openDispute(_selected!.id), extra: _selected!.displayName),
+            icon: const Icon(Icons.gavel),
+            label: const Text('Eigendom betwisten'),
+          ),
         ],
       ],
     );

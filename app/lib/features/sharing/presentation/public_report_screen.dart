@@ -98,6 +98,14 @@ class _Report extends StatelessWidget {
             '${vehicle.registeredOwnerCount} eigenaar(s) in RepairTrack',
           ].join(' · '),
         ),
+        if (vehicle.ownershipUnderReview) ...[
+          const SizedBox(height: 12),
+          const InfoBanner(
+            warning: true,
+            icon: Icons.gavel,
+            message: 'Het eigendom van dit voertuig wordt op dit moment door RepairTrack beoordeeld.',
+          ),
+        ],
         const SizedBox(height: 16),
         Wrap(
           spacing: 8,
@@ -204,6 +212,10 @@ class _EntryCard extends ConsumerWidget {
                       '${garage.verificationStatus == GarageVerificationStatus.verified ? ' (geverifieerd)' : ''}',
               style: theme.textTheme.bodySmall,
             ),
+            if (entry.enteredDuringRevokedOwnership) ...[
+              const SizedBox(height: 4),
+              Text('Ingevoerd door een eigenaar van wie het eigendom na een geschil is ingetrokken', style: TextStyle(color: theme.colorScheme.error)),
+            ],
             if (entry.voided && entry.voidReason != null) ...[
               const SizedBox(height: 4),
               Text('Ongeldig verklaard: ${entry.voidReason}', style: TextStyle(color: theme.colorScheme.error)),

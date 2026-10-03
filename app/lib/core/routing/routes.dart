@@ -18,6 +18,11 @@ class Routes {
   // Owner
   static const addVehicle = '/vehicles/add';
 
+  // Ownership disputes (emails link to [disputes])
+  static const disputes = '/disputes';
+
+  static String openDispute(String vehicleId) => '/disputes/new/$vehicleId';
+
   static String vehicle(String vehicleId) => '/vehicles/$vehicleId';
 
   static String vehicleHistory(String vehicleId) => '/vehicles/$vehicleId/history';

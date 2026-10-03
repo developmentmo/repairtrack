@@ -126,6 +126,13 @@ class _RepairTile extends StatelessWidget {
                 repair.garage?.name ?? sourceTypeLabel(repair.sourceType),
                 style: theme.textTheme.bodySmall,
               ),
+              if (repair.enteredDuringRevokedOwnership) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Ingevoerd door een eigenaar van wie het eigendom na een geschil is ingetrokken',
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                ),
+              ],
             ],
           ),
         ),

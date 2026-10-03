@@ -57,6 +57,7 @@ class Repair {
     this.canCorrect = false,
     this.canVoid = false,
     this.warnings = const [],
+    this.enteredDuringRevokedOwnership = false,
   });
 
   factory Repair.fromJson(Map<String, dynamic> json) => _$RepairFromJson(json);
@@ -93,6 +94,10 @@ class Repair {
 
   /// Only filled in the response to a create/correct request.
   final List<MileageWarning> warnings;
+
+  /// An owner record by someone whose ownership was revoked after an upheld dispute.
+  @JsonKey(defaultValue: false)
+  final bool enteredDuringRevokedOwnership;
 
   bool get isVoided => status == RepairStatus.voided;
 }

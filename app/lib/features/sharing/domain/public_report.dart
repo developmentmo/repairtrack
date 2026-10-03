@@ -41,6 +41,7 @@ class PublicVehicle {
     this.modelYear,
     this.firstRegistrationDate,
     this.licensePlate,
+    this.ownershipUnderReview = false,
   });
 
   factory PublicVehicle.fromJson(Map<String, dynamic> json) => _$PublicVehicleFromJson(json);
@@ -52,6 +53,10 @@ class PublicVehicle {
   final DateTime? firstRegistrationDate;
   final String? licensePlate;
   final int registeredOwnerCount;
+
+  /// An ownership dispute about this vehicle is being reviewed.
+  @JsonKey(defaultValue: false)
+  final bool ownershipUnderReview;
 }
 
 @JsonSerializable(createToJson: false)
@@ -99,6 +104,7 @@ class PublicEntry {
     this.parts = const [],
     this.corrections = const [],
     this.documents = const [],
+    this.enteredDuringRevokedOwnership = false,
   });
 
   factory PublicEntry.fromJson(Map<String, dynamic> json) => _$PublicEntryFromJson(json);
@@ -120,6 +126,10 @@ class PublicEntry {
   final List<PublicPart> parts;
   final List<PublicCorrection> corrections;
   final List<PublicDocument> documents;
+
+  /// Entered by someone whose ownership was revoked after a dispute.
+  @JsonKey(defaultValue: false)
+  final bool enteredDuringRevokedOwnership;
 }
 
 @JsonSerializable(createToJson: false)

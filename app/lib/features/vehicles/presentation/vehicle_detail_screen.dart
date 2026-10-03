@@ -7,6 +7,8 @@ import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/form_widgets.dart';
+import '../../disputes/application/dispute_providers.dart';
+import '../../disputes/domain/dispute.dart';
 import '../application/vehicle_providers.dart';
 import '../data/vehicle_api.dart';
 import '../domain/vehicle.dart';
@@ -23,6 +25,9 @@ class VehicleDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehicle = ref.watch(vehicleProvider(vehicleId));
+    final disputes = garageId == null
+        ? ref.watch(ownershipDisputesProvider(vehicleId)).value ?? const <PartyDispute>[]
+        : const <PartyDispute>[];
     return Scaffold(
       appBar: AppBar(title: Text(vehicle.hasValue ? vehicle.requireValue.displayName : 'Voertuig')),
       body: AsyncValueView(
@@ -31,6 +36,21 @@ class VehicleDetailScreen extends ConsumerWidget {
         data: (vehicle) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (disputes.isNotEmpty && vehicle.ownedByMe) ...[
+              InfoBanner(
+                key: const Key('ownership-disputed'),
+                warning: true,
+                icon: Icons.gavel,
+                message: disputes.any((d) => d.canRespond)
+                    ? 'Iemand betwist dat jij de eigenaar bent. Reageer via Geschillen en voeg bewijs toe.'
+                    : 'Het eigendom van dit voertuig wordt beoordeeld. Tot er is beslist, kun je geen deellinks maken.',
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(onPressed: () => context.go(Routes.disputes), child: const Text('Naar geschillen')),
+              ),
+              const SizedBox(height: 8),
+            ],
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),

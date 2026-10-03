@@ -56,6 +56,15 @@ class RepairDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
             ],
+            if (repair.enteredDuringRevokedOwnership) ...[
+              InfoBanner(
+                warning: true,
+                icon: Icons.gavel,
+                message: 'Ingevoerd door een eigenaar van wie het eigendom na een geschil is ingetrokken.'
+                    '${repair.canVoid ? ' Je kunt deze registratie ongeldig verklaren als ze niet klopt.' : ''}',
+              ),
+              const SizedBox(height: 16),
+            ],
             Text(repair.title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Align(alignment: Alignment.centerLeft, child: VerificationBadge(status: repair.verificationStatus)),

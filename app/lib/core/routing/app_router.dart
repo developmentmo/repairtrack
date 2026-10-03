@@ -7,6 +7,8 @@ import '../../features/authentication/presentation/account_link_screens.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/register_screen.dart';
 import '../../features/authentication/presentation/splash_screen.dart';
+import '../../features/disputes/presentation/my_disputes_screen.dart';
+import '../../features/disputes/presentation/open_dispute_screen.dart';
 import '../../features/garages/presentation/create_garage_screen.dart';
 import '../../features/garages/presentation/garage_dashboard_screen.dart';
 import '../../features/repairs/presentation/correct_repair_screen.dart';
@@ -53,6 +55,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: 'vehicles/add', builder: (context, state) => const AddVehicleScreen()),
           GoRoute(path: 'admin', builder: (context, state) => const AdminScreen()),
+          GoRoute(path: 'disputes', builder: (context, state) => const MyDisputesScreen()),
+          GoRoute(
+            path: 'disputes/new/:vehicleId',
+            builder: (context, state) => OpenDisputeScreen(
+              vehicleId: state.pathParameters['vehicleId']!,
+              vehicleName: switch (state.extra) { final String name => name, _ => null },
+            ),
+          ),
           GoRoute(
             path: 'vehicles/:vehicleId',
             builder: (context, state) => VehicleDetailScreen(vehicleId: state.pathParameters['vehicleId']!),
