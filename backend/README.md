@@ -88,7 +88,8 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `S3_PUBLIC_ENDPOINT` | no | Endpoint used in presigned download URLs, if clients reach storage differently |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | no | Empty = AWS default credentials chain (e.g. IAM role) |
 | `S3_PATH_STYLE_ACCESS` | no (default `true`) | Bucket in the URL path (required for Garage) |
-| `PUBLIC_BASE_URL` | yes (outside `local`) | Base URL of the public site; share links are `{PUBLIC_BASE_URL}/v/{token}` (`local`: `http://localhost:8080`) |
+| `PUBLIC_BASE_URL` | yes (outside `local`) | Base URL of the Flutter web app; share links are `{PUBLIC_BASE_URL}/v/{token}` (`local`: `http://localhost:5173`) |
+| `CORS_ALLOWED_ORIGINS` | no (default none) | Comma-separated browser origins allowed to call the API, i.e. the web app (`local`: `http://localhost:5173`) |
 
 ## Database
 

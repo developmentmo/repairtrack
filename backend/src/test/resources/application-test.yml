@@ -18,3 +18,5 @@ repairtrack:
     bucket: repairtrack-test
   sharing:
     public-base-url: https://test.repairtrack.example
+  cors:
+    allowed-origins: https://app.repairtrack.example

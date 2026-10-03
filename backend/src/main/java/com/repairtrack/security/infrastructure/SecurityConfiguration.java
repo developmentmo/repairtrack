@@ -1,14 +1,22 @@
 package com.repairtrack.security.infrastructure;
 
+import java.time.Duration;
+import java.util.List;
+
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * HTTP security: stateless JWT bearer authentication, deny-by-default.
@@ -18,6 +26,7 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
  * services, never by URL patterns.
  */
 @Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(CorsProperties.class)
 class SecurityConfiguration {
 
     @Bean
@@ -28,6 +37,8 @@ class SecurityConfiguration {
         http
                 // No cookies/sessions are used for authentication, so CSRF protection does not apply.
                 .csrf(csrf -> csrf.disable())
+                // Browser clients (Flutter web) from the configured origins only; uses corsConfigurationSource().
+                .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST,
@@ -52,6 +63,23 @@ class SecurityConfiguration {
                         .authenticationEntryPoint(securityErrorHandler)
                         .accessDeniedHandler(securityErrorHandler));
         return http.build();
+    }
+
+    /**
+     * CORS for the web app. Bearer tokens travel in the Authorization header (no cookies), so credentials are not
+     * allowed. Preflight answers are cached by browsers for an hour.
+     */
+    @Bean
+    CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
+        var configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(properties.allowedOrigins());
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(Duration.ofHours(1));
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
     }
 
     /**

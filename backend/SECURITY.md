@@ -145,6 +145,12 @@ service cannot produce. Previous owners lose access to the history when their ow
 - Creation and revocation are audited (`SHARE_CREATED`, `SHARE_REVOKED`); the token never appears in audit entries or
   logs (`toString()` overrides). Views are counted per link (`access_count`), not audited per view.
 
+### CORS (Phase 8c)
+
+Only the origins in `CORS_ALLOWED_ORIGINS` (the Flutter web app) may call `/api/**` from a browser; the default is
+none and `*` is rejected at startup. Credentials (cookies) are not allowed: tokens travel in the `Authorization`
+header. Mobile apps are not affected by CORS.
+
 ### Never trusted from clients
 
 Roles, account status, verification status, source type, garage IDs and ownership claims. Request DTOs don't have
@@ -163,7 +169,6 @@ fields for server-decided values; unknown JSON properties can never set them.
 - No rate limiting / lockout on login, register and refresh yet.
 - No email verification or password reset.
 - No cleanup job for expired refresh tokens.
-- CORS not configured (only needed for Flutter web; mobile apps don't use it).
 - No admin endpoints to block users or grant roles (done directly in the database for now).
 - Changes made before Phase 5 have no audit entries (no production data existed).
 - No malware scanning of uploads; no periodic integrity sweep yet (integrity is checked on demand).
