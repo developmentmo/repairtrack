@@ -62,16 +62,19 @@ class _RepairDocumentsSectionState extends ConsumerState<RepairDocumentsSection>
     if (type == null) {
       return;
     }
-    final picked = await FilePicker.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: allowedDocumentExtensions,
-      withData: true,
     );
-    final file = picked?.files.singleOrNull;
-    final bytes = file?.bytes;
-    if (file == null || bytes == null) {
+    if (file == null) {
+      return; // cancelled
+    }
+    final bytes = await file.readAsBytes();
+    if (!mounted) {
       return;
     }
+    final segments = file.uri.pathSegments;
+    final fileName = segments.isNotEmpty && segments.last.isNotEmpty ? segments.last : 'document';
     if (bytes.length > maxDocumentBytes) {
       _show('Het bestand is groter dan 20 MB.');
       return;
@@ -81,7 +84,7 @@ class _RepairDocumentsSectionState extends ConsumerState<RepairDocumentsSection>
       final uploaded = await ref.read(documentApiProvider).upload(
             repair.id,
             type: type,
-            fileName: file.name,
+            fileName: fileName,
             bytes: bytes,
           );
       ref.invalidate(repairDocumentsProvider(repair.id));
