@@ -1,5 +1,6 @@
 package com.repairtrack.security.infrastructure;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 
@@ -12,11 +13,15 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.repairtrack.common.ratelimit.FixedWindowRateLimiter;
+import com.repairtrack.security.application.LoginThrottle;
 
 /**
  * HTTP security: stateless JWT bearer authentication, deny-by-default.
@@ -26,13 +31,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * services, never by URL patterns.
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(CorsProperties.class)
+@EnableConfigurationProperties({CorsProperties.class, RateLimitProperties.class})
 class SecurityConfiguration {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             UserRepository userRepository,
-                                            SecurityErrorHandler securityErrorHandler) throws Exception {
+                                            SecurityErrorHandler securityErrorHandler,
+                                            RateLimitProperties rateLimits,
+                                            Clock clock) throws Exception {
         var authenticatedUserConverter = new AuthenticatedUserConverter(userRepository);
         http
                 // No cookies/sessions are used for authentication, so CSRF protection does not apply.
@@ -62,6 +69,10 @@ class SecurityConfiguration {
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(securityErrorHandler)
                         .accessDeniedHandler(securityErrorHandler));
+        if (rateLimits.enabled()) {
+            http.addFilterBefore(new RateLimitFilter(rateLimits, clock, securityErrorHandler),
+                    BearerTokenAuthenticationFilter.class);
+        }
         return http.build();
     }
 
@@ -80,6 +91,12 @@ class SecurityConfiguration {
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);
         return source;
+    }
+
+    @Bean
+    LoginThrottle loginThrottle(RateLimitProperties rateLimits, Clock clock) {
+        var limit = rateLimits.loginFailuresPerAccount();
+        return new LoginThrottle(new FixedWindowRateLimiter(limit.requests(), limit.per(), clock));
     }
 
     /**

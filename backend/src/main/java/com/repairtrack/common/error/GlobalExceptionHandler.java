@@ -48,7 +48,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApplicationException.class)
     ResponseEntity<ApiErrorResponse> handleApplication(ApplicationException ex, HttpServletRequest request) {
-        return build(statusOf(ex.category()), ex.code(), ex.getMessage(), request);
+        HttpStatus status = statusOf(ex.category());
+        ApiErrorResponse body = body(status, ex.code(), ex.getMessage(), request);
+        if (ex instanceof RetryAfterAware retry) {
+            return ResponseEntity.status(status)
+                    .header(HttpHeaders.RETRY_AFTER, String.valueOf(RetryAfterAware.seconds(retry.retryAfter())))
+                    .body(body);
+        }
+        return ResponseEntity.status(status).body(body);
     }
 
     /** Thrown by method security (e.g. {@code @PreAuthorize}) inside the MVC layer. */
@@ -147,6 +154,7 @@ public class GlobalExceptionHandler {
             case BUSINESS_RULE_VIOLATION -> HttpStatus.valueOf(422); // constant name differs across Spring versions
             case PAYLOAD_TOO_LARGE -> HttpStatus.valueOf(413);
             case UNSUPPORTED_MEDIA_TYPE -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
+            case TOO_MANY_REQUESTS -> HttpStatus.TOO_MANY_REQUESTS;
         };
     }
 

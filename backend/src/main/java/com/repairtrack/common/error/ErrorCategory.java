@@ -28,5 +28,8 @@ public enum ErrorCategory {
     PAYLOAD_TOO_LARGE,
 
     /** Uploaded content is of a type we do not accept (415). */
-    UNSUPPORTED_MEDIA_TYPE
+    UNSUPPORTED_MEDIA_TYPE,
+
+    /** Too many attempts; the client should wait (429, with {@code Retry-After} when known). */
+    TOO_MANY_REQUESTS
 }

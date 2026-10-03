@@ -34,6 +34,7 @@ public class AuthService {
     private final SecurityProperties properties;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    private final LoginThrottle loginThrottle;
 
     /**
      * Hash compared against when the email is unknown, so login takes about as long for unknown
@@ -47,7 +48,8 @@ public class AuthService {
                        AccessTokenService accessTokenService,
                        SecurityProperties properties,
                        ApplicationEventPublisher events,
-                       Clock clock) {
+                       Clock clock,
+                       LoginThrottle loginThrottle) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordEncoder = passwordEncoder;
@@ -55,6 +57,7 @@ public class AuthService {
         this.properties = properties;
         this.events = events;
         this.clock = clock;
+        this.loginThrottle = loginThrottle;
         this.dummyPasswordHash = passwordEncoder.encode(OpaqueTokens.generate());
     }
 
@@ -80,19 +83,24 @@ public class AuthService {
 
     @Transactional
     public AuthTokens login(String email, String password) {
-        Optional<User> candidate = users.findByEmail(User.normalizeEmail(email));
+        String normalizedEmail = User.normalizeEmail(email);
+        loginThrottle.checkNotBlocked(normalizedEmail);
+        Optional<User> candidate = users.findByEmail(normalizedEmail);
         if (candidate.isEmpty()) {
             passwordEncoder.matches(password, dummyPasswordHash);
+            loginThrottle.recordFailure(normalizedEmail);
             throw new InvalidCredentialsException();
         }
         User user = candidate.get();
         if (!passwordEncoder.matches(password, user.getPasswordHash())
                 || user.getStatus() == UserStatus.DELETED) {
+            loginThrottle.recordFailure(normalizedEmail);
             throw new InvalidCredentialsException();
         }
         if (user.getStatus() == UserStatus.BLOCKED) {
             throw new AccountBlockedException();
         }
+        loginThrottle.reset(normalizedEmail);
         return issueTokens(user.getId(), UUID.randomUUID(), Instant.now(clock));
     }
 

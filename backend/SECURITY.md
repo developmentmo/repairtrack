@@ -145,6 +145,22 @@ service cannot produce. Previous owners lose access to the history when their ow
 - Creation and revocation are audited (`SHARE_CREATED`, `SHARE_REVOKED`); the token never appears in audit entries or
   logs (`toString()` overrides). Views are counted per link (`access_count`), not audited per view.
 
+### Abuse protection (Phase 9a)
+
+- **Per IP** (`RateLimitFilter`, in-memory fixed windows): login 10/min, register 10/hour, refresh 30/min,
+  vehicle claim 10/hour (VIN guessing), public share report 60/min (scraping). Over the limit: `429 RATE_LIMITED`
+  with `Retry-After`. Configurable under `repairtrack.rate-limit.*`; `RATE_LIMIT_ENABLED=false` switches the per-IP
+  limits off.
+- **Per account**: 10 failed logins per email address per 15 minutes, regardless of IP, then
+  `429 TOO_MANY_LOGIN_ATTEMPTS` (also with the right password) until the window ends. Unknown addresses are counted
+  the same way, so the answer never reveals whether an account exists. Trade-off: someone who knows an address can
+  block its logins for one window.
+- **Behind a reverse proxy** set `FORWARD_HEADERS_STRATEGY=framework` and let only the proxy reach the app;
+  otherwise every client shares the proxy's IP (or could fake `X-Forwarded-For`).
+- Limits are per application instance. With several instances, move the counters to a shared store (e.g. Redis).
+- **Refresh tokens** that expired more than a day ago are deleted daily (03:30 Europe/Amsterdam,
+  `REFRESH_TOKEN_CLEANUP_CRON`).
+
 ### CORS (Phase 8c)
 
 Only the origins in `CORS_ALLOWED_ORIGINS` (the Flutter web app) may call `/api/**` from a browser; the default is
@@ -166,14 +182,10 @@ fields for server-decided values; unknown JSON properties can never set them.
 
 ## Known gaps (planned hardening, Phase 9)
 
-- No rate limiting / lockout on login, register and refresh yet.
 - No email verification or password reset.
-- No cleanup job for expired refresh tokens.
 - No admin endpoints to block users or grant roles (done directly in the database for now).
 - Changes made before Phase 5 have no audit entries (no production data existed).
 - No malware scanning of uploads; no periodic integrity sweep yet (integrity is checked on demand).
 - Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.
-- No rate limiting on vehicle claims (VIN guessing is impractical, but should be throttled).
 - No dispute process when a vehicle was claimed by the wrong person (support/SYSTEM_ADMIN tooling needed).
-- No rate limiting on the public share endpoints (guessing 256-bit tokens is infeasible, but scraping should be throttled).
 - Share tokens are part of the URL path: reverse proxies / access logs in production must not log full paths for `/api/v1/public/**` and `/v/**`.

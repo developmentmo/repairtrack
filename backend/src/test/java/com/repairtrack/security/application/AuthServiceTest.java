@@ -26,6 +26,7 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.repairtrack.common.crypto.OpaqueTokens;
+import com.repairtrack.common.ratelimit.FixedWindowRateLimiter;
 import com.repairtrack.security.Role;
 import com.repairtrack.security.UserRegisteredEvent;
 import com.repairtrack.security.domain.InvalidPasswordException;
@@ -41,6 +42,7 @@ class AuthServiceTest {
     private static final Instant NOW = Instant.parse("2026-09-25T10:00:00Z");
     private static final String PASSWORD = "correct horse battery staple";
     private static final Duration REFRESH_TTL = Duration.ofDays(30);
+    private static final int MAX_FAILED_LOGINS = 3;
 
     // A real encoder: hashing behaviour is part of what we verify, and BCrypt is fast enough.
     private static final PasswordEncoder PASSWORD_ENCODER = PasswordEncoderFactories.createDelegatingPasswordEncoder();
@@ -61,8 +63,10 @@ class AuthServiceTest {
         var properties = new SecurityProperties(
                 new SecurityProperties.Jwt("0123456789abcdef0123456789abcdef", "repairtrack", Duration.ofMinutes(15)),
                 REFRESH_TTL);
+        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        var loginThrottle = new LoginThrottle(new FixedWindowRateLimiter(MAX_FAILED_LOGINS, Duration.ofMinutes(15), clock));
         authService = new AuthService(users, refreshTokens, PASSWORD_ENCODER, accessTokenService,
-                properties, events, Clock.fixed(NOW, ZoneOffset.UTC));
+                properties, events, clock, loginThrottle);
     }
 
     // ---------- register ----------
@@ -149,6 +153,51 @@ class AuthServiceTest {
         assertThat(tokens.refreshTokenExpiresAt()).isEqualTo(NOW.plus(REFRESH_TTL));
         assertThat(saved.getValue().getUserId()).isEqualTo(user.getId());
         verify(refreshTokens, never()).findByTokenHash(tokens.refreshToken()); // raw token never used as key
+    }
+
+    @Test
+    void tooManyFailedLoginsBlockTheAccountTemporarilyEvenWithTheRightPassword() {
+        User user = existingUser();
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        for (int i = 0; i < MAX_FAILED_LOGINS; i++) {
+            assertThatThrownBy(() -> authService.login(user.getEmail(), "wrong password"))
+                    .isInstanceOf(InvalidCredentialsException.class);
+        }
+
+        assertThatThrownBy(() -> authService.login("  Owner@Example.com ", PASSWORD))
+                .isInstanceOf(TooManyLoginAttemptsException.class)
+                .satisfies(e -> assertThat(((TooManyLoginAttemptsException) e).retryAfter()).isPositive());
+        verify(refreshTokens, never()).save(any());
+    }
+
+    @Test
+    void unknownEmailsAreThrottledTheSameWay() {
+        when(users.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
+        for (int i = 0; i < MAX_FAILED_LOGINS; i++) {
+            assertThatThrownBy(() -> authService.login("nobody@example.com", PASSWORD))
+                    .isInstanceOf(InvalidCredentialsException.class);
+        }
+
+        assertThatThrownBy(() -> authService.login("nobody@example.com", PASSWORD))
+                .isInstanceOf(TooManyLoginAttemptsException.class);
+    }
+
+    @Test
+    void successfulLoginResetsTheFailureCount() {
+        User user = existingUser();
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(accessTokenService.issue(user.getId()))
+                .thenReturn(new AccessTokenService.IssuedAccessToken("jwt", NOW.plusSeconds(900)));
+        for (int i = 0; i < MAX_FAILED_LOGINS - 1; i++) {
+            assertThatThrownBy(() -> authService.login(user.getEmail(), "wrong password"))
+                    .isInstanceOf(InvalidCredentialsException.class);
+        }
+        authService.login(user.getEmail(), PASSWORD);
+
+        for (int i = 0; i < MAX_FAILED_LOGINS - 1; i++) {
+            assertThatThrownBy(() -> authService.login(user.getEmail(), "wrong password"))
+                    .isInstanceOf(InvalidCredentialsException.class);
+        }
     }
 
     // ---------- refresh ----------

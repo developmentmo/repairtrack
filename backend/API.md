@@ -75,6 +75,8 @@ Business codes:
 | `FILE_TOO_LARGE` | 413 | Upload larger than 20 MB |
 | `UNSUPPORTED_FILE_TYPE` | 415 | Content is not PDF, JPEG or PNG (decided by the file's bytes) |
 | `INVALID_SHARE` | 400 | Share validity outside 1–365 days |
+| `RATE_LIMITED` | 429 | Too many requests from this IP (login, register, refresh, claim, public report); see `Retry-After` |
+| `TOO_MANY_LOGIN_ATTEMPTS` | 429 | Too many failed logins for this email address; see `Retry-After` |
 | `SHARE_NOT_FOUND` | 404 | Unknown, expired, revoked or ownership-ended link (one answer for all), or another owner's share |
 
 ## Authentication

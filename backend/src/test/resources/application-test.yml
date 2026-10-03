@@ -12,6 +12,10 @@ repairtrack:
   security:
     jwt:
       secret: test-secret-only-used-by-automated-tests-0123456789
+    refresh-token-cleanup-cron: "-"
+  # All integration tests come from 127.0.0.1; RateLimitIT switches the per-IP limits on for itself.
+  rate-limit:
+    enabled: false
   # Real values are supplied at runtime from the Garage Testcontainer (TestcontainersConfiguration).
   storage:
     region: garage

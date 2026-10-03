@@ -2,6 +2,7 @@ package com.repairtrack.security.infrastructure;
 
 import java.io.IOException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 import com.repairtrack.common.error.ApiErrorResponse;
+import com.repairtrack.common.error.RetryAfterAware;
 
 /**
  * Writes 401/403 responses produced inside the security filter chain in the same
@@ -49,6 +51,13 @@ class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHand
                        AccessDeniedException accessDeniedException) throws IOException {
         write(request, response, HttpStatus.FORBIDDEN, "FORBIDDEN",
                 "You do not have permission to perform this action.");
+    }
+
+    /** 429 from {@link RateLimitFilter}, in the uniform error format. */
+    void tooManyRequests(HttpServletRequest request, HttpServletResponse response, Duration retryAfter)
+            throws IOException {
+        response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(RetryAfterAware.seconds(retryAfter)));
+        write(request, response, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", "Too many requests. Try again later.");
     }
 
     private void write(HttpServletRequest request, HttpServletResponse response,
