@@ -9,6 +9,8 @@ String userMessage(Object error) {
     ApiException.network => 'Geen verbinding met de server. Controleer je verbinding en probeer het opnieuw.',
     'INVALID_CREDENTIALS' => 'E-mailadres of wachtwoord is onjuist.',
     'ACCOUNT_BLOCKED' => 'Dit account is geblokkeerd.',
+    'TOO_MANY_LOGIN_ATTEMPTS' => 'Te vaak een verkeerd wachtwoord. Probeer het over een kwartier opnieuw.',
+    'RATE_LIMITED' => 'Te veel verzoeken achter elkaar. Wacht even en probeer het opnieuw.',
     'EMAIL_ALREADY_REGISTERED' => 'Er bestaat al een account met dit e-mailadres.',
     'INVALID_PASSWORD' => 'Het wachtwoord moet minimaal 12 tekens hebben.',
     'UNAUTHORIZED' || 'INVALID_REFRESH_TOKEN' => 'Je sessie is verlopen. Log opnieuw in.',
