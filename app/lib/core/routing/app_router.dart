@@ -11,6 +11,8 @@ import '../../features/repairs/presentation/correct_repair_screen.dart';
 import '../../features/repairs/presentation/create_repair_screen.dart';
 import '../../features/repairs/presentation/repair_detail_screen.dart';
 import '../../features/repairs/presentation/vehicle_history_screen.dart';
+import '../../features/sharing/presentation/public_report_screen.dart';
+import '../../features/sharing/presentation/share_vehicle_screen.dart';
 import '../../features/vehicles/presentation/add_vehicle_screen.dart';
 import '../../features/vehicles/presentation/owner_dashboard_screen.dart';
 import '../../features/vehicles/presentation/vehicle_detail_screen.dart';
@@ -31,6 +33,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.login, builder: (context, state) => const LoginScreen()),
       GoRoute(path: Routes.register, builder: (context, state) => const RegisterScreen()),
       GoRoute(
+        path: '/v/:token',
+        builder: (context, state) => PublicReportScreen(token: state.pathParameters['token']!),
+      ),
+      GoRoute(
         path: Routes.home,
         builder: (context, state) => const OwnerDashboardScreen(),
         routes: [
@@ -46,6 +52,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'repairs/new',
                 builder: (context, state) => CreateRepairScreen(vehicleId: state.pathParameters['vehicleId']!),
+              ),
+              GoRoute(
+                path: 'share',
+                builder: (context, state) => ShareVehicleScreen(vehicleId: state.pathParameters['vehicleId']!),
               ),
             ],
           ),
@@ -108,6 +118,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// Pure redirect rules, unit-tested separately.
 @visibleForTesting
 String? redirectFor(SessionState session, String location) {
+  // The public report is for anyone with the link, logged in or not, and never waits for the session.
+  if (location.startsWith(Routes.publicPrefix)) {
+    return null;
+  }
   final onAuthPage = location == Routes.login || location == Routes.register;
   return switch (session) {
     SessionRestoring() || SessionOffline() => location == Routes.splash ? null : Routes.splash,

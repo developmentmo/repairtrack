@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 
 void main() {
+  // Web: clean URLs (/v/{token}) instead of /#/v/{token}, so share links work as printed.
+  usePathUrlStrategy();
   runApp(
     const ProviderScope(
       // Failed requests show an error with a retry button instead of being retried silently.

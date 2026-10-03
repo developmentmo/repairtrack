@@ -23,4 +23,11 @@ void main() {
     expect(redirectFor(const SignedIn(user), Routes.splash), Routes.home);
     expect(redirectFor(const SignedIn(user), Routes.vehicle('v1')), isNull);
   });
+
+  test('the public report is reachable in every session state', () {
+    final link = Routes.publicReport('abc');
+    expect(redirectFor(const SessionRestoring(), link), isNull);
+    expect(redirectFor(const SignedOut(), link), isNull);
+    expect(redirectFor(const SignedIn(user), link), isNull);
+  });
 }

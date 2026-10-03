@@ -71,6 +71,12 @@ class VehicleDetailScreen extends ConsumerWidget {
                 icon: const Icon(Icons.add),
                 label: const Text('Onderhoud of reparatie toevoegen'),
               ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => context.go(Routes.shareVehicle(vehicle.id)),
+                icon: const Icon(Icons.share_outlined),
+                label: const Text('Historie delen'),
+              ),
               const SizedBox(height: 32),
               TextButton.icon(
                 onPressed: () => _endOwnership(context, ref, vehicle),

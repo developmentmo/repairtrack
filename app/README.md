@@ -16,7 +16,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 # 3. Start
 flutter run                      # pick an iOS simulator or Android emulator
-flutter run -d chrome            # web (needs CORS in the backend, Phase 8c)
+flutter run -d chrome --web-port 5173   # web; the local backend allows this origin (CORS)
 ```
 
 The backend URL defaults to `http://localhost:8080` (Android emulator: `http://10.0.2.2:8080`).
@@ -42,7 +42,8 @@ lib/
     ├── vehicles/         dashboard, add/claim vehicle, vehicle details, sold
     ├── repairs/          history, mileage warnings, repair details, new record, correct, void, parts
     ├── garages/          register a garage, garage dashboard, plate search, work on behalf of the garage
-    └── documents/        list, open (presigned link) and upload PDF/JPEG/PNG
+    ├── documents/        list, open (presigned link) and upload PDF/JPEG/PNG
+    └── sharing/          owner share links; public report at /v/{token} (no login, web)
 ```
 
 Each feature has `data/` (API calls), `domain/` (models), `application/` (Riverpod providers) and
@@ -58,3 +59,15 @@ Each feature has `data/` (API calls), `domain/` (models), `application/` (Riverp
 - Mileage warnings are shown as inconsistencies, never as fraud.
 - Access and refresh tokens live in secure storage only. Refresh tokens are single-use; the network layer
   refreshes once for parallel requests.
+
+## Share links and the public report
+
+The owner creates a link in *Vehicle details → Historie delen*. The link is `{PUBLIC_BASE_URL}/v/{token}`; locally
+`PUBLIC_BASE_URL` is `http://localhost:5173`, so start the web app on that port to open links:
+
+```bash
+flutter run -d chrome --web-port 5173
+```
+
+The web build uses path URLs (`usePathUrlStrategy`). In production the web host must serve `index.html` for every
+path (SPA fallback), so `/v/{token}` loads the app.
