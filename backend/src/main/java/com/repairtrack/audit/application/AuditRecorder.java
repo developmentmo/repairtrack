@@ -13,6 +13,7 @@ import com.repairtrack.audit.domain.AuditEntityType;
 import com.repairtrack.document.DocumentEvents;
 import com.repairtrack.garage.GarageEvents;
 import com.repairtrack.repair.RepairEvents;
+import com.repairtrack.security.UserAccountEvents;
 import com.repairtrack.security.UserRegisteredEvent;
 import com.repairtrack.sharing.SharingEvents;
 import com.repairtrack.vehicle.VehicleEvents;
@@ -39,6 +40,30 @@ class AuditRecorder {
     @EventListener
     void on(UserRegisteredEvent event) {
         trail.record(AuditEntityType.USER, event.userId(), AuditAction.USER_REGISTERED, event.userId(),
+                null, null, event.occurredAt());
+    }
+
+    @EventListener
+    void on(UserAccountEvents.EmailVerified event) {
+        trail.record(AuditEntityType.USER, event.userId(), AuditAction.USER_EMAIL_VERIFIED, event.userId(),
+                null, null, event.occurredAt());
+    }
+
+    @EventListener
+    void on(UserAccountEvents.PasswordReset event) {
+        trail.record(AuditEntityType.USER, event.userId(), AuditAction.USER_PASSWORD_RESET, event.userId(),
+                null, null, event.occurredAt());
+    }
+
+    @EventListener
+    void on(UserAccountEvents.UserBlocked event) {
+        trail.record(AuditEntityType.USER, event.userId(), AuditAction.USER_BLOCKED, event.blockedBy(),
+                null, null, event.occurredAt());
+    }
+
+    @EventListener
+    void on(UserAccountEvents.UserUnblocked event) {
+        trail.record(AuditEntityType.USER, event.userId(), AuditAction.USER_UNBLOCKED, event.unblockedBy(),
                 null, null, event.occurredAt());
     }
 

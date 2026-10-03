@@ -10,10 +10,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.repairtrack.security.infrastructure.AccountTokenRepository;
 import com.repairtrack.security.infrastructure.RefreshTokenRepository;
 
 /**
- * Deletes refresh tokens that expired more than a day ago. They can no longer be used, so keeping them only
+ * Deletes refresh tokens and email-link tokens that expired more than a day ago. They can no longer be used, so keeping them only
  * grows the table. These are credentials, not history: the "no hard deletes" rule is about the vehicle history
  * and its audit trail. Idempotent, so it may run on several instances.
  */
@@ -24,10 +25,13 @@ public class RefreshTokenCleanup {
     static final Duration GRACE = Duration.ofDays(1);
 
     private final RefreshTokenRepository refreshTokens;
+    private final AccountTokenRepository accountTokens;
     private final Clock clock;
 
-    public RefreshTokenCleanup(RefreshTokenRepository refreshTokens, Clock clock) {
+    public RefreshTokenCleanup(RefreshTokenRepository refreshTokens, AccountTokenRepository accountTokens,
+                               Clock clock) {
         this.refreshTokens = refreshTokens;
+        this.accountTokens = accountTokens;
         this.clock = clock;
     }
 
@@ -35,8 +39,10 @@ public class RefreshTokenCleanup {
             zone = "${repairtrack.business-time-zone:Europe/Amsterdam}")
     @Transactional
     public int deleteExpired() {
-        int deleted = refreshTokens.deleteExpiredBefore(Instant.now(clock).minus(GRACE));
-        log.info("Refresh token cleanup: {} expired token(s) deleted", deleted);
-        return deleted;
+        Instant cutoff = Instant.now(clock).minus(GRACE);
+        int refresh = refreshTokens.deleteExpiredBefore(cutoff);
+        int account = accountTokens.deleteExpiredBefore(cutoff);
+        log.info("Token cleanup: {} refresh token(s) and {} email-link token(s) deleted", refresh, account);
+        return refresh + account;
     }
 }

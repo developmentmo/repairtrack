@@ -161,6 +161,24 @@ service cannot produce. Previous owners lose access to the history when their ow
 - **Refresh tokens** that expired more than a day ago are deleted daily (03:30 Europe/Amsterdam,
   `REFRESH_TOKEN_CLEANUP_CRON`).
 
+### Email verification and password reset (Phase 9b)
+
+- Login is refused (`403 EMAIL_NOT_VERIFIED`) until the address is confirmed through the emailed link; the check
+  comes after the password check, so it reveals nothing to someone without the password.
+- Links carry 256-bit single-use tokens; only their SHA-256 hash is stored (`account_token`). Verification links are
+  valid 24 hours, reset links 1 hour. A new email invalidates the previous link of the same kind; a verification
+  link can never reset a password.
+- `resend-verification` and `forgot-password` always answer 202 (no account enumeration) and are rate limited per
+  IP (5/hour each) against mail bombing; `verify-email` and `reset-password` 20/hour per IP.
+- A password reset logs the user out on all devices (all refresh tokens revoked) and is audited.
+- Emails are sent after the transaction commits; a mail-server failure is logged without the link and never rolls
+  back the account change. The token never appears in logs, audit entries or `toString()` output.
+
+### User administration (Phase 9b)
+
+SYSTEM_ADMIN can look up a user by exact email (no listing/search of users), block and unblock. Blocking takes effect
+on the next request and revokes all refresh tokens; an admin cannot block themselves. Both are audited.
+
 ### CORS (Phase 8c)
 
 Only the origins in `CORS_ALLOWED_ORIGINS` (the Flutter web app) may call `/api/**` from a browser; the default is
@@ -182,8 +200,7 @@ fields for server-decided values; unknown JSON properties can never set them.
 
 ## Known gaps (planned hardening, Phase 9)
 
-- No email verification or password reset.
-- No admin endpoints to block users or grant roles (done directly in the database for now).
+- No API to grant SYSTEM_ADMIN (deliberately: done directly in the database).
 - Changes made before Phase 5 have no audit entries (no production data existed).
 - No malware scanning of uploads; no periodic integrity sweep yet (integrity is checked on demand).
 - Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.

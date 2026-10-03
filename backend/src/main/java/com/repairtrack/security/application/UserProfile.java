@@ -16,11 +16,12 @@ public record UserProfile(
         String lastName,
         UserStatus status,
         Set<Role> roles,
+        boolean emailVerified,
         Instant createdAt
 ) {
 
     static UserProfile of(User user) {
         return new UserProfile(user.getId(), user.getEmail(), user.getFirstName(), user.getLastName(),
-                user.getStatus(), user.getRoles(), user.getCreatedAt());
+                user.getStatus(), user.getRoles(), user.isEmailVerified(), user.getCreatedAt());
     }
 }

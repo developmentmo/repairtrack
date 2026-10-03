@@ -15,11 +15,12 @@ public record UserResponse(
         String lastName,
         UserStatus status,
         Set<Role> roles,
+        boolean emailVerified,
         Instant createdAt
 ) {
 
     static UserResponse from(UserProfile profile) {
         return new UserResponse(profile.id(), profile.email(), profile.firstName(), profile.lastName(),
-                profile.status(), profile.roles(), profile.createdAt());
+                profile.status(), profile.roles(), profile.emailVerified(), profile.createdAt());
     }
 }

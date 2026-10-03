@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -48,6 +49,13 @@ public class TestcontainersConfiguration {
                 // the image has no shell, so wait on Garage's own health endpoint instead of a port probe
                 .waitingFor(Wait.forHttp("/health").forPort(GARAGE_ADMIN_PORT).forStatusCode(200)
                         .withStartupTimeout(Duration.ofMinutes(2)));
+    }
+
+    /** Account emails are recorded instead of sent; tests read the links from here. */
+    @Bean
+    @Primary
+    RecordingAccountMailer recordingAccountMailer() {
+        return new RecordingAccountMailer();
     }
 
     @Bean

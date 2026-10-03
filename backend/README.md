@@ -89,6 +89,10 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | no | Empty = AWS default credentials chain (e.g. IAM role) |
 | `S3_PATH_STYLE_ACCESS` | no (default `true`) | Bucket in the URL path (required for Garage) |
 | `PUBLIC_BASE_URL` | yes (outside `local`) | Base URL of the Flutter web app; share links are `{PUBLIC_BASE_URL}/v/{token}` (`local`: `http://localhost:5173`) |
+| `MAIL_HOST`, `MAIL_PORT` | yes (outside `local`) / no (default 587) | SMTP server for account emails (`local`: Mailpit on `localhost:1025`) |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | no | SMTP credentials |
+| `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS` | no (default `true`) | SMTP options |
+| `MAIL_FROM` | yes (outside `local`) | Sender, e.g. `RepairTrack <noreply@repairtrack.nl>` |
 | `RATE_LIMIT_ENABLED` | no (default `true`) | Per-IP limits on login, register, refresh, claim and public reports |
 | `FORWARD_HEADERS_STRATEGY` | no (default `none`) | `framework` behind a trusted reverse proxy, so limits see the real client IP |
 | `REFRESH_TOKEN_CLEANUP_CRON` | no (default `0 30 3 * * *`) | Daily deletion of expired refresh tokens (`-` disables) |
@@ -124,6 +128,12 @@ S3-compatible store; only configuration changes.
 - Android emulator: set `S3_PUBLIC_ENDPOINT=http://10.0.2.2:3900` so presigned URLs point at the host
 
 Integration tests start their own Garage container (Testcontainers), no setup needed.
+
+## Email (Mailpit)
+
+Locally, `docker compose` also starts [Mailpit](https://mailpit.axllent.org): it catches every email the app sends.
+Open **http://localhost:8025** to read verification and password-reset mails and click their links (they open the
+web app on `http://localhost:5173`). Integration tests record emails in memory instead (`RecordingAccountMailer`).
 
 ## Documentation
 

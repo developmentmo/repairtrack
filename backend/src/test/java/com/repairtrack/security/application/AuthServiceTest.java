@@ -156,6 +156,18 @@ class AuthServiceTest {
     }
 
     @Test
+    void unverifiedEmailCannotLogInButOnlyAfterTheRightPassword() {
+        User user = User.register("new@example.com", PASSWORD_ENCODER.encode(PASSWORD), "Nina", "New", NOW);
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> authService.login(user.getEmail(), "wrong password"))
+                .isInstanceOf(InvalidCredentialsException.class);
+        assertThatThrownBy(() -> authService.login(user.getEmail(), PASSWORD))
+                .isInstanceOf(EmailNotVerifiedException.class);
+        verify(refreshTokens, never()).save(any());
+    }
+
+    @Test
     void tooManyFailedLoginsBlockTheAccountTemporarilyEvenWithTheRightPassword() {
         User user = existingUser();
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
@@ -258,7 +270,9 @@ class AuthServiceTest {
     }
 
     private static User existingUser() {
-        return User.register("owner@example.com", PASSWORD_ENCODER.encode(PASSWORD), "Olga", "Owner",
+        User user = User.register("owner@example.com", PASSWORD_ENCODER.encode(PASSWORD), "Olga", "Owner",
                 NOW.minus(Duration.ofDays(10)));
+        user.verifyEmail(NOW.minus(Duration.ofDays(10)));
+        return user;
     }
 }

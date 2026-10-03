@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.repairtrack.garage.GarageVerificationStatus;
 import com.repairtrack.garage.application.GarageService;
 import com.repairtrack.garage.application.RegisterGarageCommand;
 import com.repairtrack.security.AuthenticatedUser;
@@ -36,6 +38,13 @@ class GarageController {
         var command = new RegisterGarageCommand(request.name(), request.kvkNumber(), request.address(),
                 request.postalCode(), request.city(), request.phone(), request.email());
         return GarageResponse.from(garageService.register(actor, command));
+    }
+
+    /** System admin: e.g. {@code GET /api/v1/garages?verificationStatus=PENDING} (the verification queue). */
+    @GetMapping
+    List<GarageResponse> byVerificationStatus(@AuthenticationPrincipal AuthenticatedUser actor,
+                                              @RequestParam("verificationStatus") GarageVerificationStatus status) {
+        return garageService.byVerificationStatus(actor, status).stream().map(GarageResponse::from).toList();
     }
 
     /** Garages the caller works at, with their role. Literal path wins over {garageId}. */

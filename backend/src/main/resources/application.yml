@@ -6,6 +6,18 @@ spring:
   application:
     name: repairtrack
 
+  # Outgoing account emails (verification, password reset). Required outside `local`.
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:true}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
@@ -64,6 +76,11 @@ repairtrack:
     # Daily deletion of expired refresh tokens ("-" disables it).
     refresh-token-cleanup-cron: ${REFRESH_TOKEN_CLEANUP_CRON:0 30 3 * * *}
   # Abuse protection (see RateLimitProperties for all limits and their defaults).
+  mail:
+    # Sender address of account emails, e.g. "RepairTrack <noreply@repairtrack.nl>".
+    from: ${MAIL_FROM}
+    # Links in emails open the web app: {link-base-url}/verify-email?token=... and /reset-password?token=...
+    link-base-url: ${PUBLIC_BASE_URL}
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
     login:
@@ -103,6 +120,10 @@ management:
       probes:
         enabled: true
       show-details: never
+  health:
+    # An SMTP outage must not mark the application as down; failed emails can be re-sent by the user.
+    mail:
+      enabled: false
   info:
     env:
       enabled: false

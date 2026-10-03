@@ -99,6 +99,15 @@ public class GarageService {
         return GarageView.of(garage);
     }
 
+    /** System admin: garages with the given verification status (e.g. the PENDING queue), oldest first. */
+    @Transactional(readOnly = true)
+    public List<GarageView> byVerificationStatus(AuthenticatedUser actor, GarageVerificationStatus status) {
+        if (!actor.hasRole(Role.SYSTEM_ADMIN)) {
+            throw new SystemAdminRequiredException();
+        }
+        return garages.findByVerificationStatusOrderByCreatedAtAsc(status).stream().map(GarageView::of).toList();
+    }
+
     /** Verification decision. Only system admins; checked here, not via URL rules. */
     @Transactional
     public GarageView decideVerification(AuthenticatedUser actor, UUID garageId,

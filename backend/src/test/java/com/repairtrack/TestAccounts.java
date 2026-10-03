@@ -28,6 +28,8 @@ public final class TestAccounts {
         ApiResponse registered = api.post("/api/v1/auth/register", Map.of(
                 "email", email, "password", PASSWORD, "firstName", firstName, "lastName", "Tester"));
         assertThat(registered.status()).as("register %s", email).isEqualTo(201);
+        // Shortcut for tests that are not about verification (AccountFlowIT covers the real email link).
+        jdbcTemplate.update("update app_user set email_verified_at = now() where email = ?", email);
         ApiResponse login = api.post("/api/v1/auth/login", Map.of("email", email, "password", PASSWORD));
         assertThat(login.status()).as("login %s", email).isEqualTo(200);
         return new Account(UUID.fromString(registered.field("id")), email, login.field("accessToken"));

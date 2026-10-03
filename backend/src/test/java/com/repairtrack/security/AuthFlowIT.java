@@ -272,9 +272,13 @@ class AuthFlowIT {
 
     // ---------- helpers ----------
 
+    /** Registers and confirms the email address directly (AccountFlowIT covers the real email link). */
     private ApiResponse register(String email) {
-        return api.post("/api/v1/auth/register", Map.of(
+        ApiResponse response = api.post("/api/v1/auth/register", Map.of(
                 "email", email, "password", PASSWORD, "firstName", "Test", "lastName", "User"));
+        jdbcTemplate.update("update app_user set email_verified_at = now() where email = lower(?) and email_verified_at is null",
+                email);
+        return response;
     }
 
     private ApiResponse login(String email, String password) {

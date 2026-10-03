@@ -1,5 +1,6 @@
 package com.repairtrack.garage.infrastructure;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.repairtrack.garage.GarageVerificationStatus;
 import com.repairtrack.garage.domain.Garage;
 
 public interface GarageRepository extends JpaRepository<Garage, UUID> {
@@ -22,4 +24,7 @@ public interface GarageRepository extends JpaRepository<Garage, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select g from Garage g where g.id = :id")
     Optional<Garage> findByIdForUpdate(@Param("id") UUID id);
+
+    /** System admin work queue, oldest first. */
+    List<Garage> findByVerificationStatusOrderByCreatedAtAsc(GarageVerificationStatus verificationStatus);
 }

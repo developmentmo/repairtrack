@@ -1,6 +1,7 @@
 # Local development infrastructure. The application itself runs from the IDE.
 #   postgres: database
 #   garage:   S3-compatible object storage for documents (https://garagehq.deuxfleurs.fr)
+#   mailpit:  catches outgoing email (http://localhost:8025)
 
 name: repairtrack
 
@@ -46,6 +47,15 @@ services:
       - garage-meta:/var/lib/garage/meta
       - garage-data:/var/lib/garage/data
     # The image has no shell, so no in-container healthcheck; use: curl -s localhost:3903/health
+    restart: unless-stopped
+
+  mailpit:
+    # Catches all outgoing email locally: open http://localhost:8025 to read verification and reset mails.
+    image: axllent/mailpit:latest
+    container_name: repairtrack-mailpit
+    ports:
+      - "127.0.0.1:1025:1025" # SMTP
+      - "127.0.0.1:8025:8025" # web UI
     restart: unless-stopped
 
 volumes:

@@ -75,6 +75,9 @@ Business codes:
 | `FILE_TOO_LARGE` | 413 | Upload larger than 20 MB |
 | `UNSUPPORTED_FILE_TYPE` | 415 | Content is not PDF, JPEG or PNG (decided by the file's bytes) |
 | `INVALID_SHARE` | 400 | Share validity outside 1–365 days |
+| `EMAIL_NOT_VERIFIED` | 403 | Login before the email link was followed |
+| `INVALID_TOKEN` | 400 | Verification or reset link unknown, expired, already used or of the wrong kind |
+| `CANNOT_BLOCK_YOURSELF` | 422 | Admin tries to block their own account |
 | `RATE_LIMITED` | 429 | Too many requests from this IP (login, register, refresh, claim, public report); see `Retry-After` |
 | `TOO_MANY_LOGIN_ATTEMPTS` | 429 | Too many failed logins for this email address; see `Retry-After` |
 | `SHARE_NOT_FOUND` | 404 | Unknown, expired, revoked or ownership-ended link (one answer for all), or another owner's share |
@@ -87,6 +90,10 @@ Business codes:
 | POST | `/api/v1/auth/login` | public | `{email, password}` | 200 `TokenResponse` |
 | POST | `/api/v1/auth/refresh` | public | `{refreshToken}` | 200 `TokenResponse` (new refresh token!) |
 | POST | `/api/v1/auth/logout` | public | `{refreshToken}` | 204 (idempotent) |
+| POST | `/api/v1/auth/verify-email` | public | `{token}` (from the email link) | 204 |
+| POST | `/api/v1/auth/resend-verification` | public | `{email}` | 202 (always) |
+| POST | `/api/v1/auth/forgot-password` | public | `{email}` | 202 (always) |
+| POST | `/api/v1/auth/reset-password` | public | `{token, newPassword}` | 204; all sessions are logged out |
 
 `TokenResponse`:
 ```json
@@ -106,13 +113,20 @@ Client rules:
 
 Registration never accepts roles or status; every new account is an active `OWNER`.
 
+**Email verification (Phase 9b):** registration sends an email with a link `{PUBLIC_BASE_URL}/verify-email?token=…`
+(valid 24 hours). Login answers `403 EMAIL_NOT_VERIFIED` until the link is followed (only after a correct password).
+The web app's page posts the token to `/auth/verify-email`. `resend-verification` and `forgot-password` always answer
+202, so they never reveal whether an account exists. A password-reset link (`/reset-password?token=…`) is valid for
+one hour, works once, also confirms the email address and logs the user out on all devices. A new email makes the
+previous link of the same kind invalid.
+
 ## Users
 
 | Method | Path | Access | Response |
 |---|---|---|---|
 | GET | `/api/v1/users/me` | authenticated | 200 `UserResponse` |
 
-`UserResponse`: `{id, email, firstName, lastName, status, roles, createdAt}`. Never contains credentials.
+`UserResponse`: `{id, email, firstName, lastName, status, roles, emailVerified, createdAt}`. Never contains credentials.
 
 ## Garages
 
@@ -282,6 +296,17 @@ downloadable, reference}]}`.
 Deliberately absent: internal IDs, VIN, owner and user identities, file names. Voided records stay visible (marked)
 so the history cannot be cleaned up silently. `reference` (the document's SHA-256) is only set when the link allows
 downloads. Every view increments the link's `accessCount`. Any invalid link returns `404 SHARE_NOT_FOUND`.
+
+## Administration (SYSTEM_ADMIN)
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/api/v1/garages?verificationStatus=PENDING` | 200 `[GarageResponse]`, oldest first (decide with `POST /garages/{id}/verification`) |
+| GET | `/api/v1/admin/users?email=…` | 200 `{id, email, firstName, lastName, status, roles, emailVerified, createdAt}` (exact email) |
+| POST | `/api/v1/admin/users/{userId}/block` | 200; takes effect immediately and ends all sessions |
+| POST | `/api/v1/admin/users/{userId}/unblock` | 200 |
+
+Other users get `403 SYSTEM_ADMIN_REQUIRED`. Blocking and unblocking are audited (`USER_BLOCKED`, `USER_UNBLOCKED`).
 
 ## Audit
 

@@ -101,6 +101,10 @@ public class AuthService {
             throw new AccountBlockedException();
         }
         loginThrottle.reset(normalizedEmail);
+        // Only after a correct password, so the answer does not reveal unverified accounts to others.
+        if (!user.isEmailVerified()) {
+            throw new EmailNotVerifiedException();
+        }
         return issueTokens(user.getId(), UUID.randomUUID(), Instant.now(clock));
     }
 

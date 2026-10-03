@@ -2,6 +2,10 @@ package com.repairtrack.audit.domain;
 
 public enum AuditAction {
     USER_REGISTERED,
+    USER_EMAIL_VERIFIED,
+    USER_PASSWORD_RESET,
+    USER_BLOCKED,
+    USER_UNBLOCKED,
 
     GARAGE_REGISTERED,
     GARAGE_VERIFICATION_REQUESTED,

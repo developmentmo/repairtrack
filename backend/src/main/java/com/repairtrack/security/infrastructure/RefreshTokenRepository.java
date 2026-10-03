@@ -27,6 +27,11 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     @Query("update RefreshToken t set t.revokedAt = :now where t.familyId = :familyId and t.revokedAt is null")
     int revokeFamily(@Param("familyId") UUID familyId, @Param("now") Instant now);
 
+    /** Logs the user out everywhere (password reset, blocked). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update RefreshToken t set t.revokedAt = :now where t.userId = :userId and t.revokedAt is null")
+    int revokeAllOfUser(@Param("userId") UUID userId, @Param("now") Instant now);
+
     /**
      * Rotations always expire after their predecessors, so a chain (replaced_by_id) is deleted oldest-first or
      * in the same statement; the foreign key is checked at the end of the statement.

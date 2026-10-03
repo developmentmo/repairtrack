@@ -23,6 +23,7 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V14 | `V14__create_document.sql` | `document` (metadata; bytes in object storage) |
 | V15 | `V15__create_verification.sql` | `verification` (provenance changes after creation) |
 | V16 | `V16__create_vehicle_share.sql` | `vehicle_share` (public share links, hashed tokens) |
+| V17 | `V17__create_account_token.sql` | `app_user.email_verified_at` (existing users count as verified), `account_token` |
 
 ## Tables
 
@@ -174,3 +175,8 @@ The file bytes are never stored in PostgreSQL.
 `id, vehicle_id (FK), token_hash (VARCHAR(64), unique, lower-case hex SHA-256 of the token; the token itself is never
 stored), include_documents, expires_at (> created_at), created_by (FK), created_at, revoked_at / revoked_by (both or
 neither), access_count (incremented atomically per view), last_accessed_at, version`. Never deleted; revoked instead.
+
+### account_token
+`id, user_id (FK), purpose (EMAIL_VERIFICATION / PASSWORD_RESET), token_hash (unique SHA-256 hex; the token itself is
+only in the email), created_at, expires_at (24 h / 1 h), used_at (single use; also set when a newer link replaces it),
+version`. Rows expired for more than a day are deleted by the nightly token cleanup.

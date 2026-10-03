@@ -97,6 +97,12 @@
             </exclusions>
         </dependency>
 
+        <!-- Account emails (verification, password reset) over SMTP; Mailpit locally -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Health / operational endpoints -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

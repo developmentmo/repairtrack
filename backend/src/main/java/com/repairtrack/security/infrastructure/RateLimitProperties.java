@@ -15,6 +15,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param claim                   {@code POST /vehicles/{id}/claim} per IP (VIN guessing)
  * @param publicReport            {@code GET /public/**} per IP (scraping share links)
  * @param loginFailuresPerAccount failed logins per email address, regardless of IP (password guessing)
+ * @param accountEmails           {@code POST /auth/resend-verification} and {@code /auth/forgot-password} per IP
+ *                                (mail bombing), each endpoint counted separately
+ * @param accountTokens           {@code POST /auth/verify-email} and {@code /auth/reset-password} per IP
  */
 @ConfigurationProperties(prefix = "repairtrack.rate-limit")
 public record RateLimitProperties(
@@ -24,7 +27,9 @@ public record RateLimitProperties(
         Limit refresh,
         Limit claim,
         Limit publicReport,
-        Limit loginFailuresPerAccount
+        Limit loginFailuresPerAccount,
+        Limit accountEmails,
+        Limit accountTokens
 ) {
 
     public RateLimitProperties {
@@ -35,6 +40,8 @@ public record RateLimitProperties(
         claim = orDefault(claim, 10, Duration.ofHours(1));
         publicReport = orDefault(publicReport, 60, Duration.ofMinutes(1));
         loginFailuresPerAccount = orDefault(loginFailuresPerAccount, 10, Duration.ofMinutes(15));
+        accountEmails = orDefault(accountEmails, 5, Duration.ofHours(1));
+        accountTokens = orDefault(accountTokens, 20, Duration.ofHours(1));
     }
 
     /** At most {@code requests} per {@code per}. */

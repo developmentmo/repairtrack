@@ -20,7 +20,7 @@ import com.repairtrack.security.infrastructure.RateLimitProperties.Limit;
 
 /**
  * Per-IP limits on endpoints that can be abused without an account: login, register, refresh, claim (VIN
- * guessing) and the public share-link report (scraping). Over the limit: {@code 429 RATE_LIMITED} with
+ * guessing), the public share-link report (scraping) and the account-email endpoints (mail bombing). Over the limit: {@code 429 RATE_LIMITED} with
  * {@code Retry-After}. The client IP is {@link HttpServletRequest#getRemoteAddr()}; behind a reverse proxy set
  * {@code FORWARD_HEADERS_STRATEGY=framework} so it is the real client, not the proxy.
  */
@@ -33,7 +33,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
         REGISTER("POST", path -> path.equals("/api/v1/auth/register")),
         REFRESH("POST", path -> path.equals("/api/v1/auth/refresh")),
         CLAIM_VEHICLE("POST", path -> CLAIM.matcher(path).matches()),
-        PUBLIC_REPORT("GET", path -> path.startsWith("/api/v1/public/"));
+        PUBLIC_REPORT("GET", path -> path.startsWith("/api/v1/public/")),
+        RESEND_VERIFICATION("POST", path -> path.equals("/api/v1/auth/resend-verification")),
+        FORGOT_PASSWORD("POST", path -> path.equals("/api/v1/auth/forgot-password")),
+        VERIFY_EMAIL("POST", path -> path.equals("/api/v1/auth/verify-email")),
+        RESET_PASSWORD("POST", path -> path.equals("/api/v1/auth/reset-password"));
 
         private final String method;
         private final Predicate<String> path;
@@ -58,6 +62,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
         limiters.put(Rule.REFRESH, limiter(properties.refresh(), clock));
         limiters.put(Rule.CLAIM_VEHICLE, limiter(properties.claim(), clock));
         limiters.put(Rule.PUBLIC_REPORT, limiter(properties.publicReport(), clock));
+        limiters.put(Rule.RESEND_VERIFICATION, limiter(properties.accountEmails(), clock));
+        limiters.put(Rule.FORGOT_PASSWORD, limiter(properties.accountEmails(), clock));
+        limiters.put(Rule.VERIFY_EMAIL, limiter(properties.accountTokens(), clock));
+        limiters.put(Rule.RESET_PASSWORD, limiter(properties.accountTokens(), clock));
     }
 
     @Override

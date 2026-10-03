@@ -55,6 +55,10 @@ public class User {
     @Column(name = "role", nullable = false, length = 30)
     private Set<Role> roles = new HashSet<>();
 
+    /** Null until the user confirmed their email address; login is refused until then. */
+    @Column(name = "email_verified_at")
+    private Instant emailVerifiedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -99,6 +103,31 @@ public class User {
         }
         status = UserStatus.BLOCKED;
         updatedAt = now;
+    }
+
+    public void unblock(Instant now) {
+        if (status != UserStatus.BLOCKED) {
+            throw new IllegalStateException("Only a blocked user can be unblocked");
+        }
+        status = UserStatus.ACTIVE;
+        updatedAt = now;
+    }
+
+    /** Idempotent: the first confirmation counts. */
+    public void verifyEmail(Instant now) {
+        if (emailVerifiedAt == null) {
+            emailVerifiedAt = Objects.requireNonNull(now, "now");
+            updatedAt = now;
+        }
+    }
+
+    public void changePasswordHash(String newPasswordHash, Instant now) {
+        passwordHash = Objects.requireNonNull(newPasswordHash, "passwordHash");
+        updatedAt = now;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerifiedAt != null;
     }
 
     public boolean isActive() {

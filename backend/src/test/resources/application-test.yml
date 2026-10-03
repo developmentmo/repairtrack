@@ -3,6 +3,9 @@
 # ${DATABASE_*} references in application.yml, which have no defaults by design.
 
 spring:
+  # Never used: integration tests replace the mailer with a recording one (TestcontainersConfiguration).
+  mail:
+    host: localhost
   datasource:
     url: jdbc:postgresql://provided-by-testcontainers/unused
     username: provided-by-testcontainers
@@ -22,5 +25,8 @@ repairtrack:
     bucket: repairtrack-test
   sharing:
     public-base-url: https://test.repairtrack.example
+  mail:
+    from: RepairTrack <noreply@test.repairtrack.example>
+    link-base-url: https://test.repairtrack.example
   cors:
     allowed-origins: https://app.repairtrack.example
