@@ -174,6 +174,14 @@ class AuditRecorder {
                 event.occurredAt());
     }
 
+    /** Found by the system (no actor). */
+    @EventListener
+    void on(DisputeEvents.EvidenceIntegrityCheckFailed event) {
+        trail.record(AuditEntityType.OWNERSHIP_DISPUTE, event.disputeId(),
+                AuditAction.DISPUTE_EVIDENCE_INTEGRITY_FAILED, null, null,
+                values("evidenceId", event.evidenceId(), "reason", event.reason()), event.occurredAt());
+    }
+
     @EventListener
     void on(DisputeEvents.DisputeDecided event) {
         trail.record(AuditEntityType.OWNERSHIP_DISPUTE, event.disputeId(),

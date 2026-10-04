@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -14,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -25,6 +29,8 @@ import com.repairtrack.RecordingDisputeMailer;
 import com.repairtrack.TestAccounts;
 import com.repairtrack.TestAccounts.Account;
 import com.repairtrack.TestVins;
+import com.repairtrack.TestcontainersConfiguration;
+import com.repairtrack.dispute.application.DisputeEvidenceIntegritySweep;
 
 /** Ownership disputes end to end: filing, responding, the admin decision and what changes for both parties. */
 @IntegrationTest
@@ -44,6 +50,12 @@ class DisputeFlowIT {
 
     @Autowired
     private RecordingDisputeMailer mailer;
+
+    @Autowired
+    private DisputeEvidenceIntegritySweep evidenceSweep;
+
+    @Autowired
+    private S3Client s3;
 
     private ApiTestClient api;
     private TestAccounts accounts;
@@ -214,6 +226,24 @@ class DisputeFlowIT {
     }
 
     @Test
+    void integritySweepReportsChangedEvidenceOnTheDispute() {
+        String disputeId = open(claimant, vin, PDF).field("id");
+        String key = jdbcTemplate.queryForObject("select storage_key from dispute_evidence where dispute_id = ?",
+                String.class, UUID.fromString(disputeId));
+
+        DisputeEvidenceIntegritySweep.Result intact = evidenceSweep.run();
+        assertThat(intact.checked()).isPositive();
+        assertThat(auditActions(disputeId)).doesNotContain("DISPUTE_EVIDENCE_INTEGRITY_FAILED");
+
+        s3.putObject(PutObjectRequest.builder().bucket(TestcontainersConfiguration.GARAGE_BUCKET).key(key).build(),
+                RequestBody.fromBytes("%PDF-1.4\n%tampered\n%%EOF\n".getBytes(StandardCharsets.US_ASCII)));
+        DisputeEvidenceIntegritySweep.Result tampered = evidenceSweep.run();
+
+        assertThat(tampered.failed()).isPositive();
+        assertThat(auditActions(disputeId)).contains("DISPUTE_EVIDENCE_INTEGRITY_FAILED");
+    }
+
+    @Test
     void onlyThePartiesAndAdminsGetAccess() {
         String disputeId = open(claimant, vin, PDF).field("id");
         Account stranger = accounts.create("Kees");
@@ -258,6 +288,11 @@ class DisputeFlowIT {
         ApiResponse created = api.post("/api/v1/vehicles/" + vehicleId + "/repairs", body, actor.token());
         assertThat(created.status()).isEqualTo(201);
         return created.field("id");
+    }
+
+    private List<String> auditActions(String disputeId) {
+        return jdbcTemplate.queryForList("select action from audit_event where entity_type = 'OWNERSHIP_DISPUTE' "
+                + "and entity_id = ? order by sequence_number", String.class, UUID.fromString(disputeId));
     }
 
     private static JsonNode findDispute(JsonNode list, String disputeId) {

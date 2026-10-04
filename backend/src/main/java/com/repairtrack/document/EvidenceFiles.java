@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -66,6 +67,15 @@ public class EvidenceFiles {
         String key = keyPrefix + "/" + UUID.randomUUID();
         String sha256 = pipeline.store(key, file, type);
         return new StoredEvidence(key, FileNames.sanitize(fileName, type), type.mimeType(), size, sha256);
+    }
+
+    /**
+     * Integrity check of a stored evidence file against the SHA-256 taken at upload.
+     *
+     * @return {@code MISSING}, {@code CHANGED} or {@code UNREADABLE}; empty when intact
+     */
+    public Optional<String> verify(String storageKey, String sha256) {
+        return pipeline.verify(storageKey, sha256);
     }
 
     /** Short-lived download link; the bucket itself stays private. */

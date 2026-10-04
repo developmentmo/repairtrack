@@ -3,11 +3,13 @@ package com.repairtrack.document.application;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Optional;
 
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -75,6 +77,28 @@ public final class UploadPipeline {
         }
         removeObjectIfTransactionRollsBack(key);
         return HexFormat.of().formatHex(digest.digest());
+    }
+
+    /**
+     * Re-reads a stored object and compares its SHA-256 with {@code expectedSha256}.
+     *
+     * @return {@code MISSING}, {@code CHANGED} or {@code UNREADABLE}; empty when intact
+     */
+    public Optional<String> verify(String key, String expectedSha256) {
+        try {
+            Optional<InputStream> stored = storage.open(key);
+            if (stored.isEmpty()) {
+                return Optional.of("MISSING");
+            }
+            MessageDigest digest = sha256();
+            try (InputStream in = new DigestInputStream(stored.get(), digest)) {
+                in.transferTo(OutputStream.nullOutputStream());
+            }
+            String actual = HexFormat.of().formatHex(digest.digest());
+            return expectedSha256.equals(actual) ? Optional.empty() : Optional.of("CHANGED");
+        } catch (IOException | RuntimeException e) {
+            return Optional.of("UNREADABLE");
+        }
     }
 
     private void removeObjectIfTransactionRollsBack(String key) {

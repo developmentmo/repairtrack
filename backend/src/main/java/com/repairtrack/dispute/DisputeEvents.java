@@ -21,6 +21,10 @@ public final class DisputeEvents {
                                        String mimeType, long fileSize, String sha256, Instant occurredAt) {
     }
 
+    /** Found by the weekly sweep (no actor). {@code reason}: MISSING, CHANGED or UNREADABLE. */
+    public record EvidenceIntegrityCheckFailed(UUID disputeId, UUID evidenceId, String reason, Instant occurredAt) {
+    }
+
     /** {@code newOwnerSince} only when upheld. */
     public record DisputeDecided(UUID disputeId, UUID vehicleId, boolean upheld, UUID decidedBy,
                                  LocalDate newOwnerSince, Instant occurredAt) {
