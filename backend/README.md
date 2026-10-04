@@ -149,6 +149,13 @@ Locally, `docker compose` also starts [Mailpit](https://mailpit.axllent.org): it
 Open **http://localhost:8025** to read verification and password-reset mails and click their links (they open the
 web app on `http://localhost:5173`). Integration tests record emails in memory instead (`RecordingAccountMailer`).
 
+## Docker image
+
+`docker build -t repairtrack-backend .` builds the production image (Maven build stage, JRE 21 runtime, non-root
+user, health check on `/actuator/health/readiness`, which covers the app and the database). It contains no
+configuration: every value in the table above comes from the environment. Deployment (staging/production, GHCR,
+rollback, backups) is described in [../docs/operations.md](../docs/operations.md).
+
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — modular monolith, module boundaries, domain model, roadmap

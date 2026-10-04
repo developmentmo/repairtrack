@@ -247,5 +247,5 @@ fields for server-decided values; unknown JSON properties can never set them.
 - No API to grant SYSTEM_ADMIN (deliberately: done directly in the database).
 - Changes made before Phase 5 have no audit entries (no production data existed).
 - Local and test Garage bucket/key use fixed throwaway values; production credentials come from the environment.
-- Share tokens are part of the URL path: reverse proxies / access logs in production must not log full paths for `/api/v1/public/**` and `/v/**`.
+- Share tokens are part of the URL path. The deployed proxies keep no access log (Caddy without `log`, nginx `access_log off`); keep it that way when adding a CDN or another proxy.
 - Rate limits and the RDW cache are in memory per instance; several instances would need a shared store (e.g. Redis).

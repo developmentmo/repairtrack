@@ -71,3 +71,14 @@ flutter run -d chrome --web-port 5173
 
 The web build uses path URLs (`usePathUrlStrategy`). In production the web host must serve `index.html` for every
 path (SPA fallback), so `/v/{token}` loads the app.
+
+## Web build for deployment
+
+```bash
+flutter build web --release --dart-define=API_BASE_URL=same-origin
+docker build -t repairtrack-web .
+```
+
+`same-origin`: the web app calls the API on the host it was loaded from (the edge proxy serves the app and `/api`
+on one host), so one image serves staging and production. Mobile builds get the API URL from the
+`MOBILE_API_BASE_URL` variable in `mobile-release.yml`. See [../docs/operations.md](../docs/operations.md).
