@@ -3,6 +3,7 @@
 #
 #   sudo ./setup-vps.sh --deploy-key "ssh-ed25519 AAAA... github-actions" \
 #        [--admin-user alice --admin-key "ssh-ed25519 AAAA... alice@laptop"] [--ssh-port 22] [--harden-ssh] [--swap 2G]
+#        [--trusted-ip 203.0.113.7]   (never banned by fail2ban, e.g. your home IP; may be repeated)
 #
 # Installs Docker Engine + Compose plugin, unattended security upgrades, ufw (only SSH, 80, 443) and fail2ban;
 # creates the deploy user "repairtrack-deploy" (key-only, member of the docker group), /opt/repairtrack, the
@@ -19,6 +20,7 @@ ADMIN_USER=""
 ADMIN_KEY=""
 HARDEN_SSH=false
 SWAP_SIZE=""
+TRUSTED_IPS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -28,6 +30,7 @@ while [[ $# -gt 0 ]]; do
     --ssh-port) SSH_PORT="$2"; shift 2 ;;
     --harden-ssh) HARDEN_SSH=true; shift ;;
     --swap) SWAP_SIZE="$2"; shift 2 ;;
+    --trusted-ip) TRUSTED_IPS+=("$2"); shift 2 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -127,10 +130,18 @@ ufw --force enable
 # Mailpit UI on 127.0.0.1 only. PostgreSQL is never published.
 
 step "fail2ban for SSH"
+# Conservative: 8 failures within 10 minutes -> 10 minute ban. Note that failures from just before fail2ban was
+# installed also count (that is how an admin who was still setting up keys can lock himself out for 10 minutes).
 cat >/etc/fail2ban/jail.d/repairtrack-sshd.local <<CONF
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1 ${TRUSTED_IPS[*]}
+
 [sshd]
 enabled = true
 port = $SSH_PORT
+maxretry = 8
+findtime = 10m
+bantime = 10m
 CONF
 systemctl enable --now fail2ban
 systemctl restart fail2ban
