@@ -1,0 +1,170 @@
+# RepairTrack STAGING stack. Lives in /opt/repairtrack/staging/ on the VPS, next to its .env (secrets,
+# never in git) and release.env (the image version, written by scripts/deploy.sh).
+#
+# Always run it through scripts/compose.sh (loads both env files):
+#   /opt/repairtrack/staging/scripts/compose.sh ps
+#   /opt/repairtrack/staging/scripts/compose.sh logs -f backend
+#
+# Networks: "db" (internal, no internet: postgres + backend), "services" (backend, garage, clamav) and the
+# external "edge" network shared with the Caddy proxy (backend, web, garage only).
+#
+# Differences from production: e-mail goes to Mailpit (nothing reaches real inboxes; UI on the VPS at
+# 127.0.0.1:8026, open it through an SSH tunnel), ClamAV can be switched off on a small VPS
+# (COMPOSE_PROFILES / MALWARE_SCAN_MODE in .env), and less memory for the backend.
+# Staging has its OWN database, storage, networks and secrets: it never touches production data.
+
+name: repairtrack-staging
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      # PostgreSQL 18+ keeps its data under /var/lib/postgresql/<major>/, so mount the parent directory.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - db
+    logging: *logging
+
+  garage:
+    image: dxflrs/garage:v2.3.0
+    restart: unless-stopped
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?set GARAGE_RPC_SECRET in .env}
+      GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY in .env}
+      GARAGE_DEFAULT_SECRET_KEY: ${S3_SECRET_KEY:?set S3_SECRET_KEY in .env}
+      GARAGE_DEFAULT_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
+    volumes:
+      - ../garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    networks:
+      services:
+      edge:
+        aliases:
+          - staging-garage
+    logging: *logging
+
+  clamav:
+    # Only with COMPOSE_PROFILES=clamav in .env (default in .env.example). Needs ~1.5 GB RAM; the first start downloads the virus definitions (a few minutes, uploads answer
+    # 503 SCANNER_UNAVAILABLE until then). Definitions are kept in a volume and updated by freshclam.
+    image: clamav/clamav-debian:1.4
+    profiles: ["clamav"]
+    restart: unless-stopped
+    volumes:
+      - clamav-db:/var/lib/clamav
+    networks:
+      - services
+    logging: *logging
+
+  backend:
+    image: "${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env}/repairtrack-backend:${RELEASE_TAG:?missing release.env, deploy with scripts/deploy.sh}"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage:
+        condition: service_started
+      clamav:
+        condition: service_started
+        required: false
+      mailpit:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: staging
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-10}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      PUBLIC_BASE_URL: https://${APP_DOMAIN:?set APP_DOMAIN in .env}
+      CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN}
+      # Behind Caddy: use X-Forwarded-For for the client IP (rate limits).
+      FORWARD_HEADERS_STRATEGY: framework
+      # Object storage: the stack's own Garage by default; set S3_ENDPOINT etc. to use external S3 instead.
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://garage:3900}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-https://${FILES_DOMAIN:?set FILES_DOMAIN in .env}}
+      S3_REGION: ${S3_REGION:-garage}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      # Mailpit catches every e-mail sent by staging.
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_SMTP_AUTH: "false"
+      MAIL_SMTP_STARTTLS: "false"
+      MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env}
+      MALWARE_SCAN_MODE: ${MALWARE_SCAN_MODE:-clamav}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      RDW_MODE: ${RDW_MODE:-rdw}
+      RDW_APP_TOKEN: ${RDW_APP_TOKEN:-}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-768m}
+    networks:
+      db:
+      services:
+      edge:
+        aliases:
+          - staging-backend
+    logging: *logging
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8026:8025" # web UI, VPS-local only: ssh -L 8026:127.0.0.1:8026 <vps>
+    networks:
+      - services
+    logging: *logging
+
+  web:
+    image: ${IMAGE_REGISTRY}/repairtrack-web:${RELEASE_TAG}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      edge:
+        aliases:
+          - staging-web
+    logging: *logging
+
+networks:
+  db:
+    name: repairtrack-staging-db
+    internal: true
+  services:
+    name: repairtrack-staging-services
+  edge:
+    external: true
+    name: repairtrack-staging-edge
+
+volumes:
+  postgres-data:
+    name: repairtrack-staging-postgres-data
+  garage-meta:
+    name: repairtrack-staging-garage-meta
+  garage-data:
+    name: repairtrack-staging-garage-data
+  clamav-db:
+    name: repairtrack-staging-clamav-db

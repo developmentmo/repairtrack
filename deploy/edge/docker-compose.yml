@@ -1,0 +1,49 @@
+# Edge reverse proxy for ALL RepairTrack stacks on this VPS: TLS (Let's Encrypt) and routing by host name.
+# It is the only container with published ports (80/443). It joins each stack's "edge" network and reaches only
+# the services that stack puts there (backend, web, garage); databases are never on an edge network.
+# When staging and production move to separate servers, each server runs its own copy of this file.
+
+name: repairtrack-edge
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    container_name: repairtrack-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in edge/.env}
+      PRODUCTION_APP_DOMAIN: ${PRODUCTION_APP_DOMAIN:?set PRODUCTION_APP_DOMAIN in edge/.env}
+      PRODUCTION_API_DOMAIN: ${PRODUCTION_API_DOMAIN:?set PRODUCTION_API_DOMAIN in edge/.env}
+      PRODUCTION_FILES_DOMAIN: ${PRODUCTION_FILES_DOMAIN:?set PRODUCTION_FILES_DOMAIN in edge/.env}
+      STAGING_APP_DOMAIN: ${STAGING_APP_DOMAIN:?set STAGING_APP_DOMAIN in edge/.env}
+      STAGING_API_DOMAIN: ${STAGING_API_DOMAIN:?set STAGING_API_DOMAIN in edge/.env}
+      STAGING_FILES_DOMAIN: ${STAGING_FILES_DOMAIN:?set STAGING_FILES_DOMAIN in edge/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # certificates and ACME account: keep this volume
+      - caddy-config:/config
+    networks:
+      - staging-edge
+      - production-edge
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  # Created by setup-vps.sh / deploy.sh; each stack attaches its public services to its own network.
+  staging-edge:
+    external: true
+    name: repairtrack-staging-edge
+  production-edge:
+    external: true
+    name: repairtrack-production-edge
+
+volumes:
+  caddy-data:
+  caddy-config:

@@ -5,3 +5,10 @@
 .idea/
 *.iml
 .vscode/
+
+# Deployment secrets and state live only on the servers
+deploy/**/.env
+deploy/**/release.env
+deploy/**/CURRENT_VERSION
+deploy/**/PREVIOUS_VERSION
+deploy/**/deployments.log

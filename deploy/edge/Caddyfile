@@ -1,0 +1,90 @@
+# RepairTrack edge proxy. Caddy obtains and renews Let's Encrypt certificates for every site below automatically.
+#
+# Deliberately NO access log: share-link tokens are part of request paths (/v/<token>, /api/v1/public/...) and
+# must not end up in logs. Errors are still logged to stdout (docker compose logs caddy).
+#
+# Container names below are network aliases set by each stack on its edge network
+# (production-backend, staging-web, ...).
+
+{
+	email {$ACME_EMAIL}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}
+
+# Web app host: the Flutter web app, plus the API and the health endpoint on the same origin
+# (the web app is built with API_BASE_URL=same-origin, so no CORS is needed).
+# Only /actuator/health* is proxied; every other actuator path stays internal.
+(app_site) {
+	import security_headers
+	encode zstd gzip
+	@backend path /api/* /actuator/health /actuator/health/*
+	handle @backend {
+		reverse_proxy {args[0]}-backend:8080
+	}
+	handle {
+		reverse_proxy {args[0]}-web:8080
+	}
+}
+
+# API host for the mobile apps.
+(api_site) {
+	import security_headers
+	encode zstd gzip
+	@backend path /api/* /actuator/health /actuator/health/*
+	handle @backend {
+		reverse_proxy {args[0]}-backend:8080
+	}
+	handle {
+		respond 404
+	}
+}
+
+# Presigned downloads from the private bucket (links made by the backend, valid for minutes). Read-only:
+# uploads always go through the backend, which scans and hashes them. The Host header is passed through
+# unchanged, which the S3 signature requires.
+(files_site) {
+	import security_headers
+	@read method GET HEAD
+	handle @read {
+		reverse_proxy {args[0]}-garage:3900
+	}
+	handle {
+		respond 405
+	}
+}
+
+{$PRODUCTION_APP_DOMAIN} {
+	import app_site production
+}
+
+{$PRODUCTION_API_DOMAIN} {
+	import api_site production
+}
+
+{$PRODUCTION_FILES_DOMAIN} {
+	import files_site production
+}
+
+{$STAGING_APP_DOMAIN} {
+	header X-Robots-Tag "noindex, nofollow"
+	import app_site staging
+}
+
+{$STAGING_API_DOMAIN} {
+	header X-Robots-Tag "noindex, nofollow"
+	import api_site staging
+}
+
+{$STAGING_FILES_DOMAIN} {
+	header X-Robots-Tag "noindex, nofollow"
+	import files_site staging
+}
