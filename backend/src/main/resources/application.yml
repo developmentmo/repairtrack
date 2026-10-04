@@ -139,6 +139,11 @@ management:
       probes:
         enabled: true
       show-details: never
+      group:
+        # Ready to take traffic only when the database answers (deployments wait for this). ClamAV and storage are
+        # in the overall /actuator/health but not here: a scanner reloading its signatures must not stop the API.
+        readiness:
+          include: readinessState,db
   health:
     # An SMTP outage must not mark the application as down; failed emails can be re-sent by the user.
     mail:
