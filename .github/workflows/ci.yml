@@ -1,20 +1,33 @@
-# Builds and tests the backend and the app on every push and pull request.
+# Continuous integration: tests for the backend and the app.
+#
+#   pull requests      only the parts that changed (paths filter), plus a Docker build check of the backend image
+#   called by cd.yml   everything (force-all), before any image is built for main or a release tag
+#   manual             Actions -> CI -> Run workflow
+#
+# Pushes to main are tested by cd.yml (which calls this workflow), so main is not tested twice.
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      force-all:
+        description: Run every job, regardless of which paths changed
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseded pull request runs are cancelled; every other run (e.g. called by CD) gets its own group.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
+    if: ${{ !inputs.force-all }}
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
@@ -34,7 +47,7 @@ jobs:
 
   backend:
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: ${{ always() && (inputs.force-all || needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -46,7 +59,8 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      # Unit tests, module boundaries and integration tests (Testcontainers uses the runner's Docker).
+      # Compile, unit tests, module boundaries, integration tests (Testcontainers uses the runner's Docker),
+      # package. Fails the workflow when any test fails.
       - run: ./mvnw --batch-mode --no-transfer-progress verify
       - if: failure()
         uses: actions/upload-artifact@v4
@@ -56,9 +70,24 @@ jobs:
             backend/target/surefire-reports
             backend/target/failsafe-reports
 
+  backend-image:
+    # A broken Dockerfile shows up in the pull request, not only after the merge.
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
   app:
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: ${{ always() && (inputs.force-all || needs.changes.outputs.app == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:

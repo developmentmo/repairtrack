@@ -1,0 +1,170 @@
+# Continuous delivery.
+#
+#   push to main      -> tests -> images sha-<commit> -> staging (automatic) -> production (after approval)
+#   push tag vX.Y.Z   -> tests -> images vX.Y.Z + sha-<commit> -> staging -> production (after approval)
+#   manual            -> deploy an EXISTING version to staging or production (redeploy / rollback), no build
+#
+# Production only deploys after a required reviewer approved the "production" environment (Settings ->
+# Environments). Set the repository variable PRODUCTION_FROM_MAIN=false to let only release tags reach production.
+# Images: ghcr.io/<owner>/repairtrack-backend and ghcr.io/<owner>/repairtrack-web, never deployed as "latest".
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment
+        type: choice
+        options: [staging, production]
+        required: true
+      version:
+        description: Existing image version (sha-xxxxxxx or vX.Y.Z), e.g. to roll back
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+# No workflow-level concurrency: a run waiting for production approval must not hold up the next merge's build
+# and staging deployment. deploy.yml serialises deployments per environment instead (deploy-staging,
+# deploy-production; a newer waiting deployment replaces an older waiting one, a running one is never cancelled).
+
+jobs:
+  test:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/ci.yml
+    with:
+      force-all: true
+
+  version:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      image-prefix: ${{ steps.version.outputs.image-prefix }}
+    steps:
+      - id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME}"
+          else
+            version="sha-${GITHUB_SHA::7}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image-prefix=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "Release version: \`$version\`" >> "$GITHUB_STEP_SUMMARY"
+
+  backend-image:
+    needs: [test, version]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.version.outputs.image-prefix }}/repairtrack-backend
+          # sha-<7 chars> always; vX.Y.Z for release tags. No "latest".
+          flavor: latest=false
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern=v{{version}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.version.outputs.version }}
+            REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  web-image:
+    needs: [test, version]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - name: Build the web app
+        working-directory: app
+        run: |
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+          flutter build web --release --dart-define=API_BASE_URL=same-origin
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.version.outputs.image-prefix }}/repairtrack-web
+          flavor: latest=false
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern=v{{version}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: app
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.version.outputs.version }}
+            REVISION=${{ github.sha }}
+
+  staging:
+    needs: [version, backend-image, web-image]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      version: ${{ needs.version.outputs.version }}
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: read
+
+  production:
+    needs: [version, staging]
+    if: startsWith(github.ref, 'refs/tags/v') || vars.PRODUCTION_FROM_MAIN != 'false'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      version: ${{ needs.version.outputs.version }}
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: read
+
+  manual:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      version: ${{ inputs.version }}
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: read

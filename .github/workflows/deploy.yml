@@ -1,0 +1,134 @@
+# Deploys an existing image version to one environment over SSH. Called by cd.yml (never directly).
+#
+# The job runs in the GitHub Environment of the same name, so it gets that environment's secrets and variables,
+# and production waits for the required reviewers. Steps:
+#   1. sync the deployment files (compose files, scripts, proxy config; never .env) to /opt/repairtrack
+#   2. log the VPS in to GHCR with this run's short-lived GITHUB_TOKEN, pull and start the version
+#      (deploy.sh: pre-deploy backup in production, health check, automatic rollback if unhealthy)
+#   3. smoke tests from the outside over HTTPS; on failure: rollback.sh and the job fails
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: deploy ${{ inputs.environment }} (${{ inputs.version }})
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: https://${{ vars.APP_DOMAIN }}
+    # Never two deployments of the same environment at once; a waiting one is not cancelled.
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    timeout-minutes: 30
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      VERSION: ${{ inputs.version }}
+      APP_URL: https://${{ vars.APP_DOMAIN }}
+      API_URL: https://${{ vars.API_DOMAIN }}
+      REMOTE_ROOT: /opt/repairtrack
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check inputs and configuration
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          API_DOMAIN: ${{ vars.API_DOMAIN }}
+        run: |
+          [[ "$ENVIRONMENT" =~ ^(staging|production)$ ]] || { echo "::error::unknown environment $ENVIRONMENT"; exit 1; }
+          [[ "$VERSION" =~ ^(sha-[0-9a-f]{7,40}|v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?)$ ]] \
+            || { echo "::error::not a release version: $VERSION"; exit 1; }
+          missing=()
+          [[ -n "$VPS_HOST" ]] || missing+=("secret VPS_HOST")
+          [[ -n "$APP_DOMAIN" ]] || missing+=("variable APP_DOMAIN")
+          [[ -n "$API_DOMAIN" ]] || missing+=("variable API_DOMAIN")
+          if ((${#missing[@]})); then
+            echo "::error::environment '$ENVIRONMENT' is missing: ${missing[*]} (see docs/operations.md)"
+            exit 1
+          fi
+
+      - name: Configure SSH (key and pinned host key from secrets)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<CONF
+          Host vps
+            HostName $VPS_HOST
+            User ${VPS_USER:-repairtrack-deploy}
+            Port ${VPS_PORT:-22}
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            BatchMode yes
+            ConnectTimeout 20
+            ServerAliveInterval 30
+          CONF
+          ssh vps true
+
+      - name: Sync deployment files (never .env)
+        run: |
+          staging_dir="$(mktemp -d)"
+          mkdir -p "$staging_dir/edge" "$staging_dir/garage" "$staging_dir/$ENVIRONMENT/scripts"
+          cp deploy/edge/docker-compose.yml deploy/edge/Caddyfile deploy/edge/.env.example "$staging_dir/edge/"
+          cp deploy/garage/garage.toml "$staging_dir/garage/"
+          cp "deploy/$ENVIRONMENT/docker-compose.yml" "deploy/$ENVIRONMENT/.env.example" "$staging_dir/$ENVIRONMENT/"
+          cp deploy/scripts/*.sh "$staging_dir/$ENVIRONMENT/scripts/"
+          chmod 750 "$staging_dir/$ENVIRONMENT/scripts/"*.sh
+          tar -C "$staging_dir" -czf - . | ssh vps "tar -xzf - -C $REMOTE_ROOT --no-same-owner --no-overwrite-dir"
+          printf '%s\n' "${GITHUB_SHA}" | ssh vps "cat > $REMOTE_ROOT/$ENVIRONMENT/DEPLOY_FILES_COMMIT"
+
+      - name: Deploy ${{ inputs.version }}
+        id: deploy
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh vps "docker login ghcr.io -u '${GITHUB_ACTOR}' --password-stdin" >/dev/null
+          ssh vps "$REMOTE_ROOT/$ENVIRONMENT/scripts/deploy.sh '$VERSION' --by 'github-actions $RUN_URL'"
+
+      - name: Log out of GHCR on the VPS
+        if: always()
+        run: ssh vps "docker logout ghcr.io" >/dev/null 2>&1 || true
+
+      - name: Smoke tests
+        id: smoke
+        run: bash deploy/scripts/smoke-test.sh "$APP_URL" "$API_URL"
+
+      - name: Roll back after failed smoke tests
+        if: failure() && steps.deploy.outcome == 'success' && steps.smoke.outcome == 'failure'
+        run: |
+          echo "::error::smoke tests failed for $VERSION on $ENVIRONMENT; rolling back to the previous version"
+          ssh vps "ROLLBACK_REASON='smoke tests failed for $VERSION' $REMOTE_ROOT/$ENVIRONMENT/scripts/rollback.sh"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### $ENVIRONMENT: \`$VERSION\`"
+            echo "- deploy: ${{ steps.deploy.outcome }}, smoke tests: ${{ steps.smoke.outcome }}"
+            echo "- commit: \`$GITHUB_SHA\`"
+            echo "- url: $APP_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+          ssh vps "$REMOTE_ROOT/$ENVIRONMENT/scripts/status.sh" 2>/dev/null | tail -n 5 || true

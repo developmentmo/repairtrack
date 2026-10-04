@@ -1,0 +1,161 @@
+# Mobile release builds for a version tag (vX.Y.Z) or on demand. Prepares store releases; it does NOT upload
+# to Google Play or the App Store (that needs store credentials, see docs/operations.md, "Mobile releases").
+#
+#   Android: app bundle (.aab, for Google Play) and APK, signed with the release key when the ANDROID_* secrets
+#            exist, otherwise with the debug key (installable for testing only).
+#   iOS:     an unsigned Release build (proves it compiles; signing + IPA need an Apple certificate and profile).
+#
+# The apps talk to the API URL in the repository variable MOBILE_API_BASE_URL (e.g. https://api.repairtrack.nl).
+# Version: build name from the tag (v1.2.3 -> 1.2.3), build number = workflow run number (always increasing).
+name: Mobile release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.47.6'
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      build-name: ${{ steps.v.outputs.build-name }}
+      build-number: ${{ steps.v.outputs.build-number }}
+    steps:
+      - id: v
+        env:
+          API_BASE_URL: ${{ vars.MOBILE_API_BASE_URL }}
+        run: |
+          [[ "$API_BASE_URL" == https://* ]] || { echo "::error::set the repository variable MOBILE_API_BASE_URL (https://...)"; exit 1; }
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            name="${GITHUB_REF_NAME#v}"
+            name="${name%%-*}"
+          else
+            name="0.0.0"
+          fi
+          echo "build-name=$name" >> "$GITHUB_OUTPUT"
+          echo "build-number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - name: Release signing key (if configured)
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$KEYSTORE_BASE64" ]]; then
+            echo "::warning::no ANDROID_KEYSTORE_BASE64 secret: building with the debug key (not for Google Play)"
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          keystore="$RUNNER_TEMP/upload-keystore.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          {
+            echo "storeFile=$keystore"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+      - name: Build app bundle and APK
+        env:
+          API_BASE_URL: ${{ vars.MOBILE_API_BASE_URL }}
+          BUILD_NAME: ${{ needs.version.outputs.build-name }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build-number }}
+        run: |
+          flutter build appbundle --release --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" \
+            --dart-define=API_BASE_URL="$API_BASE_URL"
+          flutter build apk --release --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" \
+            --dart-define=API_BASE_URL="$API_BASE_URL"
+          mkdir -p dist
+          suffix=""
+          [[ "${{ steps.signing.outputs.signed }}" == "true" ]] || suffix="-debug-signed"
+          cp build/app/outputs/bundle/release/app-release.aab "dist/repairtrack-$BUILD_NAME+$BUILD_NUMBER$suffix.aab"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/repairtrack-$BUILD_NAME+$BUILD_NUMBER$suffix.apk"
+      - name: Remove signing material
+        if: always()
+        run: rm -f android/key.properties "$RUNNER_TEMP/upload-keystore.jks"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: app/dist/
+          retention-days: 30
+
+  ios:
+    needs: version
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - name: Build (unsigned)
+        env:
+          API_BASE_URL: ${{ vars.MOBILE_API_BASE_URL }}
+          BUILD_NAME: ${{ needs.version.outputs.build-name }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build-number }}
+        run: |
+          flutter build ios --release --no-codesign --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" \
+            --dart-define=API_BASE_URL="$API_BASE_URL"
+          mkdir -p dist
+          (cd build/ios/iphoneos && zip -qr "../../../dist/repairtrack-ios-$BUILD_NAME+$BUILD_NUMBER-unsigned.zip" Runner.app)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: app/dist/
+          retention-days: 30
+
+  github-release:
+    # Attaches the builds to the GitHub release of the tag (created if it does not exist yet).
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber
