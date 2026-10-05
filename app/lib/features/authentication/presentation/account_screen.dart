@@ -7,7 +7,7 @@ import '../../../core/widgets/form_widgets.dart';
 import '../data/auth_api.dart';
 
 /// The signed-in user's account. Also the page the App Store / Google Play listing links to for account deletion
-/// (https://<domain>/account).
+/// (`https://<domain>/account`).
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
 
