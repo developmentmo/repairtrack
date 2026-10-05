@@ -5,7 +5,7 @@ work over through **GitHub issues, labels and pull requests**, so every step is 
 can step in at any point.
 
 ```text
-Slack ─► triage agent ──issue + label agent:backend / agent:frontend──► backend agent / frontend agent
+Slack ─► triage agent ─► proposal in your DM ─► ✅ ─► issue + label agent:backend / agent:frontend──► backend agent / frontend agent
         (Claude scheduled task)                                            │ branch agent/<area>-<n>, pull request
                                                                            ▼
                                CI ──red──► same agent fixes it (at most AGENT_MAX_FIX_ROUNDS rounds)
