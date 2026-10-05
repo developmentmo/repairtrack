@@ -290,16 +290,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextFormField(
+                    PasswordFormField(
                       controller: _password,
-                      decoration: const InputDecoration(labelText: 'Nieuw wachtwoord', helperText: 'Minimaal $min tekens'),
-                      obscureText: true,
+                      labelText: 'Nieuw wachtwoord',
+                      helperText: 'Minimaal $min tekens',
+                      autofillHints: const [AutofillHints.newPassword],
                       validator: (value) => (value == null || value.length < min) ? 'Minimaal $min tekens' : null,
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      decoration: const InputDecoration(labelText: 'Herhaal wachtwoord'),
-                      obscureText: true,
+                    PasswordFormField(
+                      labelText: 'Herhaal wachtwoord',
                       onFieldSubmitted: (_) => _submit(),
                       validator: (value) => value != _password.text ? 'De wachtwoorden zijn niet gelijk' : null,
                     ),

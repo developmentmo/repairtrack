@@ -86,11 +86,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 validator: (value) => (value == null || !value.contains('@')) ? 'Vul een geldig e-mailadres in' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              PasswordFormField(
                 key: const Key('login-password'),
                 controller: _password,
-                decoration: const InputDecoration(labelText: 'Wachtwoord'),
-                obscureText: true,
                 autofillHints: const [AutofillHints.password],
                 onFieldSubmitted: (_) => _submit(),
                 validator: (value) => (value == null || value.isEmpty) ? 'Vul je wachtwoord in' : null,

@@ -88,3 +88,53 @@ class DetailRow extends StatelessWidget {
     );
   }
 }
+
+/// Password input with an eye icon to show or hide what was typed. Hidden by default; every field toggles on its
+/// own, so "repeat password" stays hidden while the first one is shown.
+class PasswordFormField extends StatefulWidget {
+  const PasswordFormField({
+    super.key,
+    this.controller,
+    this.labelText = 'Wachtwoord',
+    this.helperText,
+    this.validator,
+    this.onFieldSubmitted,
+    this.autofillHints,
+  });
+
+  final TextEditingController? controller;
+  final String labelText;
+  final String? helperText;
+  final FormFieldValidator<String>? validator;
+  final ValueChanged<String>? onFieldSubmitted;
+  final Iterable<String>? autofillHints;
+
+  @override
+  State<PasswordFormField> createState() => _PasswordFormFieldState();
+}
+
+class _PasswordFormFieldState extends State<PasswordFormField> {
+  bool _visible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.controller,
+      obscureText: !_visible,
+      autocorrect: false,
+      enableSuggestions: false,
+      autofillHints: widget.autofillHints,
+      onFieldSubmitted: widget.onFieldSubmitted,
+      validator: widget.validator,
+      decoration: InputDecoration(
+        labelText: widget.labelText,
+        helperText: widget.helperText,
+        suffixIcon: IconButton(
+          tooltip: _visible ? 'Wachtwoord verbergen' : 'Wachtwoord tonen',
+          icon: Icon(_visible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+          onPressed: () => setState(() => _visible = !_visible),
+        ),
+      ),
+    );
+  }
+}

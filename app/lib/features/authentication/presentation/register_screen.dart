@@ -108,20 +108,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 validator: (value) => (value == null || !value.contains('@')) ? 'Vul een geldig e-mailadres in' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              PasswordFormField(
                 controller: _password,
-                decoration: const InputDecoration(
-                  labelText: 'Wachtwoord',
-                  helperText: 'Minimaal $minPasswordLength tekens',
-                ),
-                obscureText: true,
+                helperText: 'Minimaal $minPasswordLength tekens',
+                autofillHints: const [AutofillHints.newPassword],
                 validator: (value) =>
                     (value == null || value.length < minPasswordLength) ? 'Minimaal $minPasswordLength tekens' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Herhaal wachtwoord'),
-                obscureText: true,
+              PasswordFormField(
+                labelText: 'Herhaal wachtwoord',
                 onFieldSubmitted: (_) => _submit(),
                 validator: (value) => value != _password.text ? 'De wachtwoorden zijn niet gelijk' : null,
               ),

@@ -103,13 +103,11 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         children: [
           const Text('Vul ter bevestiging je wachtwoord in.'),
           const SizedBox(height: 12),
-          TextField(
+          PasswordFormField(
             key: const Key('delete-account-password'),
             controller: _password,
-            obscureText: true,
             autofillHints: const [AutofillHints.password],
-            decoration: const InputDecoration(labelText: 'Wachtwoord'),
-            onSubmitted: (_) {
+            onFieldSubmitted: (_) {
               if (!_busy) {
                 _delete();
               }
