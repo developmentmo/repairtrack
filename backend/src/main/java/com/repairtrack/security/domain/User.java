@@ -113,6 +113,23 @@ public class User {
         updatedAt = now;
     }
 
+    /**
+     * The user deleted their account. The row stays (history and audit keep a valid reference), but every personal
+     * detail is removed: e-mail and name are replaced, the password can never match again. Irreversible.
+     */
+    public void delete(String unusablePasswordHash, Instant now) {
+        if (status == UserStatus.DELETED) {
+            throw new IllegalStateException("Account already deleted");
+        }
+        email = "deleted-" + id + "@deleted.invalid";
+        firstName = "Verwijderd";
+        lastName = "account";
+        passwordHash = Objects.requireNonNull(unusablePasswordHash, "passwordHash");
+        roles = new HashSet<>(EnumSet.of(Role.OWNER));
+        status = UserStatus.DELETED;
+        updatedAt = Objects.requireNonNull(now, "now");
+    }
+
     /** Idempotent: the first confirmation counts. */
     public void verifyEmail(Instant now) {
         if (emailVerifiedAt == null) {

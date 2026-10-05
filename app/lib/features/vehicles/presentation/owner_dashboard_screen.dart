@@ -36,6 +36,8 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 context.go(Routes.admin);
               } else if (value == 'disputes') {
                 context.go(Routes.disputes);
+              } else if (value == 'account') {
+                context.go(Routes.account);
               } else {
                 ref.read(sessionControllerProvider.notifier).logout();
               }
@@ -43,6 +45,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'garage', child: Text('Garage aanmelden')),
               const PopupMenuItem(value: 'disputes', child: Text('Geschillen')),
+              const PopupMenuItem(value: 'account', child: Text('Account')),
               if (isSystemAdmin) const PopupMenuItem(value: 'admin', child: Text('Beheer')),
               const PopupMenuItem(value: 'logout', child: Text('Uitloggen')),
             ],

@@ -15,6 +15,9 @@ class Routes {
   // SYSTEM_ADMIN
   static const admin = '/admin';
 
+  // The signed-in user's account (also the "delete your account" page the app stores link to)
+  static const account = '/account';
+
   // Owner
   static const addVehicle = '/vehicles/add';
 

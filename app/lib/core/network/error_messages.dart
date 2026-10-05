@@ -8,6 +8,9 @@ String userMessage(Object error) {
   return switch (error.code) {
     ApiException.network => 'Geen verbinding met de server. Controleer je verbinding en probeer het opnieuw.',
     'INVALID_CREDENTIALS' => 'E-mailadres of wachtwoord is onjuist.',
+    'PASSWORD_INCORRECT' => 'Het wachtwoord klopt niet.',
+    'LAST_GARAGE_ADMIN' =>
+      'Je bent de enige beheerder van een garage met andere leden. Maak eerst iemand anders beheerder.',
     'ACCOUNT_BLOCKED' => 'Dit account is geblokkeerd.',
     'EMAIL_NOT_VERIFIED' => 'Bevestig eerst je e-mailadres via de link in je mail.',
     'INVALID_TOKEN' => 'Deze link is ongeldig, verlopen of al gebruikt. Vraag een nieuwe aan.',

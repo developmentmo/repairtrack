@@ -20,4 +20,11 @@ public final class UserAccountEvents {
 
     public record UserUnblocked(UUID userId, UUID unblockedBy, Instant occurredAt) {
     }
+
+    /**
+     * The user deleted their own account. Published inside the deleting transaction: listeners end what the user
+     * still holds (vehicle ownerships, garage memberships) and may veto the deletion by throwing.
+     */
+    public record AccountDeleted(UUID userId, Instant occurredAt) {
+    }
 }

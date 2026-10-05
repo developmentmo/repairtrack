@@ -229,6 +229,19 @@ header. Mobile apps are not affected by CORS.
 - Audited: `DISPUTE_OPENED`, `DISPUTE_RESPONDED`, `DISPUTE_EVIDENCE_ADDED`, `DISPUTE_UPHELD`/`DISPUTE_REJECTED`,
   `VEHICLE_OWNERSHIP_REVOKED`, `VEHICLE_OWNERSHIP_ASSIGNED`. Both parties get an email when it is filed and decided.
 
+### Account deletion (app store requirement)
+
+- `POST /api/v1/users/me/delete` `{password}` (password asked again; wrong -> `403 PASSWORD_INCORRECT`, not 401).
+  In the app: menu -> Account -> Account verwijderen; on the web: `https://<domain>/account` (the URL for the
+  store listings).
+- One transaction: active vehicle ownerships end today (history stays with the vehicle, which can be claimed by
+  the next owner; share links die with the ownership), garage memberships end (refused with `LAST_GARAGE_ADMIN`
+  when the user is the only admin of a garage with other members), then e-mail and name are replaced by
+  placeholders (`deleted-<id>@deleted.invalid`, "Verwijderd account"), the password can never match, all refresh
+  tokens and e-mail links are invalidated. Audited as `USER_DELETED`; the e-mail address can be registered again.
+- Kept on purpose: records, documents and corrections the user added (they are the vehicle's history), audit
+  entries (IDs only). Dispute mails are not sent to deleted or blocked accounts.
+
 ### Never trusted from clients
 
 Roles, account status, verification status, source type, garage IDs and ownership claims. Request DTOs don't have

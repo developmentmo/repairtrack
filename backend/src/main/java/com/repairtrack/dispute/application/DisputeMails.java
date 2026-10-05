@@ -119,8 +119,8 @@ class DisputeMails {
     }
 
     private void send(UserSummary to, String subject, String body) {
-        if (to == null) {
-            return;
+        if (to == null || !to.active()) {
+            return; // deleted or blocked account: nobody to tell
         }
         String text = "Hallo " + to.firstName() + ",\n\n" + body + "\nRepairTrack\n";
         events.publishEvent(new MailRequested(to.email(), subject, text));

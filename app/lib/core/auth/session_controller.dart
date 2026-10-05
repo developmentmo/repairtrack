@@ -95,6 +95,12 @@ class SessionController extends Notifier<SessionState> {
     }
   }
 
+  /// The account was deleted on the server (all its tokens are already invalid): forget the session locally.
+  Future<void> accountDeleted() async {
+    await ref.read(tokenStoreProvider).clear();
+    state = const SignedOut();
+  }
+
   /// Called by the network layer when the refresh token is rejected.
   void sessionExpired() {
     if (state is SignedIn || state is SessionRestoring) {

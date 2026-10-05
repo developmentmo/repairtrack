@@ -49,6 +49,11 @@ class AuthApi {
       });
 
   /// Always succeeds (202), whether or not the address has an unverified account.
+  /// Deletes the signed-in user's account; the password is asked again. Afterwards every token is invalid.
+  Future<void> deleteAccount(String password) => guardApi(() async {
+        await _dio.post<void>('/api/v1/users/me/delete', data: {'password': password});
+      });
+
   Future<void> resendVerification(String email) => guardApi(() async {
         await _dio.post<void>('/api/v1/auth/resend-verification', data: {'email': email}, options: _public());
       });

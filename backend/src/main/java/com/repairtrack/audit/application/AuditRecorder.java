@@ -56,6 +56,13 @@ class AuditRecorder {
                 null, null, event.occurredAt());
     }
 
+    /** The account's own deletion; no personal data is recorded (the row itself is anonymized). */
+    @EventListener
+    void on(UserAccountEvents.AccountDeleted event) {
+        trail.record(AuditEntityType.USER, event.userId(), AuditAction.USER_DELETED, event.userId(),
+                null, null, event.occurredAt());
+    }
+
     @EventListener
     void on(UserAccountEvents.UserBlocked event) {
         trail.record(AuditEntityType.USER, event.userId(), AuditAction.USER_BLOCKED, event.blockedBy(),
