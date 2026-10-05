@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../config/app_config.dart';
 
 /// Scrollable, centered column with a max width: forms look right on phones, tablets and the web.
 class CenteredForm extends StatelessWidget {
@@ -135,6 +138,22 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
           onPressed: () => setState(() => _visible = !_visible),
         ),
       ),
+    );
+  }
+}
+
+/// "Privacybeleid" link: opens the public privacy policy in the browser.
+class PrivacyPolicyLink extends StatelessWidget {
+  const PrivacyPolicyLink({super.key, this.label = 'Privacybeleid'});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      key: const Key('privacy-policy'),
+      onPressed: () => launchUrl(AppConfig.privacyPolicyUrl, mode: LaunchMode.externalApplication),
+      child: Text(label),
     );
   }
 }

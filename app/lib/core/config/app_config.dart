@@ -10,6 +10,12 @@ class AppConfig {
 
   static const _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
 
+  /// Public website (privacy policy, account page). Override with `--dart-define=PUBLIC_WEB_URL=...`.
+  static const _publicWebUrl = String.fromEnvironment('PUBLIC_WEB_URL', defaultValue: 'https://repairtrack.nl');
+
+  /// The privacy policy: on the web relative to the host the app runs on (so staging links to staging).
+  static Uri get privacyPolicyUrl => Uri.parse('${kIsWeb ? Uri.base.origin : _publicWebUrl}/privacy');
+
   static String get apiBaseUrl {
     // Deployed web app: the reverse proxy serves the app and /api on the same host, so one build works for
     // staging and production (`--dart-define=API_BASE_URL=same-origin`).

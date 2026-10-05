@@ -134,6 +134,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 onPressed: _busy ? null : () => context.go(Routes.login),
                 child: const Text('Ik heb al een account'),
               ),
+              const SizedBox(height: 8),
+              const Text(
+                'Met het aanmaken van een account ga je akkoord met het verwerken van je gegevens zoals beschreven '
+                'in ons privacybeleid.',
+                textAlign: TextAlign.center,
+              ),
+              const PrivacyPolicyLink(label: 'Privacybeleid lezen'),
             ],
           ),
         ),

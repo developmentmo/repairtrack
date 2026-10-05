@@ -41,6 +41,8 @@ class AccountScreen extends ConsumerWidget {
               icon: const Icon(Icons.delete_forever_outlined),
               label: const Text('Account verwijderen'),
             ),
+            const SizedBox(height: 32),
+            const Align(alignment: Alignment.centerLeft, child: PrivacyPolicyLink()),
           ],
         ),
       ),
