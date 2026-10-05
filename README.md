@@ -11,6 +11,7 @@ repairs per vehicle (identified by VIN), with a server-determined source and ver
 | [`app/`](app/) | Flutter app for iOS, Android and web (Riverpod, Dio, GoRouter). See [app/README.md](app/README.md). |
 | [`deploy/`](deploy/) | Docker Compose stacks for staging and production, the Caddy edge proxy and the operations scripts. |
 | [`docs/operations.md`](docs/operations.md) | Deployment, rollback, backups, VPS setup, secrets, DNS, troubleshooting. |
+| [`docs/agents.md`](docs/agents.md) | The AI agent pipeline: Slack triage, backend and frontend agents, review and merge. |
 | [`.github/workflows/`](.github/workflows/) | CI, CD, deployment and mobile release workflows. |
 
 Backend documentation: [architecture](backend/ARCHITECTURE.md) · [database](backend/DATABASE.md) ·
@@ -57,6 +58,7 @@ Images are published to GitHub Container Registry as `ghcr.io/<owner>/repairtrac
 | [`cd.yml`](.github/workflows/cd.yml) | push to `main`, tag `vX.Y.Z`, manual | tests -> images to GHCR -> staging -> approval -> production; manual: redeploy/rollback an existing version |
 | [`deploy.yml`](.github/workflows/deploy.yml) | called by CD | sync files over SSH, `deploy.sh`, health check, external smoke tests, rollback on failure |
 | [`mobile-release.yml`](.github/workflows/mobile-release.yml) | tag `vX.Y.Z`, manual | Android `.aab`/`.apk` and iOS build, attached to the GitHub release |
+| [`agent-*.yml`](docs/agents.md) | issue labels, CI results | AI agents: implement issues, fix, review and merge agent PRs (see [docs/agents.md](docs/agents.md)) |
 
 ## Deployment
 

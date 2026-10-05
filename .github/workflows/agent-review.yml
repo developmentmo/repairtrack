@@ -1,0 +1,183 @@
+# Agent pipeline: review and merge.
+#
+# Runs when CI finishes for a pull request from an agent branch (agent/backend-<n>, agent/frontend-<n>):
+#
+#   CI red                                   -> the agent fixes it (agent-worker.yml, mode fix)
+#   CI green, PR only touches its own area   -> the review agent reviews it and either
+#                                                 merges it (main -> staging automatically, production after approval)
+#                                                 asks for changes (-> the agent fixes them; at most
+#                                                   AGENT_MAX_FIX_ROUNDS rounds)
+#                                                 hands it to a human (label agent:needs-human)
+#   CI green, PR touches other files         -> label agent:needs-human, no review, no merge
+#
+# workflow_run always uses the workflow definitions on main, so a pull request cannot change this gate.
+# See docs/agents.md.
+name: Agent - review
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      startsWith(github.event.workflow_run.head_branch, 'agent/') &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    outputs:
+      next: ${{ steps.gate.outputs.next }}
+      pr: ${{ steps.gate.outputs.pr }}
+      area: ${{ steps.gate.outputs.area }}
+    steps:
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          stop() { echo "::notice::$1"; echo "next=none" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          [[ "$BRANCH" =~ ^agent/(backend|frontend)-[0-9]+$ ]] || stop "$BRANCH is not an agent branch."
+          area="${BASH_REMATCH[1]}"
+          pr=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json number,headRefOid,labels --jq '.[0] // empty')
+          [ -n "$pr" ] || stop "No open pull request for $BRANCH."
+          number=$(jq -r .number <<<"$pr")
+          [ "$(jq -r .headRefOid <<<"$pr")" = "$SHA" ] || stop "PR #$number has a newer commit than $SHA; its own CI run decides."
+          if jq -e '.labels | map(.name) | index("agent:needs-human")' <<<"$pr" >/dev/null; then
+            stop "PR #$number is waiting for a human."
+          fi
+          echo "pr=$number" >> "$GITHUB_OUTPUT"
+          echo "area=$area" >> "$GITHUB_OUTPUT"
+
+          if [ "$CONCLUSION" = failure ]; then
+            echo "next=fix" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Scope gate: an agent may only change files in its own area, never secrets or signing material.
+          case "$area" in
+            backend) allowed='^backend/' ;;
+            frontend) allowed='^app/' ;;
+          esac
+          files=$(gh api "repos/$REPO/pulls/$number/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)')
+          refused=$( { grep -Ev "$allowed" <<<"$files" || true; grep -E '(^|/)\.env$|key\.properties$|\.(jks|keystore|p12|pem|key)$' <<<"$files" || true; } | sort -u)
+          if [ -n "$refused" ]; then
+            gh pr edit "$number" --repo "$REPO" --add-label agent:needs-human
+            gh pr comment "$number" --repo "$REPO" --body "🤖 Deze pull request wijzigt bestanden buiten het domein van de $area-agent of gevoelige bestanden, en wordt daarom niet automatisch gereviewd of gemerged:
+
+          \`\`\`
+          $refused
+          \`\`\`"
+            stop "PR #$number touches files outside $allowed."
+          fi
+          echo "next=review" >> "$GITHUB_OUTPUT"
+
+  review:
+    needs: gate
+    if: needs.gate.outputs.next == 'review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: agent-review-${{ needs.gate.outputs.pr }}
+      cancel-in-progress: true
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    outputs:
+      verdict: ${{ steps.verdict.outputs.verdict }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_bots: ${{ vars.AGENT_BOT_LOGIN || 'claude[bot]' }}
+          settings: .claude/agent-settings.json
+          prompt: |
+            REPO: ${{ github.repository }}
+            PULL REQUEST: #${{ needs.gate.outputs.pr }}
+            HEAD COMMIT: ${{ github.event.workflow_run.head_sha }}
+            AREA: ${{ needs.gate.outputs.area }}
+            ROLE: review agent
+
+            Read and follow CLAUDE.md and .claude/agents/reviewer.md.
+            CI is green for the head commit and the scope gate passed; the head commit is checked out.
+            Review pull request #${{ needs.gate.outputs.pr }}, carry out what your verdict requires (merge with
+            --match-head-commit ${{ github.event.workflow_run.head_sha }}, or comment, or label), and return the verdict.
+          claude_args: |
+            --model ${{ vars.AGENT_REVIEW_MODEL || 'claude-opus-5-5' }}
+            --max-turns 40
+            --allowedTools "Read,Glob,Grep,Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh pr edit:*),Bash(gh pr merge:*),Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*)"
+            --disallowedTools "Edit,Write,MultiEdit,NotebookEdit"
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["approve","changes","needs_human"]},"summary":{"type":"string"}},"required":["verdict","summary"]}'
+
+      - id: verdict
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ needs.gate.outputs.pr }}
+          OUTPUT: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          set -uo pipefail
+          verdict=$(printf '%s' "$OUTPUT" | jq -r '.verdict // empty' 2>/dev/null || true)
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          echo "::notice::Review verdict for PR #$PR: ${verdict:-none}"
+          if [ -z "$verdict" ]; then
+            gh pr edit "$PR" --repo "$REPO" --add-label agent:needs-human
+            gh pr comment "$PR" --repo "$REPO" --body "🤖 De review-agent kon deze pull request niet afronden (zie de workflow-run). Er is een menselijke review nodig."
+          fi
+
+  fix-ci:
+    needs: gate
+    if: needs.gate.outputs.next == 'fix'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    uses: ./.github/workflows/agent-worker.yml
+    with:
+      mode: fix
+      number: ${{ fromJSON(needs.gate.outputs.pr) }}
+      area: ${{ needs.gate.outputs.area }}
+      ci_run_id: ${{ format('{0}', github.event.workflow_run.id) }}
+    secrets: inherit
+
+  fix-review:
+    needs: [gate, review]
+    if: needs.review.outputs.verdict == 'changes'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    uses: ./.github/workflows/agent-worker.yml
+    with:
+      mode: fix
+      number: ${{ fromJSON(needs.gate.outputs.pr) }}
+      area: ${{ needs.gate.outputs.area }}
+    secrets: inherit

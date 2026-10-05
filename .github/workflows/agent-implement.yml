@@ -1,0 +1,54 @@
+# Agent pipeline, entry point for work.
+#
+#   issue labelled agent:backend / agent:frontend   -> that agent implements the issue and opens a pull request
+#   pull request labelled agent:fix (by hand)        -> the agent addresses the latest feedback on its pull request
+#
+# Only people with write access (or the Claude GitHub App itself, for follow-up issues) can add labels, so only they
+# can start an agent. pull_request_target: the workflow definition always comes from main, never from the PR branch.
+# See docs/agents.md.
+name: Agent - implement
+
+on:
+  issues:
+    types: [labeled]
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  implement:
+    if: >-
+      github.event_name == 'issues' && github.event.issue.state == 'open' &&
+      (github.event.label.name == 'agent:backend' || github.event.label.name == 'agent:frontend')
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    uses: ./.github/workflows/agent-worker.yml
+    with:
+      mode: implement
+      number: ${{ github.event.issue.number }}
+      area: ${{ github.event.label.name == 'agent:backend' && 'backend' || 'frontend' }}
+    secrets: inherit
+
+  fix:
+    if: >-
+      github.event_name == 'pull_request_target' && github.event.label.name == 'agent:fix' &&
+      startsWith(github.event.pull_request.head.ref, 'agent/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    uses: ./.github/workflows/agent-worker.yml
+    with:
+      mode: fix
+      number: ${{ github.event.pull_request.number }}
+      area: ${{ startsWith(github.event.pull_request.head.ref, 'agent/backend-') && 'backend' || 'frontend' }}
+    secrets: inherit

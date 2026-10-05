@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(./.github/**)",
+      "Write(./.github/**)",
+      "Edit(./.claude/**)",
+      "Write(./.claude/**)",
+      "Edit(./CLAUDE.md)",
+      "Write(./CLAUDE.md)",
+      "Edit(./deploy/**)",
+      "Write(./deploy/**)",
+      "Edit(./docs/operations.md)",
+      "Write(./docs/operations.md)",
+      "Read(./**/.env)",
+      "Read(./app/android/key.properties)",
+      "WebFetch",
+      "WebSearch"
+    ]
+  }
+}

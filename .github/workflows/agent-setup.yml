@@ -1,0 +1,31 @@
+# Agent pipeline: one-off setup. Creates (or updates) the labels the agents use. Run it via
+# Actions -> "Agent - setup labels" -> Run workflow. Safe to run again. See docs/agents.md.
+name: Agent - setup labels
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - run: |
+          set -euo pipefail
+          label() { gh label create "$1" --repo "$REPO" --color "$2" --description "$3" --force; }
+          label "agent:backend"     "1d76db" "Backend agent: implement this issue"
+          label "agent:frontend"    "0e8a16" "Frontend agent: implement this issue"
+          label "agent:fix"         "fbca04" "Agent: address the latest feedback on this pull request"
+          label "agent:blocked"     "c5def5" "Waits for another agent's work to be merged"
+          label "agent:needs-human" "d93f0b" "An agent stopped: a human has to decide"
+          label "area:backend"      "bfd4f2" "Belongs to the backend (used when unblocking)"
+          label "area:frontend"     "c2e0c6" "Belongs to the app (used when unblocking)"
+          label "source:slack"      "5319e7" "Created by the Slack triage agent"
+          label "slack:notified"    "ededed" "The Slack thread has been told the outcome"
