@@ -20,13 +20,13 @@ import com.repairtrack.vehicle.infrastructure.VehicleOwnershipRepository;
  * links stop working because they are tied to the ownership. Runs in the deleting transaction.
  */
 @Component
-class AccountDeletionListener {
+class VehicleAccountDeletionListener {
 
     private final VehicleOwnershipRepository ownerships;
     private final ApplicationEventPublisher events;
     private final BusinessCalendar calendar;
 
-    AccountDeletionListener(VehicleOwnershipRepository ownerships, ApplicationEventPublisher events,
+    VehicleAccountDeletionListener(VehicleOwnershipRepository ownerships, ApplicationEventPublisher events,
                             BusinessCalendar calendar) {
         this.ownerships = ownerships;
         this.events = events;

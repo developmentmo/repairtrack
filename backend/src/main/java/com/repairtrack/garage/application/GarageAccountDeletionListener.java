@@ -21,14 +21,14 @@ import com.repairtrack.security.UserAccountEvents;
  * A garage where the user was the only member simply has no members any more. Work recorded by the user stays.
  */
 @Component
-class AccountDeletionListener {
+class GarageAccountDeletionListener {
 
     private final GarageRepository garages;
     private final GarageUserRepository memberships;
     private final ApplicationEventPublisher events;
     private final Clock clock;
 
-    AccountDeletionListener(GarageRepository garages, GarageUserRepository memberships,
+    GarageAccountDeletionListener(GarageRepository garages, GarageUserRepository memberships,
                             ApplicationEventPublisher events, Clock clock) {
         this.garages = garages;
         this.memberships = memberships;
