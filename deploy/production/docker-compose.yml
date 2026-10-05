@@ -104,6 +104,7 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
       MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      MAIL_SMTP_SSL: ${MAIL_SMTP_SSL:-false}
       MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env}
       MALWARE_SCAN_MODE: clamav
       CLAMAV_HOST: clamav

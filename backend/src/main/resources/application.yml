@@ -15,6 +15,8 @@ spring:
     properties:
       mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
       mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:true}
+      # Implicit TLS ("SSL", usually port 465), e.g. TransIP: MAIL_SMTP_SSL=true, MAIL_SMTP_STARTTLS=false.
+      mail.smtp.ssl.enable: ${MAIL_SMTP_SSL:false}
       mail.smtp.connectiontimeout: 5000
       mail.smtp.timeout: 10000
 

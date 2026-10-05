@@ -92,6 +92,7 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `MAIL_HOST`, `MAIL_PORT` | yes (outside `local`) / no (default 587) | SMTP server for account emails (`local`: Mailpit on `localhost:1025`) |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | no | SMTP credentials |
 | `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS` | no (default `true`) | SMTP options |
+| `MAIL_SMTP_SSL` | no (default `false`) | `true` for implicit TLS (port 465, e.g. TransIP) |
 | `MAIL_FROM` | yes (outside `local`) | Sender, e.g. `RepairTrack <noreply@repairtrack.nl>` |
 | `MALWARE_SCAN_MODE` | no (default `clamav`) | `clamav`: scan every upload (fail closed); `disabled`: development only |
 | `CLAMAV_HOST`, `CLAMAV_PORT` | no (default `localhost:3310`) | clamd address |
