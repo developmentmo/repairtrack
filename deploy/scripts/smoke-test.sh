@@ -34,7 +34,6 @@ check() {
 }
 
 check "backend ready (app + database)" "$app/actuator/health/readiness" 200 '"UP"'
-check "overall health" "$app/actuator/health" 200 '"UP"'
 check "web app" "$app/" 200 'flutter'
 check "deep link served by the web app" "$app/v/smoke-test" 200 'flutter'
 check "API requires authentication" "$app/api/v1/vehicles" 401
@@ -44,6 +43,11 @@ if [[ -n "$api" ]]; then
   check "API host ready" "$api/actuator/health/readiness" 200 '"UP"'
   check "API host serves no web app" "$api/" 404
 fi
+
+# Informational only: the overall health also includes the malware scanner, which needs a few minutes to load its
+# signatures after a first start. Readiness (app + database) above is what decides.
+overall="$(curl -s --max-time 10 "$app/actuator/health" || true)"
+echo "info  overall health: ${overall:-no answer}"
 
 if ((failures > 0)); then
   echo "$failures smoke test(s) failed"
