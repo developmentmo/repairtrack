@@ -69,8 +69,11 @@ key. Keep the key in a separate Anthropic workspace with a spend limit (see Cost
 ## Setup (once)
 
 1. **Install the Claude GitHub App** (https://github.com/apps/claude) on `developmentmo/repairtrack`.
-2. **Add the repository secret `ANTHROPIC_API_KEY`** (Settings → Secrets and variables → Actions). Create the key in
-   its own workspace in the Claude Console, with a monthly spend limit.
+2. **Add one repository secret** (Settings → Secrets and variables → **Actions** → tab **Secrets** →
+   **New repository secret**; not an environment secret, and not under Codespaces or Dependabot):
+   - `ANTHROPIC_API_KEY`: an API key from the Claude Console, billed per use. Put it in its own workspace with a
+     monthly spend limit.
+   - or `CLAUDE_CODE_OAUTH_TOKEN`: uses your Claude subscription (Pro/Max). Generate it with `claude setup-token`.
 3. **Run Actions → "Agent - setup labels" → Run workflow.**
 4. **Check the branch protection of `main`.** If it requires an approving review, the review agent cannot merge.
    Either leave approvals off (required status checks are fine), or put the Claude app on the bypass list.

@@ -165,6 +165,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: ${{ vars.AGENT_BOT_LOGIN || 'claude[bot]' }}
           settings: .claude/agent-settings.json
           prompt: ${{ steps.prompt.outputs.text }}
