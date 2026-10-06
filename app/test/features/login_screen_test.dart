@@ -29,11 +29,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the submit button reads "Inloggen bij RepairTrack"', (tester) async {
+  testWidgets('the submit button reads "Inloggen"', (tester) async {
     await pumpLogin(tester);
 
     expect(
-      find.descendant(of: find.byKey(const Key('login-submit')), matching: find.text('Inloggen bij RepairTrack')),
+      find.descendant(of: find.byKey(const Key('login-submit')), matching: find.text('Inloggen')),
       findsOneWidget,
     );
   });
