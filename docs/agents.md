@@ -26,7 +26,7 @@ can step in at any point.
 
 | Agent | Where it runs | Instructions | Can change |
 |---|---|---|---|
-| Triage (Slack) | Claude scheduled task, 08:07/12:07/16:07/20:07 Amsterdam time | [`.claude/agents/triage.md`](../.claude/agents/triage.md) | Slack messages (prefixed `🤖 RepairTrack-assistent namens Iljaas:`), GitHub issues |
+| Triage (Slack) | Claude scheduled task, 07:50/11:50/15:50/19:50 Amsterdam time | [`.claude/agents/triage.md`](../.claude/agents/triage.md) | Slack messages (prefixed `🤖 RepairTrack-assistent namens Iljaas:`), GitHub issues |
 | Backend | [`agent-worker.yml`](../.github/workflows/agent-worker.yml) | [`.claude/agents/backend.md`](../.claude/agents/backend.md) | `backend/**` |
 | Frontend | [`agent-worker.yml`](../.github/workflows/agent-worker.yml) | [`.claude/agents/frontend.md`](../.claude/agents/frontend.md) | `app/**` |
 | Review | [`agent-review.yml`](../.github/workflows/agent-review.yml) | [`.claude/agents/reviewer.md`](../.claude/agents/reviewer.md) | nothing; merges, comments and labels only |
@@ -89,8 +89,11 @@ key. Keep the key in a separate Anthropic workspace with a spend limit (see Cost
    | `AGENT_BOT_LOGIN` | `claude[bot]` | login of the Claude GitHub App bot |
 6. **Triage agent:**
    - connect Slack in Claude (Settings → Connectors);
-   - give the Claude cloud environment access to this repository;
-   - create the scheduled task with the prompt from `.claude/agents/triage.md`, filled in with the channel to watch.
+   - create the scheduled task **from a Claude Code session that has this repository attached** (claude.ai/code,
+     repository `developmentmo/repairtrack`), so its runs can use `gh api`. Use the prompt from
+     `.claude/agents/triage.md`, filled in with the source channel `#all-repairtrack` and the approval channel
+     `#issue-approval`;
+   - add the Slack connector to that scheduled task in claude.ai (it is not added automatically).
 
 **Test:** create an issue such as "[frontend] Typo in the login screen", add `agent:frontend`, and follow it under
 Actions.
