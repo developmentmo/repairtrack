@@ -115,6 +115,8 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: ${{ vars.AGENT_BOT_LOGIN || 'claude[bot]' }}
           settings: .claude/agent-settings.json
+          # Full Claude output in the log. Only turn on (variable AGENT_DEBUG=true) while debugging: it can show code and data.
+          show_full_output: ${{ vars.AGENT_DEBUG == 'true' }}
           prompt: |
             REPO: ${{ github.repository }}
             PULL REQUEST: #${{ needs.gate.outputs.pr }}

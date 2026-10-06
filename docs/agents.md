@@ -81,7 +81,8 @@ key. Keep the key in a separate Anthropic workspace with a spend limit (see Cost
 
    | Variable | Default | |
    |---|---|---|
-   | `AGENT_MODEL` | `claude-sonnet-5` | model for the backend and frontend agents |
+   | `AGENT_MODEL` | `claude-opus-5-5` | model for the backend and frontend agents (a cheaper model is fine if your account has it) |
+| `AGENT_DEBUG` | – | `true` shows Claude's full output in the Actions log (only while debugging) |
    | `AGENT_REVIEW_MODEL` | `claude-opus-5-5` | model for the review agent |
    | `AGENT_MAX_TURNS` | `80` | maximum turns per agent run |
    | `AGENT_MAX_FIX_ROUNDS` | `3` | fix rounds per PR before `agent:needs-human` |
