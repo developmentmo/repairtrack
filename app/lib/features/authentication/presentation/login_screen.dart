@@ -105,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               FilledButton(
                 key: const Key('login-submit'),
                 onPressed: _busy ? null : _submit,
-                child: _busy ? const ButtonProgress() : const Text('Inloggen'),
+                child: _busy ? const ButtonProgress() : const Text('Inloggen bij RepairTrack'),
               ),
               const SizedBox(height: 8),
               TextButton(
