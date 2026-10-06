@@ -29,6 +29,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('the submit button reads "Inloggen bij RepairTrack"', (tester) async {
+    await pumpLogin(tester);
+
+    expect(
+      find.descendant(of: find.byKey(const Key('login-submit')), matching: find.text('Inloggen bij RepairTrack')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('validates the fields before calling the backend', (tester) async {
     await pumpLogin(tester);
 
