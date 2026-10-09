@@ -16,6 +16,7 @@ import 'package:repairtrack_app/features/repairs/presentation/repair_labels.dart
 import 'package:repairtrack_app/features/vehicles/application/dashboard_providers.dart';
 import 'package:repairtrack_app/features/vehicles/data/vehicle_api.dart';
 import 'package:repairtrack_app/features/vehicles/domain/vehicle.dart';
+import 'package:repairtrack_app/features/vehicles/domain/vehicle_photo.dart';
 import 'package:repairtrack_app/features/vehicles/presentation/owner_dashboard_screen.dart';
 
 import '../helpers/in_memory_token_store.dart';
@@ -30,6 +31,23 @@ class MockDisputeApi extends Mock implements DisputeApi {}
 
 const _golf = Vehicle(id: 'v1', make: 'Volkswagen', model: 'Golf', ownedByMe: true, canEdit: true, licensePlate: 'K-123-AB');
 const _bmw = Vehicle(id: 'v2', make: 'BMW', model: '3 Serie', ownedByMe: true, canEdit: true);
+
+VehiclePhoto _photo(String vehicleId, String url) => VehiclePhoto.fromJson({
+      'id': 'p-$vehicleId',
+      'vehicleId': vehicleId,
+      'mimeType': 'image/jpeg',
+      'fileSize': 482113,
+      'sha256': 'ab' * 32,
+      'uploadedAt': '2026-10-09T10:00:00Z',
+      'downloadUrl': url,
+      'downloadUrlExpiresAt': '2026-10-09T10:05:00Z',
+    });
+
+Finder _networkImage(String url) =>
+    find.byWidgetPredicate((w) => w is Image && w.image is NetworkImage && (w.image as NetworkImage).url == url);
+
+/// Any vehicle photo; the logo in the app bar is an asset image.
+final _anyNetworkImage = find.byWidgetPredicate((w) => w is Image && w.image is NetworkImage);
 
 Repair _repair(String id, String vehicleId, DateTime date, {String title = 'Onderhoud', bool voided = false}) => Repair(
       id: id,
@@ -57,6 +75,7 @@ void main() {
     disputes = MockDisputeApi();
     when(() => garages.mine()).thenAnswer((_) async => const <MyGarage>[]);
     when(() => disputes.mine()).thenAnswer((_) async => const <PartyDispute>[]);
+    when(() => vehicles.photo(any())).thenAnswer((_) async => null);
   });
 
   List<Override> overrides() => [
@@ -116,6 +135,62 @@ void main() {
     await tester.scrollUntilVisible(find.text('Grote onderhoudsbeurt'), 200);
     expect(find.text('Grote onderhoudsbeurt'), findsOneWidget);
     expect(find.text('Garage bevestigd'), findsOneWidget);
+  });
+
+  group('vehicle photos on the dashboard', () {
+    Future<void> pumpDashboard(WidgetTester tester) async {
+      when(() => repairs.history(any())).thenAnswer((_) async => const <Repair>[]);
+      await tester.pumpWidget(
+        ProviderScope(overrides: overrides(), child: const MaterialApp(home: OwnerDashboardScreen())),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a vehicle with a photo shows it; one without shows the placeholder', (tester) async {
+      when(() => vehicles.myVehicles()).thenAnswer((_) async => [_golf, _bmw]);
+      when(() => vehicles.photo('v1')).thenAnswer((_) async => _photo('v1', 'https://storage.test/golf.jpg'));
+
+      await pumpDashboard(tester);
+
+      expect(_networkImage('https://storage.test/golf.jpg'), findsOneWidget);
+      expect(_anyNetworkImage, findsOneWidget);
+      verify(() => vehicles.photo('v2')).called(1);
+    });
+
+    testWidgets('a photo that fails to load falls back to the placeholder', (tester) async {
+      when(() => vehicles.myVehicles()).thenAnswer((_) async => [_golf]);
+      when(() => vehicles.photo('v1')).thenThrow(const ApiException(statusCode: 500, code: 'INTERNAL', message: 'boom'));
+
+      await pumpDashboard(tester);
+
+      expect(_anyNetworkImage, findsNothing);
+      expect(find.byKey(const Key('vehicle-thumbnail-placeholder')), findsOneWidget);
+      expect(find.text('Volkswagen Golf'), findsOneWidget);
+    });
+
+    testWidgets('the photo is not requested for a vehicle the user does not own', (tester) async {
+      const borrowed = Vehicle(id: 'v3', make: 'Fiat', model: 'Panda', ownedByMe: false, canEdit: false);
+      when(() => vehicles.myVehicles()).thenAnswer((_) async => [borrowed]);
+
+      await pumpDashboard(tester);
+
+      verifyNever(() => vehicles.photo(any()));
+      expect(find.byKey(const Key('vehicle-thumbnail-placeholder')), findsOneWidget);
+    });
+
+    testWidgets('pulling to refresh fetches a fresh photo link', (tester) async {
+      when(() => vehicles.myVehicles()).thenAnswer((_) async => [_golf]);
+      var calls = 0;
+      when(() => vehicles.photo('v1')).thenAnswer((_) async => _photo('v1', 'https://storage.test/golf-${++calls}.jpg'));
+
+      await pumpDashboard(tester);
+      expect(_networkImage('https://storage.test/golf-1.jpg'), findsOneWidget);
+
+      await tester.fling(find.text('Volkswagen Golf'), const Offset(0, 400), 1000);
+      await tester.pumpAndSettle();
+
+      expect(_networkImage('https://storage.test/golf-2.jpg'), findsOneWidget);
+    });
   });
 
   group('AppShell', () {
