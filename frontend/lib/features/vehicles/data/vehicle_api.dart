@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import '../../../core/format/formatters.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/dio_provider.dart';
 import '../domain/vehicle.dart';
+import '../domain/vehicle_photo.dart';
 
 final vehicleApiProvider = Provider<VehicleApi>((ref) => VehicleApi(ref.watch(dioProvider)));
 
@@ -57,5 +60,40 @@ class VehicleApi {
   /// "I sold this vehicle": ends the caller's ownership today. The history stays with the vehicle.
   Future<void> endOwnership(String vehicleId) => guardApi(() async {
         await _dio.post<void>('/api/v1/vehicles/$vehicleId/ownership/end');
+      });
+
+  /// The owner's photo with a fresh [VehiclePhoto.downloadUrl], or null when there is none yet
+  /// (404 VEHICLE_PHOTO_NOT_FOUND).
+  Future<VehiclePhoto?> photo(String vehicleId) async {
+    try {
+      return await guardApi(() async {
+        final response = await _dio.get<Map<String, dynamic>>('/api/v1/vehicles/$vehicleId/photo');
+        return VehiclePhoto.fromJson(response.data!);
+      });
+    } on ApiException catch (e) {
+      if (e.code == 'VEHICLE_PHOTO_NOT_FOUND') {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  /// Uploads a photo, replacing the current one. The server decides the file type from the bytes; the name is
+  /// only informative.
+  Future<VehiclePhoto> uploadPhoto(
+    String vehicleId, {
+    required String fileName,
+    required Uint8List bytes,
+    void Function(int sent, int total)? onSendProgress,
+  }) =>
+      guardApi(() async {
+        final form = FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: fileName)});
+        final response = await _dio.post<Map<String, dynamic>>(
+          '/api/v1/vehicles/$vehicleId/photo',
+          data: form,
+          options: Options(contentType: 'multipart/form-data', sendTimeout: const Duration(minutes: 2)),
+          onSendProgress: onSendProgress,
+        );
+        return VehiclePhoto.fromJson(response.data!);
       });
 }

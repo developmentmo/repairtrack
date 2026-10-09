@@ -63,3 +63,21 @@ String userMessage(Object error) {
     _ => 'Er ging iets mis (${error.code}).',
   };
 }
+
+/// User-facing (Dutch) text for an error while viewing or uploading a vehicle photo.
+String vehiclePhotoMessage(Object error) {
+  if (error is! ApiException) {
+    return userMessage(error);
+  }
+  return switch (error.code) {
+    'VEHICLE_ACCESS_DENIED' => 'Alleen de huidige eigenaar kan een foto toevoegen of bekijken.',
+    'VEHICLE_NOT_FOUND' => 'Dit voertuig bestaat niet (meer).',
+    'EMPTY_FILE' => 'Het gekozen bestand is leeg.',
+    'FILE_TOO_LARGE' => 'De foto is te groot (maximaal 20 MB).',
+    'UNSUPPORTED_FILE_TYPE' => "Alleen JPEG-, PNG- en WebP-foto's zijn toegestaan.",
+    'MALWARE_DETECTED' => 'Deze foto is geweigerd omdat er schadelijke inhoud in is gevonden.',
+    'SCANNER_UNAVAILABLE' => 'De foto kan nu niet worden gecontroleerd. Probeer het later opnieuw.',
+    'VEHICLE_PHOTO_CONFLICT' => 'Er werd tegelijk een andere foto geüpload. Probeer het opnieuw.',
+    _ => userMessage(error),
+  };
+}
