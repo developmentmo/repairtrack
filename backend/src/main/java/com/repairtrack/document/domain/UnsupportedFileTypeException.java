@@ -6,6 +6,10 @@ import com.repairtrack.common.error.ErrorCategory;
 public class UnsupportedFileTypeException extends ApplicationException {
 
     public UnsupportedFileTypeException() {
-        super(ErrorCategory.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_FILE_TYPE", "Only PDF, JPEG and PNG files are accepted.");
+        this("Only PDF, JPEG and PNG files are accepted.");
+    }
+
+    public UnsupportedFileTypeException(String message) {
+        super(ErrorCategory.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_FILE_TYPE", message);
     }
 }

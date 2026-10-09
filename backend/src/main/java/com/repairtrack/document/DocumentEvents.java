@@ -24,4 +24,14 @@ public final class DocumentEvents {
      */
     public record IntegrityCheckFailed(UUID documentId, UUID repairEventId, String reason, Instant occurredAt) {
     }
+
+    /** An owner added a photo to their vehicle. {@code replacedPhotoId}: the previous photo, now REPLACED, or null. */
+    public record VehiclePhotoUploaded(UUID photoId, UUID vehicleId, UUID replacedPhotoId, String mimeType,
+                                       long fileSize, String sha256, UUID uploadedBy, Instant occurredAt) {
+    }
+
+    /** A vehicle photo was refused because the scanner found malware. Nothing was stored. */
+    public record VehiclePhotoRejectedAsMalware(UUID vehicleId, UUID uploadedBy, String signature,
+                                                Instant occurredAt) {
+    }
 }

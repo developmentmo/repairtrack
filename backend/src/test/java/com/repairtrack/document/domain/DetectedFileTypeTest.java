@@ -15,6 +15,24 @@ class DetectedFileTypeTest {
                 .contains(DetectedFileType.JPEG);
         assertThat(DetectedFileType.detect(new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}))
                 .contains(DetectedFileType.PNG);
+        assertThat(DetectedFileType.detect("RIFF$\u0000\u0000\u0000WEBPVP8 ".getBytes(StandardCharsets.ISO_8859_1)))
+                .contains(DetectedFileType.WEBP);
+    }
+
+    @Test
+    void otherRiffContainersAreNotWebp() {
+        assertThat(DetectedFileType.detect("RIFF$\u0000\u0000\u0000WAVEfmt ".getBytes(StandardCharsets.ISO_8859_1)))
+                .isEmpty();
+        assertThat(DetectedFileType.detect("RIFF$\u0000\u0000\u0000WE".getBytes(StandardCharsets.ISO_8859_1)))
+                .isEmpty(); // truncated
+    }
+
+    @Test
+    void documentsAndPhotosAcceptDifferentTypes() {
+        assertThat(DetectedFileType.DOCUMENTS).containsExactlyInAnyOrder(DetectedFileType.PDF, DetectedFileType.JPEG,
+                DetectedFileType.PNG);
+        assertThat(DetectedFileType.PHOTOS).containsExactlyInAnyOrder(DetectedFileType.JPEG, DetectedFileType.PNG,
+                DetectedFileType.WEBP);
     }
 
     @Test

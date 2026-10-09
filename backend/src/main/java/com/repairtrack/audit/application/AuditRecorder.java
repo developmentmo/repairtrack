@@ -268,6 +268,25 @@ class AuditRecorder {
                 event.occurredAt());
     }
 
+    /** Recorded on the vehicle. File names are never part of the event. */
+    @EventListener
+    void on(DocumentEvents.VehiclePhotoUploaded event) {
+        boolean replaced = event.replacedPhotoId() != null;
+        trail.record(AuditEntityType.VEHICLE, event.vehicleId(),
+                replaced ? AuditAction.VEHICLE_PHOTO_REPLACED : AuditAction.VEHICLE_PHOTO_UPLOADED,
+                event.uploadedBy(), replaced ? values("photoId", event.replacedPhotoId()) : null,
+                values("photoId", event.photoId(), "mimeType", event.mimeType(), "fileSize", event.fileSize(),
+                        "sha256", event.sha256()),
+                event.occurredAt());
+    }
+
+    /** Only the signature, never file content. */
+    @EventListener
+    void on(DocumentEvents.VehiclePhotoRejectedAsMalware event) {
+        trail.record(AuditEntityType.VEHICLE, event.vehicleId(), AuditAction.VEHICLE_PHOTO_MALWARE_REJECTED,
+                event.uploadedBy(), null, values("signature", event.signature()), event.occurredAt());
+    }
+
     // ---------- sharing (never the token or its hash) ----------
 
     @EventListener

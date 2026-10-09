@@ -221,6 +221,10 @@ Upload flow (`DocumentService`, one transaction):
 4. store metadata; an evidentiary document on an owner record raises it to `DOCUMENTED`;
 5. publish `DocumentUploaded` (audit). If the transaction rolls back, the stored object is removed again.
 
+**Vehicle photos** (issue #7) live in the `document` module as well (`VehiclePhotoService`, table `vehicle_photo`),
+because they need the same pipeline and storage; this adds `document → vehicle` (`VehicleAccessService` for the
+current-owner check). The `vehicle` module cannot own them: `vehicle → document` would create a cycle through `repair`.
+
 Downloads use presigned GET URLs (5 minutes, `Content-Disposition: attachment`). `GET /documents/{id}/integrity`
 re-hashes the stored object and compares it with the upload hash.
 

@@ -24,6 +24,8 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V15 | `V15__create_verification.sql` | `verification` (provenance changes after creation) |
 | V16 | `V16__create_vehicle_share.sql` | `vehicle_share` (public share links, hashed tokens) |
 | V17 | `V17__create_account_token.sql` | `app_user.email_verified_at` (existing users count as verified), `account_token` |
+| V18 | `V18__create_ownership_dispute.sql` | `ownership_dispute`, `dispute_evidence`; ownership status `REVOKED` |
+| V19 | `V19__create_vehicle_photo.sql` | `vehicle_photo` (owner's photo of a vehicle; bytes in object storage) |
 
 ## Tables
 
@@ -166,6 +168,13 @@ docker compose down -v                                 # stop and DELETE all loc
 name), storage_key (unique; only IDs: repair-events/{repairId}/{documentId}), mime_type (pdf/jpeg/png, check),
 file_size (> 0), sha256 (CHAR(64), lower-case hex, check), uploaded_by, uploaded_at`. Append-only.
 The file bytes are never stored in PostgreSQL.
+
+### vehicle_photo
+`id, vehicle_id (FK), uploaded_by (FK app_user; the owner the photo belongs to), storage_key (unique; only IDs:
+vehicles/{vehicleId}/photos/{photoId}), mime_type (jpeg/png/webp, check), file_size (> 0), sha256 (CHAR(64), check),
+uploaded_at, status (ACTIVE|REPLACED), replaced_at / replaced_by_id (FK vehicle_photo, deferred; set iff REPLACED),
+version`. Partial unique index `uk_vehicle_photo_active (vehicle_id, uploaded_by) WHERE status = 'ACTIVE'`: one current
+photo per vehicle and owner. Never deleted; a new upload marks the previous row REPLACED and its object stays.
 
 ### verification
 `id, repair_event_id (FK), previous_source_type, previous_status, new_source_type, new_status, method
