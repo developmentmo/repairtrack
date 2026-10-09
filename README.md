@@ -8,7 +8,7 @@ repairs per vehicle (identified by VIN), with a server-determined source and ver
 | Folder | Contents |
 |---|---|
 | [`backend/`](backend/) | Spring Boot modular monolith (Java 21, PostgreSQL, Flyway, S3-compatible storage). See [backend/README.md](backend/README.md). |
-| [`app/`](app/) | Flutter app for iOS, Android and web (Riverpod, Dio, GoRouter). See [app/README.md](app/README.md). |
+| [`frontend/`](frontend/) | Flutter app for iOS, Android and web (Riverpod, Dio, GoRouter). See [frontend/README.md](frontend/README.md). |
 | [`deploy/`](deploy/) | Docker Compose stacks for staging and production, the Caddy edge proxy and the operations scripts. |
 | [`docs/operations.md`](docs/operations.md) | Deployment, rollback, backups, VPS setup, secrets, DNS, troubleshooting. |
 | [`docs/agents.md`](docs/agents.md) | The AI agent pipeline: Slack triage, backend and frontend agents, review and merge. |
@@ -26,7 +26,7 @@ docker compose up -d
 SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run      # or the shared IntelliJ run configuration
 
 # App (other terminal)
-cd app
+cd frontend
 flutter pub get && dart run build_runner build --delete-conflicting-outputs
 flutter run -d chrome --web-port 5173                    # or an iOS/Android device
 ```
@@ -37,7 +37,7 @@ Open `backend/pom.xml` as the project in IntelliJ. Mail sent locally: http://loc
 
 ```bash
 cd backend && ./mvnw verify                 # unit, module and integration tests (Testcontainers needs Docker)
-cd app && flutter analyze && flutter test
+cd frontend && flutter analyze && flutter test
 ```
 
 ## Docker
@@ -45,7 +45,7 @@ cd app && flutter analyze && flutter test
 | Image | Build | Contents |
 |---|---|---|
 | `repairtrack-backend` | `docker build -t repairtrack-backend backend` | multi-stage: Maven build, then JRE 21 only; non-root; health check on `/actuator/health/readiness`; configured only through environment variables |
-| `repairtrack-web` | `cd app && flutter build web --release --dart-define=API_BASE_URL=same-origin && docker build -t repairtrack-web .` | the Flutter web build served by unprivileged nginx (SPA fallback) |
+| `repairtrack-web` | `cd frontend && flutter build web --release --dart-define=API_BASE_URL=same-origin && docker build -t repairtrack-web .` | the Flutter web build served by unprivileged nginx (SPA fallback) |
 
 Images are published to GitHub Container Registry as `ghcr.io/<owner>/repairtrack-backend` and
 `ghcr.io/<owner>/repairtrack-web`, tagged `sha-<commit>` and, for releases, `vX.Y.Z`. There is no `latest`.

@@ -11,7 +11,7 @@ pull request after review feedback or a failing CI run. CLAUDE.md applies in ful
 ## Scope
 
 - **You may change:** `backend/**`, including the backend documentation (`backend/API.md`, `DATABASE.md`, ...).
-- **You may not change:** `app/**`, `deploy/**`, `.github/**`, `.claude/**`, `CLAUDE.md`, `docs/operations.md`,
+- **You may not change:** `frontend/**`, `deploy/**`, `.github/**`, `.claude/**`, `CLAUDE.md`, `docs/operations.md`,
   and any `.env` file. The review gate refuses pull requests that touch them.
 
 If the issue cannot be solved within this scope, stop and hand it to a human (see below). The same applies when the

@@ -6,7 +6,7 @@ description: Reviews pull requests from the RepairTrack backend and frontend age
 # Review agent
 
 You review one pull request from the backend or frontend agent. Before you start, CI is green and a deterministic gate
-in the workflow has already checked that the PR only touches files in the agent's own area (`backend/` or `app/`).
+in the workflow has already checked that the PR only touches files in the agent's own area (`backend/` or `frontend/`).
 CLAUDE.md applies in full.
 
 You end with exactly one verdict:

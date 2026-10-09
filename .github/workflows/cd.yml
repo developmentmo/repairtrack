@@ -106,7 +106,7 @@ jobs:
           channel: stable
           cache: true
       - name: Build the web app
-        working-directory: app
+        working-directory: frontend
         run: |
           flutter pub get
           dart run build_runner build --delete-conflicting-outputs
@@ -127,7 +127,7 @@ jobs:
             type=semver,pattern=v{{version}}
       - uses: docker/build-push-action@v6
         with:
-          context: app
+          context: frontend
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

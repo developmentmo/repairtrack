@@ -28,7 +28,7 @@ can step in at any point.
 |---|---|---|---|
 | Triage (Slack) | Claude scheduled task, 07:50/11:50/15:50/19:50 Amsterdam time | [`.claude/agents/triage.md`](../.claude/agents/triage.md) | Slack messages (prefixed `🤖 RepairTrack-assistent namens Iljaas:`), GitHub issues |
 | Backend | [`agent-worker.yml`](../.github/workflows/agent-worker.yml) | [`.claude/agents/backend.md`](../.claude/agents/backend.md) | `backend/**` |
-| Frontend | [`agent-worker.yml`](../.github/workflows/agent-worker.yml) | [`.claude/agents/frontend.md`](../.claude/agents/frontend.md) | `app/**` |
+| Frontend | [`agent-worker.yml`](../.github/workflows/agent-worker.yml) | [`.claude/agents/frontend.md`](../.claude/agents/frontend.md) | `frontend/**` |
 | Review | [`agent-review.yml`](../.github/workflows/agent-review.yml) | [`.claude/agents/reviewer.md`](../.claude/agents/reviewer.md) | nothing; merges, comments and labels only |
 
 All of them follow [`CLAUDE.md`](../CLAUDE.md).
@@ -52,7 +52,7 @@ All of them follow [`CLAUDE.md`](../CLAUDE.md).
   always use the workflows on `main`, so an agent PR cannot alter the pipeline that judges it.
 - **Hard scope.** The settings file [`.claude/agent-settings.json`](../.claude/agent-settings.json) denies edits to
   `.github/`, `.claude/`, `CLAUDE.md`, `deploy/` and `docs/operations.md`, and reading `.env` files. On top of that,
-  the deterministic scope gate in `agent-review.yml` refuses every PR that changes files outside `backend/` or `app/`,
+  the deterministic scope gate in `agent-review.yml` refuses every PR that changes files outside `backend/` or `frontend/`,
   or touches secrets or signing material.
 - **What is reviewed is what is merged.** The review agent merges with `--match-head-commit <sha>`, exactly the
   commit that CI tested.

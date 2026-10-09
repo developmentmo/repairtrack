@@ -12,7 +12,7 @@
       "Edit(./docs/operations.md)",
       "Write(./docs/operations.md)",
       "Read(./**/.env)",
-      "Read(./app/android/key.properties)",
+      "Read(./frontend/android/key.properties)",
       "WebFetch",
       "WebSearch"
     ]
