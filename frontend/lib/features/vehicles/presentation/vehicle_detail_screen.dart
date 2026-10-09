@@ -15,6 +15,7 @@ import '../../repairs/presentation/repair_tiles.dart';
 import '../application/vehicle_providers.dart';
 import '../data/vehicle_api.dart';
 import '../domain/vehicle.dart';
+import 'vehicle_photo_card.dart';
 
 /// Vehicle details for the owner, or for a garage member when [garageId] is set.
 class VehicleDetailScreen extends ConsumerWidget {
@@ -54,7 +55,11 @@ class VehicleDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
             ],
-            _VehicleHeader(vehicle: vehicle),
+            if (garageId == null && vehicle.ownedByMe) ...[
+              VehiclePhotoCard(vehicleId: vehicle.id),
+              const SizedBox(height: 12),
+            ],
+            _VehicleHeader(vehicle: vehicle, showPicture: !(garageId == null && vehicle.ownedByMe)),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -146,9 +151,12 @@ class VehicleDetailScreen extends ConsumerWidget {
 }
 
 class _VehicleHeader extends StatelessWidget {
-  const _VehicleHeader({required this.vehicle});
+  const _VehicleHeader({required this.vehicle, required this.showPicture});
 
   final Vehicle vehicle;
+
+  /// False when the owner's photo card is shown above the header.
+  final bool showPicture;
 
   @override
   Widget build(BuildContext context) {
@@ -158,8 +166,10 @@ class _VehicleHeader extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            const VehiclePicture(width: 120, height: 84),
-            const SizedBox(width: 16),
+            if (showPicture) ...[
+              const VehiclePicture(width: 120, height: 84),
+              const SizedBox(width: 16),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

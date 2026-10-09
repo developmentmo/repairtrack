@@ -72,6 +72,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Met de camera maak je een foto van je voertuig.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Kies een foto van je voertuig uit je fotobibliotheek.</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>nl</string>
