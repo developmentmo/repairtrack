@@ -51,11 +51,15 @@
 # Presigned downloads from the private bucket (links made by the backend, valid for minutes). Read-only:
 # uploads always go through the backend, which scans and hashes them. The Host header is passed through
 # unchanged, which the S3 signature requires.
+# The Flutter web app loads images with XHR, so the browser needs CORS: only the stack's own web app origin
+# (args[1]) may read responses. These are simple GETs (no custom headers), so no preflight is needed.
 (files_site) {
 	import security_headers
 	@read method GET HEAD
 	handle @read {
-		reverse_proxy {args[0]}-garage:3900
+		reverse_proxy {args[0]}-garage:3900 {
+			header_down Access-Control-Allow-Origin https://{args[1]}
+		}
 	}
 	handle {
 		respond 405
@@ -71,7 +75,7 @@
 }
 
 {$PRODUCTION_FILES_DOMAIN} {
-	import files_site production
+	import files_site production {$PRODUCTION_APP_DOMAIN}
 }
 
 {$STAGING_APP_DOMAIN} {
@@ -86,5 +90,5 @@
 
 {$STAGING_FILES_DOMAIN} {
 	header X-Robots-Tag "noindex, nofollow"
-	import files_site staging
+	import files_site staging {$STAGING_APP_DOMAIN}
 }
