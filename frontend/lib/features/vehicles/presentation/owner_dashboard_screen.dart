@@ -17,6 +17,7 @@ import '../../repairs/presentation/repair_tiles.dart';
 import '../application/dashboard_providers.dart';
 import '../application/vehicle_providers.dart';
 import '../domain/vehicle.dart';
+import 'vehicle_thumbnail.dart';
 
 /// Home: greeting, key numbers, the vehicles the user currently owns, recent repairs and, for garage members,
 /// their garages.
@@ -71,7 +72,8 @@ class OwnerDashboardScreen extends ConsumerWidget {
           ref
             ..invalidate(myGaragesProvider)
             ..invalidate(myDisputesProvider)
-            ..invalidate(myVehiclesProvider);
+            ..invalidate(myVehiclesProvider)
+            ..invalidate(vehiclePhotoProvider);
           await ref.read(myVehiclesProvider.future);
         },
         child: AsyncValueView(
@@ -310,7 +312,7 @@ class _VehicleCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const VehiclePicture(height: 120, radius: 0),
+            VehicleThumbnail(vehicle: vehicle),
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
