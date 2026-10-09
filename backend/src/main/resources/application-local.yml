@@ -2,6 +2,10 @@
 # Defaults match docker-compose.yml. Environment variables still take precedence.
 # These are throwaway local credentials, never used outside a developer machine.
 
+# Port 8081 locally, so the backend can run next to other projects that use 8080.
+server:
+  port: ${SERVER_PORT:8081}
+
 spring:
   # Mailpit from docker-compose.yml: SMTP on 1025, web UI on http://localhost:8025
   mail:
@@ -11,7 +15,7 @@ spring:
       mail.smtp.auth: false
       mail.smtp.starttls.enable: false
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/repairtrack}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5333/repairtrack}
     username: ${DATABASE_USERNAME:repairtrack}
     password: ${DATABASE_PASSWORD:repairtrack}
 

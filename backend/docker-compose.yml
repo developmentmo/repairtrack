@@ -18,7 +18,7 @@ services:
       PGTZ: UTC
     ports:
       # Bound to localhost only: the dev database is never reachable from the network.
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5333}:5432"
     volumes:
       # PostgreSQL 18+ images keep data under /var/lib/postgresql/<major>/, so mount the parent directory.
       - postgres-data:/var/lib/postgresql
