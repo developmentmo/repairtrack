@@ -129,6 +129,16 @@ service cannot produce. Previous owners lose access to the history when their ow
   detects any later change or loss of the stored object.
 - **Credentials:** static keys only for local/test; in production prefer the AWS default credentials chain (IAM role).
 
+### Vehicle photos (issue #7)
+
+- Only the **current owner** (from `vehicle_ownership`) can upload or view a photo, and only their own: other users,
+  garages and system admins get `403`; after a sale neither owner sees the other's photo. Never in the public report.
+- Same pipeline as documents: size limit, **JPEG/PNG/WebP by content**, ClamAV before storing (malware audited on the
+  vehicle as `VEHICLE_PHOTO_MALWARE_REJECTED`), SHA-256, private bucket under `vehicles/{id}/photos/{photoId}`,
+  presigned downloads (5 minutes, neutral file name `vehicle-photo.<ext>`). The client's file name is not stored.
+- Replacing never deletes: the old row becomes `REPLACED` and its object stays. Audited on the vehicle as
+  `VEHICLE_PHOTO_UPLOADED` / `VEHICLE_PHOTO_REPLACED` (IDs, type, size, hash only).
+
 ### Public share links (Phase 7)
 
 - **Tokens:** 256 bits from `SecureRandom` (43 URL-safe characters), returned once on creation. Only the SHA-256

@@ -75,7 +75,9 @@ Business codes:
 | `FILE_TOO_LARGE` | 413 | Upload larger than 20 MB |
 | `MALWARE_DETECTED` | 422 | Upload contains malware (nothing stored; audited on the record) |
 | `SCANNER_UNAVAILABLE` | 503 | The malware scanner gave no verdict; upload refused, try again later |
-| `UNSUPPORTED_FILE_TYPE` | 415 | Content is not PDF, JPEG or PNG (decided by the file's bytes) |
+| `UNSUPPORTED_FILE_TYPE` | 415 | Content is not PDF, JPEG or PNG (vehicle photo: not JPEG, PNG or WebP), decided by the file's bytes |
+| `VEHICLE_PHOTO_NOT_FOUND` | 404 | The caller has no photo for this vehicle yet |
+| `VEHICLE_PHOTO_CONFLICT` | 409 | Two photo uploads for the same vehicle at the same moment; try again |
 | `INVALID_SHARE` | 400 | Share validity outside 1–365 days |
 | `EMAIL_NOT_VERIFIED` | 403 | Login before the email link was followed |
 | `INVALID_TOKEN` | 400 | Verification or reset link unknown, expired, already used or of the wrong kind |
@@ -265,6 +267,27 @@ over the stored bytes.
 **Effect on verification:** an `INVOICE`, `WORK_ORDER` or `INSPECTION_REPORT` uploaded by the owner to their own
 `OWNER`/`UNVERIFIED` record raises it to `OWNER_DOCUMENT`/`DOCUMENTED` (`repairVerificationRaised: true`).
 Photos and "other" files do not. Garage records are unaffected.
+
+## Vehicle photo
+
+| Method | Path | Who | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vehicles/{vehicleId}/photo` | current owner | `multipart/form-data`: `file` | 201 `VehiclePhotoResponse` |
+| GET | `/api/v1/vehicles/{vehicleId}/photo` | current owner | | 200 `VehiclePhotoResponse`; `404 VEHICLE_PHOTO_NOT_FOUND` when there is none |
+
+One current photo per vehicle and owner. Uploading again **replaces** it: the previous photo is kept as `REPLACED`
+(not deleted), and `GET` returns the newest. Accepted content: JPEG, PNG, WebP (detected from the bytes), max 20 MB,
+scanned for malware like documents. There is no delete (`405`).
+
+The photo is private to the owner who uploaded it, and only while they own the vehicle: other users, garages and
+system admins get `403 VEHICLE_ACCESS_DENIED`; after a sale the next owner does not see the previous owner's photo
+(and vice versa). It is never part of the public report.
+
+`VehiclePhotoResponse`: `{id, vehicleId, mimeType, fileSize, sha256, uploadedAt, downloadUrl, downloadUrlExpiresAt}`.
+`downloadUrl` is a presigned URL to the private bucket, valid for 5 minutes; request a new one via `GET` when it expires.
+
+Errors: `VEHICLE_ACCESS_DENIED` (403), `VEHICLE_NOT_FOUND` (404), `EMPTY_FILE` (400), `FILE_TOO_LARGE` (413),
+`UNSUPPORTED_FILE_TYPE` (415), `MALWARE_DETECTED` (422), `SCANNER_UNAVAILABLE` (503), `VEHICLE_PHOTO_CONFLICT` (409).
 
 ## Sharing
 

@@ -27,6 +27,11 @@ public final class DocumentViews {
     public record DownloadView(DocumentView document, URL downloadUrl, Instant expiresAt) {
     }
 
+    /** The caller's current photo of a vehicle, with a short-lived download URL. */
+    public record PhotoView(UUID id, UUID vehicleId, String mimeType, long fileSize, String sha256,
+                            Instant uploadedAt, URL downloadUrl, Instant downloadUrlExpiresAt) {
+    }
+
     /** {@code actualSha256} is null when the stored object is missing. */
     public record IntegrityView(UUID documentId, String expectedSha256, String actualSha256, boolean intact,
                                 Instant checkedAt) {

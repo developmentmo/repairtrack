@@ -139,6 +139,15 @@ class DocumentServiceTest {
     }
 
     @Test
+    void webpIsNotAcceptedAsADocument() {
+        byte[] webp = "RIFF$\u0000\u0000\u0000WEBPVP8 ".getBytes(StandardCharsets.ISO_8859_1);
+
+        assertThatThrownBy(() -> service.upload(owner, repairId, DocumentType.PHOTO, file("photo.webp", webp)))
+                .isInstanceOf(UnsupportedFileTypeException.class);
+        verify(storage, never()).put(anyString(), any(), anyLong(), anyString());
+    }
+
+    @Test
     void malwareIsRejectedBeforeAnythingIsStoredAndReported() {
         byte[] infected = "%PDF-1.4\n% MALWARE-MARKER\n%%EOF\n".getBytes(StandardCharsets.US_ASCII);
 

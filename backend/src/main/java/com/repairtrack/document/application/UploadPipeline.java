@@ -10,6 +10,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
 
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -41,6 +43,12 @@ public final class UploadPipeline {
 
     /** Size limits and the real file type (magic bytes, never the name or the client's content type). */
     public DetectedFileType check(IncomingFile file) {
+        return check(file, DetectedFileType.DOCUMENTS, UnsupportedFileTypeException::new);
+    }
+
+    /** As {@link #check(IncomingFile)}, for a different set of accepted types. */
+    public DetectedFileType check(IncomingFile file, Set<DetectedFileType> accepted,
+                                  Supplier<UnsupportedFileTypeException> unsupported) {
         if (file.size() <= 0) {
             throw new EmptyFileException();
         }
@@ -49,7 +57,7 @@ public final class UploadPipeline {
         }
         try (InputStream content = file.content().open()) {
             byte[] header = content.readNBytes(DetectedFileType.HEADER_LENGTH);
-            return DetectedFileType.detect(header).orElseThrow(UnsupportedFileTypeException::new);
+            return DetectedFileType.detect(header).filter(accepted::contains).orElseThrow(unsupported);
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
         }
