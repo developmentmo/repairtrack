@@ -47,23 +47,23 @@ PostgreSQL container through Testcontainers and wires it in automatically. Data 
 ### Verify
 
 ```bash
-curl http://localhost:8080/actuator/health
+curl http://localhost:8081/actuator/health
 # {"status":"UP","components":{"db":{"status":"UP",...},...}}   (details shown in `local` profile only)
 
-curl http://localhost:8080/actuator/health/readiness
+curl http://localhost:8081/actuator/health/readiness
 ```
 
 ### Try authentication
 
 ```bash
-curl -s -X POST localhost:8080/api/v1/auth/register -H 'Content-Type: application/json' \
+curl -s -X POST localhost:8081/api/v1/auth/register -H 'Content-Type: application/json' \
   -d '{"email":"jan@example.nl","password":"correct horse battery staple","firstName":"Jan","lastName":"Jansen"}'
 
-TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
+TOKEN=$(curl -s -X POST localhost:8081/api/v1/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"jan@example.nl","password":"correct horse battery staple"}' | jq -r .accessToken)
 
-curl -s localhost:8080/api/v1/users/me -H "Authorization: Bearer $TOKEN"
-curl -s localhost:8080/api/v1/users/me    # 401 {"code":"UNAUTHORIZED",...}
+curl -s localhost:8081/api/v1/users/me -H "Authorization: Bearer $TOKEN"
+curl -s localhost:8081/api/v1/users/me    # 401 {"code":"UNAUTHORIZED",...}
 ```
 
 ## Configuration
@@ -78,7 +78,7 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `DATABASE_USERNAME` | yes (outside `local`) | Database user |
 | `DATABASE_PASSWORD` | yes (outside `local`) | Database password |
 | `DATABASE_POOL_SIZE` | no (default 10) | Hikari maximum pool size |
-| `SERVER_PORT` | no (default 8080) | HTTP port |
+| `SERVER_PORT` | no (default 8080; `local`: 8081) | HTTP port |
 | `JWT_SECRET` | yes (outside `local`) | HS256 signing secret, >= 32 bytes (`openssl rand -base64 48`) |
 | `JWT_ISSUER` | no (default `repairtrack`) | `iss` claim of access tokens |
 | `JWT_ACCESS_TOKEN_TTL` | no (default `15m`) | Access-token lifetime |

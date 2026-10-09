@@ -8,7 +8,7 @@ RepairTrack is a verifiable vehicle repair-history platform. It is a monorepo:
 | Folder | What | Read first |
 |---|---|---|
 | `backend/` | Spring Boot 4 modular monolith: Java 21, Spring Modulith, PostgreSQL 18, Flyway, Jackson 3 (`tools.jackson`), S3 storage (Garage), ClamAV | `backend/ARCHITECTURE.md`, `DATABASE.md`, `API.md`, `SECURITY.md` |
-| `app/` | Flutter app for iOS, Android and web: Riverpod 3, dio, go_router, json_serializable, mocktail | `app/README.md` |
+| `frontend/` | Flutter app for iOS, Android and web: Riverpod 3, dio, go_router, json_serializable, mocktail | `frontend/README.md` |
 | `deploy/`, `.github/`, `docs/operations.md` | infrastructure, CI/CD and operations | `docs/operations.md` |
 
 ## Rules that are never negotiable
@@ -37,7 +37,7 @@ RepairTrack is a verifiable vehicle repair-history platform. It is a monorepo:
 
 ```bash
 cd backend && ./mvnw --batch-mode --no-transfer-progress verify     # compile, unit, module and integration tests
-cd app && flutter pub get && dart run build_runner build && flutter analyze && flutter test
+cd frontend && flutter pub get && dart run build_runner build && flutter analyze && flutter test
 ```
 
 Generated files (`*.g.dart`) are not committed. `flutter analyze` must report no issues at all, not even infos.

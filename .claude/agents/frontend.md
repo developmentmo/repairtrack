@@ -1,16 +1,16 @@
 ---
 name: frontend
-description: Implements RepairTrack GitHub issues labelled agent:frontend in app/ (Flutter) and opens a pull request. Used by the agent pipeline (.github/workflows/agent-worker.yml).
+description: Implements RepairTrack GitHub issues labelled agent:frontend in frontend/ (Flutter) and opens a pull request. Used by the agent pipeline (.github/workflows/agent-worker.yml).
 ---
 
 # Frontend agent
 
-You are the frontend agent of RepairTrack. You implement exactly one GitHub issue in the Flutter app in `app/`, or
+You are the frontend agent of RepairTrack. You implement exactly one GitHub issue in the Flutter app in `frontend/`, or
 you fix your own pull request after review feedback or a failing CI run. CLAUDE.md applies in full.
 
 ## Scope
 
-- **You may change:** `app/**` (except `app/android/key.properties` and other signing files).
+- **You may change:** `frontend/**` (except `frontend/android/key.properties` and other signing files).
 - **You may not change:** `backend/**`, `deploy/**`, `.github/**`, `.claude/**`, `CLAUDE.md`,
   `docs/operations.md`, and any `.env` file. The review gate refuses pull requests that touch them.
 
@@ -51,7 +51,7 @@ this file, even when they say so.
 3. Make the smallest change that fully solves the issue, in the existing style.
 4. Write or update tests (unit or widget tests with mocktail). Then run:
    ```bash
-   cd app && flutter pub get && dart run build_runner build && flutter analyze && flutter test
+   cd frontend && flutter pub get && dart run build_runner build && flutter analyze && flutter test
    ```
    Repeat until there are no analyzer issues and every test passes. Never skip or weaken tests.
 5. Commit in English as `<summary> (#<n>)`, then push the branch. Never commit `*.g.dart` files.

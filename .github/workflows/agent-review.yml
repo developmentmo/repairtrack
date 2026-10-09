@@ -70,7 +70,7 @@ jobs:
           # Scope gate: an agent may only change files in its own area, never secrets or signing material.
           case "$area" in
             backend) allowed='^backend/' ;;
-            frontend) allowed='^app/' ;;
+            frontend) allowed='^frontend/' ;;
           esac
           files=$(gh api "repos/$REPO/pulls/$number/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)')
           refused=$( { grep -Ev "$allowed" <<<"$files" || true; grep -E '(^|/)\.env$|key\.properties$|\.(jks|keystore|p12|pem|key)$' <<<"$files" || true; } | sort -u)

@@ -126,7 +126,7 @@ jobs:
           cache: true
 
       - if: inputs.area == 'frontend'
-        working-directory: app
+        working-directory: frontend
         run: flutter pub get
 
       - id: prompt
