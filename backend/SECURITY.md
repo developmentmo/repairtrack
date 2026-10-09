@@ -195,6 +195,10 @@ Only the origins in `CORS_ALLOWED_ORIGINS` (the Flutter web app) may call `/api/
 none and `*` is rejected at startup. Credentials (cookies) are not allowed: tokens travel in the `Authorization`
 header. Mobile apps are not affected by CORS.
 
+Presigned downloads (the files host, for example a vehicle photo the web app shows) are served by Garage through the
+edge proxy. Flutter web loads images with XHR, so Caddy adds `Access-Control-Allow-Origin` for that environment's own
+web app origin only (`deploy/edge/Caddyfile`). The files host stays read-only (GET/HEAD).
+
 ### Malware scan and integrity sweep (Phase 9c)
 
 - **Every upload is scanned by ClamAV (clamd, `INSTREAM`) before it is stored.** Infected: `422 MALWARE_DETECTED`,
