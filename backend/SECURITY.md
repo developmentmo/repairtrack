@@ -4,14 +4,15 @@
 
 | Aspect | Design |
 |---|---|
-| Access token | JWT, HS256, 15 min (`JWT_ACCESS_TOKEN_TTL`). Claims: `sub` (user ID), `iss`, `iat`, `exp`, `jti`. No email, name or roles. |
+| Access token | JWT, HS256, 15 min (`JWT_ACCESS_TOKEN_TTL`). Claims: `sub` (user ID), `sid` (login session ID), `iss`, `iat`, `exp`, `jti`. No email, name or roles. |
 | Signing key | `JWT_SECRET`, >= 32 bytes; the app refuses to start with a weaker or missing secret (outside `local`). |
 | Validation | Signature, expiry (60 s clock skew), issuer. |
 | Refresh token | Opaque 256-bit random value, 30 days (`REFRESH_TOKEN_TTL`). Only its SHA-256 hash is stored. |
 | Rotation | Every refresh revokes the used token and issues a new one in the same *family* (one family per login). |
 | Reuse detection | Presenting a revoked token revokes the whole family (assumed theft). Committed even though the request fails. |
 | Concurrency | Refresh takes a row lock on the token, so parallel refreshes cannot both succeed. |
-| Logout | Revokes the token's whole family. Public endpoint: holding the refresh token is the authorization. Idempotent. |
+| Logout | Revokes the token's whole family and ends its login session, so the access token stops working too. Public endpoint: holding the refresh token is the authorization. Idempotent. |
+| Idle timeout | A login (`login_session`, id = refresh-token family) ends after 15 minutes without requests (`SESSION_IDLE_TIMEOUT`). Every authenticated request and every refresh extends it (written at most once a minute). An idle session rejects its access token (401) and its refresh token (`401 SESSION_EXPIRED`, family revoked); the user logs in again. Access tokens issued before sessions existed have no `sid` and are accepted until they expire. |
 | Passwords | BCrypt via Spring's `DelegatingPasswordEncoder` (hashes are prefixed `{bcrypt}`), so the algorithm can later move to Argon2 without a migration. Policy: min 12 characters, max 72 bytes (BCrypt limit; longer input is rejected, not truncated). |
 | Transport | Tokens in the `Authorization` header / JSON body, never in cookies. The API is stateless (no HTTP session), so CSRF protection is disabled on purpose. |
 
@@ -20,7 +21,9 @@
 Every authenticated request loads the user by ID (one primary-key query):
 
 - a **blocked or deleted** user is rejected immediately, even with an unexpired access token;
-- **roles come from the database**, never from the token, so granting or revoking a role needs no re-login.
+- **roles come from the database**, never from the token, so granting or revoking a role needs no re-login;
+- the **login session** (`sid`) must still be active: logout, a password reset and the idle timeout take effect at
+  once, not when the access token expires.
 
 ### Account enumeration
 
@@ -168,8 +171,8 @@ service cannot produce. Previous owners lose access to the history when their ow
 - **Behind a reverse proxy** set `FORWARD_HEADERS_STRATEGY=framework` and let only the proxy reach the app;
   otherwise every client shares the proxy's IP (or could fake `X-Forwarded-For`).
 - Limits are per application instance. With several instances, move the counters to a shared store (e.g. Redis).
-- **Refresh tokens** that expired more than a day ago are deleted daily (03:30 Europe/Amsterdam,
-  `REFRESH_TOKEN_CLEANUP_CRON`).
+- **Refresh tokens** that expired more than a day ago, and login sessions that have been over for more than a day,
+  are deleted daily (03:30 Europe/Amsterdam, `REFRESH_TOKEN_CLEANUP_CRON`).
 
 ### Email verification and password reset (Phase 9b)
 

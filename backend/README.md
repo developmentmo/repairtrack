@@ -83,6 +83,7 @@ unexpected. The `local` profile supplies defaults matching `docker-compose.yml`.
 | `JWT_ISSUER` | no (default `repairtrack`) | `iss` claim of access tokens |
 | `JWT_ACCESS_TOKEN_TTL` | no (default `15m`) | Access-token lifetime |
 | `REFRESH_TOKEN_TTL` | no (default `30d`) | Refresh-token lifetime |
+| `SESSION_IDLE_TIMEOUT` | no (default `15m`) | A login ends after this long without requests |
 | `S3_REGION`, `S3_BUCKET` | yes (outside `local`) | Document storage region and (private) bucket |
 | `S3_ENDPOINT` | no | S3 API endpoint; empty = AWS default for the region |
 | `S3_PUBLIC_ENDPOINT` | no | Endpoint used in presigned download URLs, if clients reach storage differently |

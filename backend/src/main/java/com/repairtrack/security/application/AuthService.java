@@ -35,6 +35,7 @@ public class AuthService {
     private final ApplicationEventPublisher events;
     private final Clock clock;
     private final LoginThrottle loginThrottle;
+    private final LoginSessionService loginSessions;
 
     /**
      * Hash compared against when the email is unknown, so login takes about as long for unknown
@@ -49,7 +50,8 @@ public class AuthService {
                        SecurityProperties properties,
                        ApplicationEventPublisher events,
                        Clock clock,
-                       LoginThrottle loginThrottle) {
+                       LoginThrottle loginThrottle,
+                       LoginSessionService loginSessions) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordEncoder = passwordEncoder;
@@ -58,6 +60,7 @@ public class AuthService {
         this.events = events;
         this.clock = clock;
         this.loginThrottle = loginThrottle;
+        this.loginSessions = loginSessions;
         this.dummyPasswordHash = passwordEncoder.encode(OpaqueTokens.generate());
     }
 
@@ -105,14 +108,16 @@ public class AuthService {
         if (!user.isEmailVerified()) {
             throw new EmailNotVerifiedException();
         }
-        return issueTokens(user.getId(), UUID.randomUUID(), Instant.now(clock));
+        Instant now = Instant.now(clock);
+        return issueTokens(user.getId(), loginSessions.start(user.getId(), now).getId(), now);
     }
 
     /**
      * Rotates a refresh token. {@code noRollbackFor}: when reuse is detected, the family
      * revocation must be committed even though the request fails.
      */
-    @Transactional(noRollbackFor = {InvalidRefreshTokenException.class, AccountBlockedException.class})
+    @Transactional(noRollbackFor = {InvalidRefreshTokenException.class, AccountBlockedException.class,
+            SessionExpiredException.class})
     public AuthTokens refresh(String rawRefreshToken) {
         Instant now = Instant.now(clock);
         RefreshToken current = refreshTokens.findByTokenHash(OpaqueTokens.sha256Hex(rawRefreshToken))
@@ -135,6 +140,12 @@ public class AuthService {
             }
             throw new InvalidRefreshTokenException();
         }
+        if (!loginSessions.recordActivity(current.getFamilyId(), user.getId())) {
+            // Idle for too long (or logged out elsewhere): this login is over for good.
+            refreshTokens.revokeFamily(current.getFamilyId(), now);
+            loginSessions.end(current.getFamilyId(), now);
+            throw new SessionExpiredException();
+        }
 
         String rawSuccessor = OpaqueTokens.generate();
         RefreshToken successor = RefreshToken.issue(user.getId(), current.getFamilyId(),
@@ -142,7 +153,7 @@ public class AuthService {
         refreshTokens.save(successor);
         current.rotateTo(successor, now);
 
-        AccessTokenService.IssuedAccessToken accessToken = accessTokenService.issue(user.getId());
+        AccessTokenService.IssuedAccessToken accessToken = accessTokenService.issue(user.getId(), current.getFamilyId());
         return new AuthTokens(accessToken.value(), accessToken.expiresAt(), rawSuccessor, successor.getExpiresAt());
     }
 
@@ -150,15 +161,20 @@ public class AuthService {
     @Transactional
     public void logout(String rawRefreshToken) {
         refreshTokens.findByTokenHash(OpaqueTokens.sha256Hex(rawRefreshToken))
-                .ifPresent(token -> refreshTokens.revokeFamily(token.getFamilyId(), Instant.now(clock)));
+                .ifPresent(token -> {
+                    Instant now = Instant.now(clock);
+                    refreshTokens.revokeFamily(token.getFamilyId(), now);
+                    loginSessions.end(token.getFamilyId(), now);
+                });
     }
 
+    /** {@code familyId} is the id of the login session. */
     private AuthTokens issueTokens(UUID userId, UUID familyId, Instant now) {
         String rawRefreshToken = OpaqueTokens.generate();
         RefreshToken refreshToken = RefreshToken.issue(userId, familyId,
                 OpaqueTokens.sha256Hex(rawRefreshToken), now, properties.refreshTokenTtl());
         refreshTokens.save(refreshToken);
-        AccessTokenService.IssuedAccessToken accessToken = accessTokenService.issue(userId);
+        AccessTokenService.IssuedAccessToken accessToken = accessTokenService.issue(userId, familyId);
         return new AuthTokens(accessToken.value(), accessToken.expiresAt(), rawRefreshToken, refreshToken.getExpiresAt());
     }
 }
