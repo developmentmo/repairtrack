@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
+import 'core/auth/idle_sign_out.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 
@@ -35,6 +36,8 @@ class RepairTrackApp extends ConsumerWidget {
       supportedLocales: const [Locale('nl', 'NL')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       debugShowCheckedModeBanner: false,
+      // Signs out after 15 minutes without interaction; the router then shows the login screen.
+      builder: (context, child) => IdleSignOut(child: child ?? const SizedBox.shrink()),
     );
   }
 }

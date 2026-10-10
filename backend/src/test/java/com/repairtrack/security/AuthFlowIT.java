@@ -252,6 +252,56 @@ class AuthFlowIT {
         assertThat(response.status()).isEqualTo(204);
     }
 
+    // ---------- idle timeout ----------
+
+    @Test
+    void activityKeepsTheSessionAlive() {
+        String email = uniqueEmail();
+        ApiResponse login = registerAndLogin(email);
+        idleFor(email, "14 minutes");
+
+        assertThat(api.get("/api/v1/users/me", login.field("accessToken")).status()).isEqualTo(200);
+        // the request counted as activity: 14 more idle minutes are still within the timeout
+        idleFor(email, "14 minutes");
+        assertThat(api.get("/api/v1/users/me", login.field("accessToken")).status()).isEqualTo(200);
+        assertThat(refresh(login.field("refreshToken")).status()).isEqualTo(200);
+    }
+
+    @Test
+    void anIdleSessionEndsEvenBeforeTheAccessTokenExpires() {
+        String email = uniqueEmail();
+        ApiResponse login = registerAndLogin(email);
+        idleFor(email, "16 minutes");
+
+        ApiResponse withAccessToken = api.get("/api/v1/users/me", login.field("accessToken"));
+        ApiResponse refreshAttempt = refresh(login.field("refreshToken"));
+
+        assertThat(withAccessToken.status()).isEqualTo(401);
+        assertThat(refreshAttempt.status()).isEqualTo(401);
+        assertThat(refreshAttempt.field("code")).isEqualTo("SESSION_EXPIRED");
+        assertThat(login(email, PASSWORD).status()).isEqualTo(200);
+    }
+
+    @Test
+    void logoutEndsTheAccessTokenToo() {
+        ApiResponse login = registerAndLogin(uniqueEmail());
+
+        api.post("/api/v1/auth/logout", Map.of("refreshToken", login.field("refreshToken")));
+
+        assertThat(api.get("/api/v1/users/me", login.field("accessToken")).status()).isEqualTo(401);
+    }
+
+    @Test
+    void anIdleSessionDoesNotEndTheOtherLoginsOfTheUser() {
+        String email = uniqueEmail();
+        ApiResponse first = registerAndLogin(email);
+        idleFor(email, "16 minutes");
+        ApiResponse second = login(email, PASSWORD);
+
+        assertThat(api.get("/api/v1/users/me", first.field("accessToken")).status()).isEqualTo(401);
+        assertThat(api.get("/api/v1/users/me", second.field("accessToken")).status()).isEqualTo(200);
+    }
+
     // ---------- account status ----------
 
     @Test
@@ -283,6 +333,13 @@ class AuthFlowIT {
 
     private ApiResponse login(String email, String password) {
         return api.post("/api/v1/auth/login", Map.of("email", email, "password", password));
+    }
+
+    /** Moves the last activity of all current sessions of the user into the past. */
+    private void idleFor(String email, String interval) {
+        jdbcTemplate.update("""
+                update login_session set last_activity_at = now() - cast(? as interval)
+                where user_id = (select id from app_user where email = lower(?))""", interval, email);
     }
 
     private ApiResponse refresh(String refreshToken) {

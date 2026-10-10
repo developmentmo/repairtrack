@@ -21,7 +21,7 @@ String userMessage(Object error) {
     'RATE_LIMITED' => 'Te veel verzoeken achter elkaar. Wacht even en probeer het opnieuw.',
     'EMAIL_ALREADY_REGISTERED' => 'Er bestaat al een account met dit e-mailadres.',
     'INVALID_PASSWORD' => 'Het wachtwoord moet minimaal 12 tekens hebben.',
-    'UNAUTHORIZED' || 'INVALID_REFRESH_TOKEN' => 'Je sessie is verlopen. Log opnieuw in.',
+    'UNAUTHORIZED' || 'INVALID_REFRESH_TOKEN' || 'SESSION_EXPIRED' => 'Je sessie is verlopen. Log opnieuw in.',
     'VEHICLE_ALREADY_REGISTERED' =>
       'Dit voertuig is al geregistreerd. Zoek het op kenteken en claim het met het VIN.',
     'VEHICLE_ALREADY_OWNED' => 'Dit voertuig heeft al een eigenaar.',

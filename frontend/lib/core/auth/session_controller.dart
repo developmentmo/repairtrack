@@ -81,17 +81,40 @@ class SessionController extends Notifier<SessionState> {
     await _api.register(email: email, password: password, firstName: firstName, lastName: lastName);
   }
 
-  Future<void> logout() async {
+  Future<void> logout() => _signOut(expired: false);
+
+  Future<void> _signOut({required bool expired}) async {
     final store = ref.read(tokenStoreProvider);
     final tokens = await store.read();
     await store.clear();
-    state = const SignedOut();
+    state = SignedOut(expired: expired);
     if (tokens != null) {
       try {
         await _api.logout(tokens.refreshToken);
       } on ApiException {
         // Best effort: the tokens are already gone on this device.
       }
+    }
+  }
+
+  /// The user did nothing for `AppConfig.sessionIdleTimeout`: end the session here and on the server.
+  Future<void> idleTimeout() async {
+    if (state is! SignedIn) {
+      return;
+    }
+    await _signOut(expired: true);
+  }
+
+  /// Tells the server the user is active, so the server-side session does not end while the user is busy in the app
+  /// without causing requests (for example while filling in a long form). Failures are left to the network layer.
+  Future<void> keepAlive() async {
+    if (state is! SignedIn) {
+      return;
+    }
+    try {
+      await _api.me();
+    } on ApiException {
+      // An expired session is handled by the network layer (sessionExpired); anything else does not matter here.
     }
   }
 

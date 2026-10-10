@@ -11,7 +11,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * missing secret stops the application instead of producing forgeable tokens.
  */
 @ConfigurationProperties(prefix = "repairtrack.security")
-public record SecurityProperties(Jwt jwt, Duration refreshTokenTtl) {
+public record SecurityProperties(Jwt jwt, Duration refreshTokenTtl, Duration sessionIdleTimeout) {
+
+    /** Used when {@code repairtrack.security.session-idle-timeout} is not set. */
+    static final Duration DEFAULT_SESSION_IDLE_TIMEOUT = Duration.ofMinutes(15);
 
     /** HS256 needs a key of at least 256 bits. */
     static final int MIN_SECRET_BYTES = 32;
@@ -19,6 +22,10 @@ public record SecurityProperties(Jwt jwt, Duration refreshTokenTtl) {
     public SecurityProperties {
         Objects.requireNonNull(jwt, "repairtrack.security.jwt must be configured");
         requirePositive(refreshTokenTtl, "repairtrack.security.refresh-token-ttl");
+        if (sessionIdleTimeout == null) {
+            sessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
+        }
+        requirePositive(sessionIdleTimeout, "repairtrack.security.session-idle-timeout");
     }
 
     public record Jwt(String secret, String issuer, Duration accessTokenTtl) {

@@ -52,6 +52,34 @@ class RefreshTokenCleanupIT {
                 account.id())).as("the account's current login session").isPositive();
     }
 
+    @Test
+    void deletesOnlyLoginSessionsThatHaveBeenOverForMoreThanADay() {
+        Account account = new TestAccounts(new ApiTestClient(port, jsonMapper), jdbcTemplate).create("Sem");
+        Instant now = Instant.now();
+        UUID longOver = insertSession(account.id(), now.minus(2, ChronoUnit.DAYS));
+        UUID recentlyOver = insertSession(account.id(), now.minus(2, ChronoUnit.HOURS));
+
+        cleanup.deleteExpired();
+
+        assertThat(sessionExists(longOver)).isFalse();
+        assertThat(sessionExists(recentlyOver)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from login_session where user_id = ? and last_activity_at > now() - interval '1 minute'",
+                Integer.class, account.id())).as("the account's current login session").isPositive();
+    }
+
+    private UUID insertSession(UUID userId, Instant lastActivityAt) {
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into login_session (id, user_id, created_at, last_activity_at) values (?, ?, ?, ?)
+                """, id, userId, Timestamp.from(lastActivityAt), Timestamp.from(lastActivityAt));
+        return id;
+    }
+
+    private boolean sessionExists(UUID id) {
+        return jdbcTemplate.queryForObject("select count(*) from login_session where id = ?", Integer.class, id) > 0;
+    }
+
     private UUID insertToken(UUID userId, Instant createdAt, Instant expiresAt) {
         UUID id = UUID.randomUUID();
         jdbcTemplate.update("""
