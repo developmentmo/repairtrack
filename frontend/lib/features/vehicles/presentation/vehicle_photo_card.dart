@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/widgets/brand_widgets.dart';
 import '../application/vehicle_providers.dart';
@@ -42,12 +43,12 @@ class _VehiclePhotoCardState extends ConsumerState<VehiclePhotoCard> {
             children: [
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('Kies uit galerij'),
+                title: Text(context.l10n.vehiclePhotoFromGallery),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
-                title: const Text('Maak een foto'),
+                title: Text(context.l10n.vehiclePhotoTakePhoto),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
             ],
@@ -56,6 +57,7 @@ class _VehiclePhotoCardState extends ConsumerState<VehiclePhotoCard> {
       );
 
   Future<void> _pickAndUpload() async {
+    final l = context.l10n;
     final picker = ref.read(imagePickerProvider);
     final source = picker.supportsImageSource(ImageSource.camera) ? await _chooseSource() : ImageSource.gallery;
     if (source == null) {
@@ -72,7 +74,7 @@ class _VehiclePhotoCardState extends ConsumerState<VehiclePhotoCard> {
         requestFullMetadata: false,
       );
     } on PlatformException {
-      _show('De camera of fotobibliotheek kan niet worden geopend. Controleer de toegang in je instellingen.');
+      _show(l.vehiclePhotoPickerUnavailable);
       return;
     }
     if (file == null) {
@@ -83,7 +85,7 @@ class _VehiclePhotoCardState extends ConsumerState<VehiclePhotoCard> {
       return;
     }
     if (bytes.length > maxVehiclePhotoBytes) {
-      _show('De foto is te groot (maximaal 20 MB).');
+      _show(l.photoErrorFileTooLarge);
       return;
     }
     setState(() {
@@ -102,9 +104,9 @@ class _VehiclePhotoCardState extends ConsumerState<VehiclePhotoCard> {
             },
           );
       ref.invalidate(vehiclePhotoProvider(vehicleId));
-      _show('Foto opgeslagen.');
+      _show(l.vehiclePhotoSaved);
     } catch (e) {
-      _show(vehiclePhotoMessage(e));
+      _show(vehiclePhotoMessage(l, e));
     } finally {
       if (mounted) {
         setState(() => _uploading = false);
@@ -117,6 +119,7 @@ class _VehiclePhotoCardState extends ConsumerState<VehiclePhotoCard> {
     final photo = ref.watch(vehiclePhotoProvider(vehicleId));
     final current = photo.value;
     final loadFailed = photo.hasError && !photo.hasValue;
+    final l = context.l10n;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -150,12 +153,12 @@ class _VehiclePhotoCardState extends ConsumerState<VehiclePhotoCard> {
             ),
             if (loadFailed) ...[
               const SizedBox(height: 8),
-              Text(vehiclePhotoMessage(photo.error!), style: Theme.of(context).textTheme.bodySmall),
+              Text(vehiclePhotoMessage(l, photo.error!), style: Theme.of(context).textTheme.bodySmall),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
                   onPressed: () => ref.invalidate(vehiclePhotoProvider(vehicleId)),
-                  child: const Text('Opnieuw proberen'),
+                  child: Text(l.commonRetry),
                 ),
               ),
             ],
@@ -166,12 +169,12 @@ class _VehiclePhotoCardState extends ConsumerState<VehiclePhotoCard> {
                   ? FilledButton.icon(
                       onPressed: _uploading || !photo.hasValue ? null : _pickAndUpload,
                       icon: const Icon(Icons.add_a_photo_outlined),
-                      label: const Text('Foto toevoegen'),
+                      label: Text(l.vehiclePhotoAdd),
                     )
                   : OutlinedButton.icon(
                       onPressed: _uploading ? null : _pickAndUpload,
                       icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('Foto vervangen'),
+                      label: Text(l.vehiclePhotoReplace),
                     ),
             ),
           ],
@@ -195,7 +198,7 @@ class _PhotoImage extends StatelessWidget {
       photo.downloadUrl,
       key: ValueKey(photo.downloadUrl),
       fit: BoxFit.cover,
-      semanticLabel: 'Foto van je voertuig',
+      semanticLabel: context.l10n.vehiclePhotoSemantic,
       errorBuilder: (context, error, stackTrace) => Stack(
         fit: StackFit.expand,
         children: [
@@ -205,7 +208,7 @@ class _PhotoImage extends StatelessWidget {
             child: TextButton.icon(
               onPressed: onReload,
               icon: const Icon(Icons.refresh),
-              label: const Text('Foto opnieuw laden'),
+              label: Text(context.l10n.vehiclePhotoReload),
             ),
           ),
         ],

@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/widgets/brand_widgets.dart';
 import '../domain/garage.dart';
 
-String garageStatusLabel(GarageVerificationStatus status) => switch (status) {
-      GarageVerificationStatus.verified => 'Geverifieerd',
-      GarageVerificationStatus.pending => 'Wacht op verificatie',
-      GarageVerificationStatus.unverified => 'Niet geverifieerd',
-      GarageVerificationStatus.suspended => 'Geschorst',
-      GarageVerificationStatus.unknown => 'Onbekend',
+String garageStatusLabel(AppLocalizations l, GarageVerificationStatus status) => switch (status) {
+      GarageVerificationStatus.verified => l.garageStatusVerified,
+      GarageVerificationStatus.pending => l.garageStatusPending,
+      GarageVerificationStatus.unverified => l.garageStatusUnverified,
+      GarageVerificationStatus.suspended => l.garageStatusSuspended,
+      GarageVerificationStatus.unknown => l.commonUnknown,
     };
 
-String garageRoleLabel(GarageRole role) => switch (role) {
-      GarageRole.garageAdmin => 'Beheerder',
-      GarageRole.mechanic => 'Monteur',
-      GarageRole.unknown => 'Lid',
+String garageRoleLabel(AppLocalizations l, GarageRole role) => switch (role) {
+      GarageRole.garageAdmin => l.garageRoleAdmin,
+      GarageRole.mechanic => l.garageRoleMechanic,
+      GarageRole.unknown => l.garageRoleMember,
     };
 
 class GarageStatusChip extends StatelessWidget {
@@ -30,6 +31,6 @@ class GarageStatusChip extends StatelessWidget {
       GarageVerificationStatus.pending => (Icons.hourglass_empty, Tone.warning),
       _ => (Icons.hourglass_empty, Tone.neutral),
     };
-    return StatusPill(label: garageStatusLabel(status), tone: tone, icon: icon);
+    return StatusPill(label: garageStatusLabel(context.l10n, status), tone: tone, icon: icon);
   }
 }

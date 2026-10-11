@@ -35,7 +35,7 @@ You end with exactly one verdict:
      - the public report exposes nothing private;
      - module boundaries;
      - unique bean names;
-     - Dutch UI text.
+     - UI text in both ARB files (Dutch and English), no literals in widgets.
    - **Security.** Authorization on every new endpoint, input validation, rate limiting where the existing endpoints
      have it, no new public data.
    - **Database.** Is the Flyway migration new (existing ones untouched), correctly numbered, and safe for the data

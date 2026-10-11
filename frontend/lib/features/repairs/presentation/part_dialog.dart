@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../domain/repair.dart';
 
 /// Asks for one part (description, brand, part number, quantity).
@@ -43,8 +44,9 @@ class _PartDialogState extends State<PartDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AlertDialog(
-      title: const Text('Onderdeel'),
+      title: Text(l.partDialogTitle),
       content: Form(
         key: _formKey,
         child: Column(
@@ -52,33 +54,33 @@ class _PartDialogState extends State<PartDialog> {
           children: [
             TextFormField(
               controller: _description,
-              decoration: const InputDecoration(labelText: 'Omschrijving'),
-              validator: (value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : null,
+              decoration: InputDecoration(labelText: l.commonDescription),
+              validator: (value) => (value == null || value.trim().isEmpty) ? l.commonRequiredField : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(controller: _brand, decoration: const InputDecoration(labelText: 'Merk (optioneel)')),
+            TextFormField(controller: _brand, decoration: InputDecoration(labelText: l.partDialogBrand)),
             const SizedBox(height: 12),
             TextFormField(
               controller: _partNumber,
-              decoration: const InputDecoration(labelText: 'Onderdeelnummer (optioneel)'),
+              decoration: InputDecoration(labelText: l.partDialogPartNumber),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _quantity,
-              decoration: const InputDecoration(labelText: 'Aantal'),
+              decoration: InputDecoration(labelText: l.partDialogQuantity),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (value) {
                 final quantity = int.tryParse(value ?? '');
-                return (quantity == null || quantity < 1 || quantity > 999) ? 'Tussen 1 en 999' : null;
+                return (quantity == null || quantity < 1 || quantity > 999) ? l.partDialogQuantityRange : null;
               },
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuleren')),
-        FilledButton(onPressed: _save, child: const Text('Toevoegen')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
+        FilledButton(onPressed: _save, child: Text(l.commonAdd)),
       ],
     );
   }

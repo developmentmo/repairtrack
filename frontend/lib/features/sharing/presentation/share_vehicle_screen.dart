@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -10,12 +11,12 @@ import '../application/share_providers.dart';
 import '../data/share_api.dart';
 import '../domain/share.dart';
 
-String shareStatusLabel(ShareStatus status) => switch (status) {
-      ShareStatus.active => 'Actief',
-      ShareStatus.expired => 'Verlopen',
-      ShareStatus.revoked => 'Ingetrokken',
-      ShareStatus.ownerChanged => 'Vervallen (andere eigenaar)',
-      ShareStatus.unknown => 'Onbekend',
+String shareStatusLabel(AppLocalizations l, ShareStatus status) => switch (status) {
+      ShareStatus.active => l.shareStatusActive,
+      ShareStatus.expired => l.shareStatusExpired,
+      ShareStatus.revoked => l.shareStatusRevoked,
+      ShareStatus.ownerChanged => l.shareStatusOwnerChanged,
+      ShareStatus.unknown => l.commonUnknown,
     };
 
 /// Owner: share the history with a buyer, insurer or garage through a link that needs no account.
@@ -26,13 +27,14 @@ class ShareVehicleScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final shares = ref.watch(vehicleSharesProvider(vehicleId));
     return Scaffold(
-      appBar: AppBar(title: const Text('Voertuig delen')),
+      appBar: AppBar(title: Text(l.shareVehicleTitle)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _create(context, ref),
         icon: const Icon(Icons.link),
-        label: const Text('Nieuwe link'),
+        label: Text(l.shareNewLink),
       ),
       body: AsyncValueView(
         value: shares,
@@ -40,13 +42,9 @@ class ShareVehicleScreen extends ConsumerWidget {
         data: (list) => ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
           children: [
-            const InfoBanner(
-              message: 'Met een link kan iedereen de onderhoudshistorie bekijken, zonder account. Jouw naam, '
-                  'e-mailadres en het VIN worden nooit getoond. Een link werkt niet meer na het intrekken, na de '
-                  'vervaldatum of zodra je het voertuig verkoopt.',
-            ),
+            InfoBanner(message: l.shareVehicleInfo),
             const SizedBox(height: 16),
-            if (list.isEmpty) const Text('Je hebt nog geen links gemaakt.'),
+            if (list.isEmpty) Text(l.shareVehicleEmpty),
             for (final share in list) _ShareTile(vehicleId: vehicleId, share: share),
           ],
         ),
@@ -59,6 +57,7 @@ class ShareVehicleScreen extends ConsumerWidget {
     if (options == null || !context.mounted) {
       return;
     }
+    final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final created = await ref.read(shareApiProvider).create(
@@ -71,7 +70,7 @@ class ShareVehicleScreen extends ConsumerWidget {
         await showDialog<void>(context: context, builder: (context) => _CreatedLinkDialog(created: created));
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     }
   }
 }
@@ -84,33 +83,35 @@ class _ShareTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final details = [
-      shareStatusLabel(share.status),
-      'geldig tot ${formatDate(share.expiresAt.toLocal())}',
-      if (share.includeDocuments) 'met documenten',
-      '${share.accessCount}× bekeken',
+      shareStatusLabel(l, share.status),
+      l.shareValidUntil(formatDate(share.expiresAt.toLocal())),
+      if (share.includeDocuments) l.shareWithDocuments,
+      l.shareViewCount(share.accessCount),
     ].join(' · ');
     return Card(
       child: ListTile(
         leading: Icon(share.isActive ? Icons.link : Icons.link_off),
-        title: Text('Link van ${formatDateTime(share.createdAt)}'),
+        title: Text(l.shareLinkFrom(formatDateTime(share.createdAt))),
         subtitle: Text(details),
         trailing: share.isActive
-            ? TextButton(onPressed: () => _revoke(context, ref), child: const Text('Intrekken'))
+            ? TextButton(onPressed: () => _revoke(context, ref), child: Text(l.shareRevoke))
             : null,
       ),
     );
   }
 
   Future<void> _revoke(BuildContext context, WidgetRef ref) async {
+    final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Link intrekken?'),
-        content: const Text('Wie de link heeft, kan de historie daarna niet meer bekijken.'),
+        title: Text(l.shareRevokeTitle),
+        content: Text(l.shareRevokeText),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuleren')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Intrekken')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l.shareRevoke)),
         ],
       ),
     );
@@ -121,9 +122,9 @@ class _ShareTile extends ConsumerWidget {
     try {
       await ref.read(shareApiProvider).revoke(share.id);
       ref.invalidate(vehicleSharesProvider(vehicleId));
-      messenger.showSnackBar(const SnackBar(content: Text('Link ingetrokken.')));
+      messenger.showSnackBar(SnackBar(content: Text(l.shareRevoked)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     }
   }
 }
@@ -148,18 +149,19 @@ class _NewShareDialogState extends State<_NewShareDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AlertDialog(
-      title: const Text('Nieuwe link'),
+      title: Text(l.shareNewLink),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButtonFormField<int>(
             initialValue: _validDays,
-            decoration: const InputDecoration(labelText: 'Geldig'),
+            decoration: InputDecoration(labelText: l.shareValidFor),
             items: [
               for (final days in shareValidityOptions)
-                DropdownMenuItem(value: days, child: Text(days == 365 ? '1 jaar' : '$days dagen')),
+                DropdownMenuItem(value: days, child: Text(days == 365 ? l.shareValidityYear : l.shareValidityDays(days))),
             ],
             onChanged: (days) => setState(() => _validDays = days ?? _validDays),
           ),
@@ -168,17 +170,16 @@ class _NewShareDialogState extends State<_NewShareDialog> {
             contentPadding: EdgeInsets.zero,
             value: _includeDocuments,
             onChanged: (value) => setState(() => _includeDocuments = value),
-            title: const Text('Documenten meedelen'),
-            subtitle: const Text('Facturen en werkorders kunnen dan worden geopend. Controleer of daar geen '
-                'persoonsgegevens op staan.'),
+            title: Text(l.shareIncludeDocuments),
+            subtitle: Text(l.shareIncludeDocumentsHelp),
           ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuleren')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton(
           onPressed: () => Navigator.pop(context, _NewShareOptions(_validDays, _includeDocuments)),
-          child: const Text('Link maken'),
+          child: Text(l.shareCreateLink),
         ),
       ],
     );
@@ -193,31 +194,30 @@ class _CreatedLinkDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AlertDialog(
-      title: const Text('Link gemaakt'),
+      title: Text(l.shareLinkCreated),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SelectableText(created.url),
           const SizedBox(height: 12),
-          const Text(
-            'Kopieer de link nu. Hij wordt maar één keer getoond; daarna kun je hem alleen nog intrekken.',
-          ),
+          Text(l.shareCopyNow),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Sluiten')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonClose)),
         FilledButton.icon(
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: created.url));
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link gekopieerd.')));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.shareLinkCopied)));
               Navigator.pop(context);
             }
           },
           icon: const Icon(Icons.copy),
-          label: const Text('Kopiëren'),
+          label: Text(l.shareCopy),
         ),
       ],
     );

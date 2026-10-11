@@ -8,6 +8,7 @@ import 'package:repairtrack_app/features/authentication/data/auth_api.dart';
 import 'package:repairtrack_app/features/authentication/presentation/account_screen.dart';
 
 import '../helpers/in_memory_token_store.dart';
+import '../helpers/test_app.dart';
 
 class MockAuthApi extends Mock implements AuthApi {}
 
@@ -23,7 +24,7 @@ void main() {
           authApiProvider.overrideWithValue(api),
           tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         ],
-        child: const MaterialApp(home: AccountScreen()),
+        child: const TestApp(home: AccountScreen()),
       ),
     );
     await tester.pumpAndSettle();

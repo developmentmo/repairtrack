@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/widgets/brand_widgets.dart';
@@ -36,6 +37,7 @@ class PublicReportScreen extends ConsumerWidget {
   }
 
   Widget _body(BuildContext context, WidgetRef ref, AsyncValue<PublicReport> report) {
+    final l = context.l10n;
     if (report.hasValue) {
       return _Report(token: token, report: report.requireValue);
     }
@@ -52,15 +54,15 @@ class PublicReportScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               Text(
                 invalidLink
-                    ? 'Deze link is ongeldig of niet meer geldig. Vraag de eigenaar om een nieuwe link.'
-                    : userMessage(error!),
+                    ? l.publicReportInvalidLink
+                    : userMessage(l, error!),
                 textAlign: TextAlign.center,
               ),
               if (!invalidLink) ...[
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () => ref.invalidate(publicReportProvider(token)),
-                  child: const Text('Opnieuw proberen'),
+                  child: Text(l.commonRetry),
                 ),
               ],
             ],
@@ -80,6 +82,7 @@ class _Report extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final vehicle = report.vehicle;
     final summary = report.summary;
     final theme = Theme.of(context);
@@ -88,9 +91,9 @@ class _Report extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Voertuighistorie', style: theme.textTheme.headlineSmall),
+        Text(l.publicReportTitle, style: theme.textTheme.headlineSmall),
         const SizedBox(height: 4),
-        Text('Deze historie is publiekelijk gedeeld door de eigenaar.', style: theme.textTheme.bodySmall),
+        Text(l.publicReportSharedByOwner, style: theme.textTheme.bodySmall),
         const SizedBox(height: 16),
         Card(
           child: Padding(
@@ -106,9 +109,9 @@ class _Report extends StatelessWidget {
                       Text('${vehicle.make} ${vehicle.model}', style: theme.textTheme.titleLarge),
                       Text(
                         [
-                          if (vehicle.modelYear != null) 'bouwjaar ${vehicle.modelYear}',
+                          if (vehicle.modelYear != null) l.publicReportModelYear('${vehicle.modelYear}'),
                           if (vehicle.firstRegistrationDate != null)
-                            'eerste toelating ${formatDate(vehicle.firstRegistrationDate!)}',
+                            l.publicReportFirstRegistration(formatDate(vehicle.firstRegistrationDate!)),
                         ].join(' · '),
                         style: theme.textTheme.bodySmall,
                       ),
@@ -125,31 +128,31 @@ class _Report extends StatelessWidget {
         ),
         if (vehicle.ownershipUnderReview) ...[
           const SizedBox(height: 12),
-          const InfoBanner(
+          InfoBanner(
             warning: true,
             icon: Icons.gavel,
-            message: 'Het eigendom van dit voertuig wordt op dit moment door RepairTrack beoordeeld.',
+            message: l.publicReportUnderReview,
           ),
         ],
         const SizedBox(height: 4),
         SectionCard(
-          title: 'Samenvatting',
+          title: l.publicReportSummary,
           child: Wrap(
             spacing: 16,
             runSpacing: 12,
             children: [
-              _Stat(icon: Icons.build_outlined, label: 'Totaal aantal registraties', value: '${summary.totalRecords}'),
-              _Stat(icon: Icons.verified_outlined, label: 'Garage bevestigd', value: '$verified'),
-              _Stat(icon: Icons.description_outlined, label: 'Met document', value: '$documented'),
+              _Stat(icon: Icons.build_outlined, label: l.publicReportStatTotal, value: '${summary.totalRecords}'),
+              _Stat(icon: Icons.verified_outlined, label: l.publicReportStatVerified, value: '$verified'),
+              _Stat(icon: Icons.description_outlined, label: l.publicReportStatDocumented, value: '$documented'),
               if (summary.lastRecordedMileage != null)
-                _Stat(icon: Icons.speed, label: 'Laatste km-stand', value: formatKm(summary.lastRecordedMileage!)),
+                _Stat(icon: Icons.speed, label: l.publicReportStatLastMileage, value: formatKm(summary.lastRecordedMileage!)),
               _Stat(
                 icon: Icons.people_outline,
-                label: 'Eigenaren in RepairTrack',
+                label: l.publicReportStatOwners,
                 value: '${vehicle.registeredOwnerCount}',
               ),
               if (summary.voidedRecords > 0)
-                _Stat(icon: Icons.block, label: 'Ongeldig verklaard', value: '${summary.voidedRecords}'),
+                _Stat(icon: Icons.block, label: l.publicReportStatVoided, value: '${summary.voidedRecords}'),
             ],
           ),
         ),
@@ -158,26 +161,25 @@ class _Report extends StatelessWidget {
           InfoBanner(
             warning: true,
             icon: Icons.speed,
-            message: 'Kilometerstand ${formatKm(inconsistency.later.mileage)} op ${formatDate(inconsistency.later.date)} '
-                'is lager dan ${formatKm(inconsistency.earlier.mileage)} op ${formatDate(inconsistency.earlier.date)}. '
-                'Dit is een inconsistentie in de gegevens, geen vaststelling van fraude.',
+            message: l.publicReportMileageInconsistency(
+              formatKm(inconsistency.later.mileage),
+              formatDate(inconsistency.later.date),
+              formatKm(inconsistency.earlier.mileage),
+              formatDate(inconsistency.earlier.date),
+            ),
           ),
           const SizedBox(height: 8),
         ],
         const SizedBox(height: 8),
-        Text('Registraties', style: theme.textTheme.titleMedium),
+        Text(l.publicReportRecords, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
-        if (report.history.isEmpty) const Text('Er zijn nog geen registraties.'),
+        if (report.history.isEmpty) Text(l.publicReportNoRecords),
         for (final entry in report.history) _EntryCard(token: token, entry: entry),
         const SizedBox(height: 16),
-        const InfoBanner(
-          message: 'Deze historie bevat alleen openbare informatie en is geen volledig onderhoudslogboek.',
-        ),
+        InfoBanner(message: l.publicReportDisclaimer),
         const SizedBox(height: 12),
         Text(
-          'Opgesteld op ${formatDateTime(report.generatedAt)}. Deze link is geldig tot '
-          '${formatDateTime(report.linkValidUntil)}. Ongeldig verklaarde registraties en correcties blijven zichtbaar: '
-          'in RepairTrack wordt niets stilletjes gewijzigd of verwijderd.',
+          l.publicReportFooter(formatDateTime(report.generatedAt), formatDateTime(report.linkValidUntil)),
           style: theme.textTheme.bodySmall,
         ),
       ],
@@ -223,6 +225,7 @@ class _EntryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final theme = Theme.of(context);
     final titleStyle = entry.voided
         ? theme.textTheme.titleMedium?.copyWith(decoration: TextDecoration.lineThrough, color: theme.disabledColor)
@@ -240,30 +243,29 @@ class _EntryCard extends ConsumerWidget {
                 const SizedBox(width: 12),
                 Expanded(child: Text(entry.title, style: titleStyle)),
                 if (entry.voided)
-                  Text('Ongeldig', style: TextStyle(color: theme.colorScheme.error))
+                  Text(l.publicReportVoid, style: TextStyle(color: theme.colorScheme.error))
                 else
                   VerificationBadge(status: entry.verificationStatus),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              '${formatDate(entry.eventDate)} · ${formatKm(entry.mileage)} · ${eventTypeLabel(entry.eventType)}',
+              '${formatDate(entry.eventDate)} · ${formatKm(entry.mileage)} · ${eventTypeLabel(l, entry.eventType)}',
               style: theme.textTheme.bodySmall,
             ),
             Text(
               garage == null
-                  ? sourceTypeLabel(entry.sourceType)
-                  : '${garage.name}${garage.city == null ? '' : ', ${garage.city}'}'
-                      '${garage.verificationStatus == GarageVerificationStatus.verified ? ' (geverifieerd)' : ''}',
+                  ? sourceTypeLabel(l, entry.sourceType)
+                  : _garageLine(l, garage),
               style: theme.textTheme.bodySmall,
             ),
             if (entry.enteredDuringRevokedOwnership) ...[
               const SizedBox(height: 4),
-              Text('Ingevoerd door een eigenaar van wie het eigendom na een geschil is ingetrokken', style: TextStyle(color: theme.colorScheme.error)),
+              Text(l.publicReportRevokedOwnership, style: TextStyle(color: theme.colorScheme.error)),
             ],
             if (entry.voided && entry.voidReason != null) ...[
               const SizedBox(height: 4),
-              Text('Ongeldig verklaard: ${entry.voidReason}', style: TextStyle(color: theme.colorScheme.error)),
+              Text(l.publicReportVoidedReason(entry.voidReason!), style: TextStyle(color: theme.colorScheme.error)),
             ],
             if (entry.description != null && entry.description!.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -281,11 +283,14 @@ class _EntryCard extends ConsumerWidget {
             for (final correction in entry.corrections) ...[
               const SizedBox(height: 8),
               Text(
-                'Gecorrigeerd: ${correctionFieldLabel(correction.field)} '
-                '${correctionValueLabel(correction.field, correction.originalValue)} → '
-                '${correctionValueLabel(correction.field, correction.correctedValue)} '
-                '(${correction.reason}; door ${correction.correctedBy == 'OWNER' ? 'eigenaar' : correction.correctedBy}, '
-                '${formatDate(correction.correctedAt.toLocal())})',
+                l.publicReportCorrection(
+                  correctionFieldLabel(l, correction.field),
+                  correctionValueLabel(l, correction.field, correction.originalValue),
+                  correctionValueLabel(l, correction.field, correction.correctedValue),
+                  correction.reason,
+                  correction.correctedBy == 'OWNER' ? l.publicReportCorrectedByOwner : correction.correctedBy,
+                  formatDate(correction.correctedAt.toLocal()),
+                ),
                 style: theme.textTheme.bodySmall,
               ),
             ],
@@ -294,11 +299,12 @@ class _EntryCard extends ConsumerWidget {
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.description_outlined),
-                title: Text(documentTypeLabel(document.documentType)),
+                title: Text(documentTypeLabel(l, document.documentType)),
                 subtitle: Text(
                   document.downloadable
-                      ? '${formatFileSize(document.fileSize)} · vingerafdruk ${document.reference!.substring(0, 12)}…'
-                      : 'Niet gedeeld door de eigenaar',
+                      ? l.publicReportDocumentFingerprint(
+                          formatFileSize(document.fileSize), document.reference!.substring(0, 12))
+                      : l.publicReportDocumentNotShared,
                 ),
                 trailing: document.downloadable ? const Icon(Icons.open_in_new) : null,
                 onTap: document.downloadable ? () => _open(context, ref, document) : null,
@@ -309,15 +315,21 @@ class _EntryCard extends ConsumerWidget {
     );
   }
 
+  static String _garageLine(AppLocalizations l, PublicGarage garage) {
+    final name = '${garage.name}${garage.city == null ? '' : ', ${garage.city}'}';
+    return garage.verificationStatus == GarageVerificationStatus.verified ? l.publicReportGarageVerified(name) : name;
+  }
+
   Future<void> _open(BuildContext context, WidgetRef ref, PublicDocument document) async {
+    final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final link = await ref.read(publicReportApiProvider).documentLink(token, document.reference!);
       if (!await launchUrl(Uri.parse(link.downloadUrl), mode: LaunchMode.externalApplication)) {
-        messenger.showSnackBar(const SnackBar(content: Text('Het document kon niet worden geopend.')));
+        messenger.showSnackBar(SnackBar(content: Text(l.publicReportDocumentOpenFailed)));
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     }
   }
 }

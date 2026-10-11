@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/session_controller.dart';
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/app_shell.dart';
 import '../../../core/widgets/async_value_view.dart';
@@ -34,13 +35,14 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final myGarages = garages.hasValue ? garages.requireValue : const <MyGarage>[];
     final disputes = ref.watch(myDisputesProvider).value ?? const <PartyDispute>[];
     final wide = isWideLayout(context);
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: wide ? const Text('Dashboard') : const BrandLogo(size: 26),
+        title: wide ? Text(l.navDashboard) : const BrandLogo(size: 26),
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'Menu',
+            tooltip: l.dashboardMenu,
             onSelected: (value) {
               if (value == 'garage') {
                 context.go(Routes.newGarage);
@@ -48,9 +50,9 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 ref.read(sessionControllerProvider.notifier).logout();
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'garage', child: Text('Garage aanmelden')),
-              PopupMenuItem(value: 'logout', child: Text('Uitloggen')),
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'garage', child: Text(l.navRegisterGarage)),
+              PopupMenuItem(value: 'logout', child: Text(l.navSignOut)),
             ],
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -65,7 +67,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go(Routes.addVehicle),
         icon: const Icon(Icons.add),
-        label: const Text('Voertuig'),
+        label: Text(l.commonVehicle),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -91,12 +93,12 @@ class OwnerDashboardScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        user == null ? 'Welkom terug!' : 'Welkom terug, ${user.firstName}!',
+                        user == null ? l.dashboardWelcome : l.dashboardWelcomeName(user.firstName),
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Hier is een overzicht van je voertuigen en recente activiteiten.',
+                        l.dashboardSubtitle,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context).textTheme.bodySmall?.color,
                             ),
@@ -126,7 +128,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                       if (myGarages.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         SectionCard(
-                          title: 'Mijn garages',
+                          title: l.dashboardMyGarages,
                           child: Column(children: [for (final garage in myGarages) _GarageRow(garage: garage)]),
                         ),
                       ],
@@ -157,38 +159,39 @@ class _StatTiles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final tiles = [
       _StatTile(
         icon: Icons.directions_car_outlined,
         value: '$vehicleCount',
-        label: vehicleCount == 1 ? 'Voertuig' : 'Voertuigen',
-        caption: 'in jouw bezit',
+        label: l.dashboardStatVehicles(vehicleCount),
+        caption: l.dashboardStatVehiclesCaption,
       ),
       _StatTile(
         icon: Icons.build_outlined,
         value: repairCount == null ? '–' : '$repairCount',
-        label: repairCount == 1 ? 'Reparatie' : 'Reparaties',
-        caption: 'in totaal',
+        label: l.dashboardStatRepairs(repairCount ?? 0),
+        caption: l.dashboardStatRepairsCaption,
       ),
       _StatTile(
         icon: Icons.home_repair_service_outlined,
         value: '$garageCount',
-        label: garageCount == 1 ? 'Garage' : 'Garages',
-        caption: 'waar je lid bent',
+        label: l.dashboardStatGarages(garageCount),
+        caption: l.dashboardStatGaragesCaption,
       ),
       if (disputesNeedingAction == 0)
-        const _StatTile(
+        _StatTile(
           icon: Icons.verified_outlined,
           tone: Tone.success,
-          label: 'Alles up-to-date',
-          caption: 'Geen meldingen',
+          label: l.dashboardAllUpToDate,
+          caption: l.dashboardNoNotifications,
         )
       else
         _StatTile(
           icon: Icons.gavel,
           tone: Tone.warning,
-          label: 'Actie nodig',
-          caption: disputesNeedingAction == 1 ? '1 geschil wacht op je reactie' : '$disputesNeedingAction geschillen',
+          label: l.dashboardActionNeeded,
+          caption: l.dashboardDisputesWaiting(disputesNeedingAction),
           onTap: () => context.go(Routes.disputes),
         ),
     ];
@@ -264,9 +267,10 @@ class _VehiclesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return SectionCard(
-      title: 'Mijn voertuigen',
-      action: SectionLink(label: 'Voertuig toevoegen', onPressed: () => context.go(Routes.addVehicle)),
+      title: l.dashboardMyVehicles,
+      action: SectionLink(label: l.commonAddVehicle, onPressed: () => context.go(Routes.addVehicle)),
       child: vehicles.isEmpty
           ? const _EmptyState()
           : LayoutBuilder(
@@ -304,6 +308,7 @@ class _VehicleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final last = lastRepair?.repair;
+    final l = context.l10n;
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -325,9 +330,9 @@ class _VehicleCard extends StatelessWidget {
                     LicensePlate(plate: vehicle.licensePlate!),
                   ],
                   const SizedBox(height: 12),
-                  Text('Laatste onderhoud', style: theme.textTheme.bodySmall),
+                  Text(l.dashboardLastMaintenance, style: theme.textTheme.bodySmall),
                   Text(
-                    last == null ? 'Nog niets geregistreerd' : '${formatDate(last.eventDate)} · ${formatKm(last.mileage)}',
+                    last == null ? l.dashboardNothingRecorded : '${formatDate(last.eventDate)} · ${formatKm(last.mileage)}',
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
@@ -347,6 +352,7 @@ class _RecentRepairsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final Widget child;
     if (repairs.hasValue) {
       final recent = repairs.requireValue.take(5).toList();
@@ -354,7 +360,7 @@ class _RecentRepairsSection extends StatelessWidget {
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                'Nog geen onderhoud of reparaties geregistreerd.',
+                l.vehicleNoRepairsYet,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
@@ -368,11 +374,11 @@ class _RecentRepairsSection extends StatelessWidget {
               ],
             );
     } else if (repairs.hasError) {
-      child = Text('Recente reparaties konden niet worden geladen.', style: Theme.of(context).textTheme.bodySmall);
+      child = Text(l.dashboardRecentRepairsFailed, style: Theme.of(context).textTheme.bodySmall);
     } else {
       child = const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
     }
-    return SectionCard(title: 'Recente reparaties', child: child);
+    return SectionCard(title: l.dashboardRecentRepairs, child: child);
   }
 }
 
@@ -387,7 +393,7 @@ class _GarageRow extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       leading: const IconBadge(icon: Icons.home_repair_service_outlined),
       title: Text(garage.name),
-      subtitle: Text([garage.city, garageRoleLabel(garage.role)].whereType<String>().join(' · ')),
+      subtitle: Text([garage.city, garageRoleLabel(context.l10n, garage.role)].whereType<String>().join(' · ')),
       trailing: GarageStatusChip(status: garage.verificationStatus),
       onTap: () => context.go(Routes.garage(garage.garageId)),
     );
@@ -399,16 +405,17 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
         children: [
           const IconBadge(icon: Icons.directions_car_outlined, size: 64),
           const SizedBox(height: 12),
-          Text('Je hebt nog geen voertuigen.', style: Theme.of(context).textTheme.titleSmall),
+          Text(l.dashboardNoVehicles, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           Text(
-            'Registreer een nieuw voertuig of claim een voertuig dat al in RepairTrack staat.',
+            l.dashboardNoVehiclesHint,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall,
           ),
@@ -416,7 +423,7 @@ class _EmptyState extends StatelessWidget {
           FilledButton.icon(
             onPressed: () => context.go(Routes.addVehicle),
             icon: const Icon(Icons.add),
-            label: const Text('Voertuig toevoegen'),
+            label: Text(l.commonAddVehicle),
           ),
         ],
       ),

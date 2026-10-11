@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/async_value_view.dart';
@@ -32,8 +33,9 @@ class VehicleDetailScreen extends ConsumerWidget {
     final disputes = garageId == null
         ? ref.watch(ownershipDisputesProvider(vehicleId)).value ?? const <PartyDispute>[]
         : const <PartyDispute>[];
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: Text(garageId == null ? 'Mijn voertuig' : 'Voertuig')),
+      appBar: AppBar(title: Text(garageId == null ? l.vehicleDetailMyVehicle : l.commonVehicle)),
       body: AsyncValueView(
         value: vehicle,
         onRetry: () => ref.invalidate(vehicleProvider(vehicleId)),
@@ -46,12 +48,12 @@ class VehicleDetailScreen extends ConsumerWidget {
                 warning: true,
                 icon: Icons.gavel,
                 message: disputes.any((d) => d.canRespond)
-                    ? 'Iemand betwist dat jij de eigenaar bent. Reageer via Geschillen en voeg bewijs toe.'
-                    : 'Het eigendom van dit voertuig wordt beoordeeld. Tot er is beslist, kun je geen deellinks maken.',
+                    ? l.vehicleDetailDisputeRespond
+                    : l.vehicleDetailDisputeUnderReview,
               ),
               Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton(onPressed: () => context.go(Routes.disputes), child: const Text('Naar geschillen')),
+                child: TextButton(onPressed: () => context.go(Routes.disputes), child: Text(l.vehicleDetailToDisputes)),
               ),
               const SizedBox(height: 8),
             ],
@@ -69,18 +71,18 @@ class VehicleDetailScreen extends ConsumerWidget {
                   FilledButton.icon(
                     onPressed: () => context.go(Routes.garageNewRepair(garageId!, vehicle.id)),
                     icon: const Icon(Icons.build_outlined),
-                    label: const Text('Werk vastleggen'),
+                    label: Text(l.vehicleDetailRecordWork),
                   ),
                 if (garageId == null && vehicle.ownedByMe) ...[
                   FilledButton.icon(
                     onPressed: () => context.go(Routes.newRepair(vehicle.id)),
                     icon: const Icon(Icons.add),
-                    label: const Text('Nieuwe reparatie'),
+                    label: Text(l.vehicleDetailNewRepair),
                   ),
                   OutlinedButton.icon(
                     onPressed: () => context.go(Routes.shareVehicle(vehicle.id)),
                     icon: const Icon(Icons.share_outlined),
-                    label: const Text('Historie delen'),
+                    label: Text(l.vehicleDetailShareHistory),
                   ),
                 ],
               ],
@@ -88,16 +90,16 @@ class VehicleDetailScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             _HistoryPreview(vehicleId: vehicle.id, garageId: garageId),
             SectionCard(
-              title: 'Gegevens',
+              title: l.vehicleDetailDetails,
               child: Column(
                 children: [
-                  DetailRow(label: 'Kenteken', value: vehicle.licensePlate ?? '-'),
-                  DetailRow(label: 'Bouwjaar', value: vehicle.modelYear?.toString() ?? '-'),
+                  DetailRow(label: l.vehicleLicensePlate, value: vehicle.licensePlate ?? '-'),
+                  DetailRow(label: l.vehicleDetailModelYear, value: vehicle.modelYear?.toString() ?? '-'),
                   DetailRow(
-                    label: 'Eerste toelating',
+                    label: l.vehicleDetailFirstRegistration,
                     value: vehicle.firstRegistrationDate == null ? '-' : formatDate(vehicle.firstRegistrationDate!),
                   ),
-                  if (vehicle.vin != null) DetailRow(label: 'VIN', value: vehicle.vin!),
+                  if (vehicle.vin != null) DetailRow(label: l.vehicleDetailVin, value: vehicle.vin!),
                 ],
               ),
             ),
@@ -108,7 +110,7 @@ class VehicleDetailScreen extends ConsumerWidget {
                 child: TextButton.icon(
                   onPressed: () => _endOwnership(context, ref, vehicle),
                   icon: const Icon(Icons.sell_outlined),
-                  label: const Text('Ik heb dit voertuig verkocht'),
+                  label: Text(l.vehicleDetailSold),
                 ),
               ),
             ],
@@ -119,17 +121,16 @@ class VehicleDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _endOwnership(BuildContext context, WidgetRef ref, Vehicle vehicle) async {
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Voertuig verkocht?'),
-        content: const Text(
-          'Je eigendom eindigt vandaag. De onderhoudshistorie blijft bij het voertuig, zodat de nieuwe eigenaar '
-          'die kan inzien. Jij hebt daarna geen toegang meer.',
-        ),
+        title: Text(l.vehicleDetailSoldTitle),
+        content: Text(l.vehicleDetailSoldText),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuleren')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eigendom beëindigen')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l.vehicleDetailEndOwnership)),
         ],
       ),
     );
@@ -143,9 +144,7 @@ class VehicleDetailScreen extends ConsumerWidget {
         context.go(Routes.home);
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(userMessage(e))));
-      }
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     }
   }
 }
@@ -184,7 +183,7 @@ class _VehicleHeader extends StatelessWidget {
               ),
             ),
             if (vehicle.ownedByMe)
-              const StatusPill(label: 'Actief', tone: Tone.success, icon: Icons.check_circle_outline),
+              StatusPill(label: context.l10n.vehicleDetailActive, tone: Tone.success, icon: Icons.check_circle_outline),
           ],
         ),
       ),
@@ -202,8 +201,9 @@ class _HistoryPreview extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repairs = ref.watch(vehicleRepairsProvider(vehicleId));
+    final l = context.l10n;
     final openHistory = SectionLink(
-      label: 'Bekijk alle',
+      label: l.vehicleDetailViewAll,
       onPressed: () => context.go(Routes.vehicleHistoryFor(garageId, vehicleId)),
     );
     final Widget child;
@@ -213,7 +213,7 @@ class _HistoryPreview extends ConsumerWidget {
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                'Nog geen onderhoud of reparaties geregistreerd.',
+                l.vehicleNoRepairsYet,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             )
@@ -229,12 +229,12 @@ class _HistoryPreview extends ConsumerWidget {
         alignment: Alignment.centerLeft,
         child: TextButton(
           onPressed: () => context.go(Routes.vehicleHistoryFor(garageId, vehicleId)),
-          child: const Text('Onderhoudshistorie openen'),
+          child: Text(l.vehicleDetailOpenHistory),
         ),
       );
     } else {
       child = const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
     }
-    return SectionCard(title: 'Reparatiegeschiedenis', action: openHistory, child: child);
+    return SectionCard(title: l.vehicleDetailRepairHistory, action: openHistory, child: child);
   }
 }

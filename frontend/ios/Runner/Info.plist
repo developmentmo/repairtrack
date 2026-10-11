@@ -79,6 +79,7 @@
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>nl</string>
+		<string>en</string>
 	</array>
 </dict>
 </plist>

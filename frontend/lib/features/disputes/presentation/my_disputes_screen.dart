@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -16,9 +17,10 @@ class MyDisputesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final disputes = ref.watch(myDisputesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Geschillen over eigendom')),
+      appBar: AppBar(title: Text(l.myDisputesTitle)),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(myDisputesProvider);
@@ -30,7 +32,7 @@ class MyDisputesScreen extends ConsumerWidget {
           data: (list) => ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              if (list.isEmpty) const Text('Je hebt geen geschillen.'),
+              if (list.isEmpty) Text(l.myDisputesEmpty),
               for (final dispute in list) DisputeCard(dispute: dispute),
             ],
           ),
@@ -55,18 +57,20 @@ class _DisputeCardState extends ConsumerState<DisputeCard> {
   void _show(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _respond() async {
+    final l = context.l10n;
     final sent = await showDialog<bool>(
       context: context,
       builder: (context) => _RespondDialog(disputeId: widget.dispute.id),
     );
     if (sent == true && mounted) {
       ref.invalidate(myDisputesProvider);
-      _show('Je reactie is verstuurd. RepairTrack beoordeelt het geschil.');
+      _show(l.myDisputeResponseSent);
     }
   }
 
   Future<void> _addEvidence() async {
-    final file = await pickEvidenceFile(_show);
+    final l = context.l10n;
+    final file = await pickEvidenceFile(l, _show);
     if (file == null || !mounted) {
       return;
     }
@@ -74,9 +78,9 @@ class _DisputeCardState extends ConsumerState<DisputeCard> {
     try {
       await ref.read(disputeApiProvider).addEvidence(widget.dispute.id, file);
       ref.invalidate(myDisputesProvider);
-      _show('Bestand toegevoegd.');
+      _show(l.myDisputeFileAdded);
     } catch (e) {
-      _show(userMessage(e));
+      _show(userMessage(l, e));
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -86,10 +90,11 @@ class _DisputeCardState extends ConsumerState<DisputeCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final dispute = widget.dispute;
     final theme = Theme.of(context);
     final owner = dispute.role == DisputeParty.owner;
-    final vehicle = dispute.vehicle?.displayName ?? 'Voertuig';
+    final vehicle = dispute.vehicle?.displayName ?? l.commonVehicle;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -99,44 +104,43 @@ class _DisputeCardState extends ConsumerState<DisputeCard> {
             Row(
               children: [
                 Expanded(child: Text(vehicle, style: theme.textTheme.titleMedium)),
-                Text(disputeStatusLabel(dispute.status)),
+                Text(disputeStatusLabel(l, dispute.status)),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              owner ? 'Iemand betwist dat jij de eigenaar bent.' : 'Jij betwist het eigendom van dit voertuig.',
+              owner ? l.myDisputeOwnerSubtitle : l.myDisputeClaimantSubtitle,
               style: theme.textTheme.bodySmall,
             ),
-            Text('Ingediend op ${formatDate(dispute.createdAt.toLocal())}', style: theme.textTheme.bodySmall),
+            Text(l.myDisputeSubmittedOn(formatDate(dispute.createdAt.toLocal())), style: theme.textTheme.bodySmall),
             if (dispute.status == DisputeStatus.open)
               Text(
                 owner
-                    ? 'Reageren kan tot ${formatDateTime(dispute.responseDeadline)}.'
-                    : 'De eigenaar kan reageren tot ${formatDateTime(dispute.responseDeadline)}.',
+                    ? l.myDisputeOwnerRespondUntil(formatDateTime(dispute.responseDeadline))
+                    : l.myDisputeClaimantRespondUntil(formatDateTime(dispute.responseDeadline)),
                 style: theme.textTheme.bodySmall,
               ),
             if (owner && dispute.canRespond) ...[
               const SizedBox(height: 8),
-              const InfoBanner(
+              InfoBanner(
                 warning: true,
                 icon: Icons.gavel,
-                message: 'Geef je reactie en voeg bewijs toe dat je de eigenaar bent. Zolang het geschil loopt, '
-                    'kun je geen nieuwe deellinks maken.',
+                message: l.myDisputeOwnerBanner,
               ),
             ],
             if (dispute.myStatement != null) ...[
               const SizedBox(height: 8),
-              Text(owner ? 'Jouw reactie' : 'Jouw toelichting', style: theme.textTheme.labelLarge),
+              Text(owner ? l.myDisputeYourResponse : l.myDisputeYourStatement, style: theme.textTheme.labelLarge),
               Text(dispute.myStatement!),
             ],
             if (dispute.myEvidence.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text('Jouw bestanden', style: theme.textTheme.labelLarge),
+              Text(l.myDisputeYourFiles, style: theme.textTheme.labelLarge),
               for (final file in dispute.myEvidence) Text('• ${file.fileName}'),
             ],
             if (dispute.status.isDecided) ...[
               const SizedBox(height: 8),
-              Text(_outcome(dispute), style: theme.textTheme.labelLarge),
+              Text(_outcome(l, dispute), style: theme.textTheme.labelLarge),
               if (dispute.decisionNote != null) Text(dispute.decisionNote!),
             ],
             if (dispute.canRespond || dispute.canAddEvidence) ...[
@@ -149,12 +153,12 @@ class _DisputeCardState extends ConsumerState<DisputeCard> {
                     FilledButton(
                       key: Key('dispute-respond-${dispute.id}'),
                       onPressed: _busy ? null : _respond,
-                      child: const Text('Reageren'),
+                      child: Text(l.myDisputeRespond),
                     ),
                   if (dispute.canAddEvidence)
                     OutlinedButton(
                       onPressed: _busy ? null : _addEvidence,
-                      child: _busy ? const ButtonProgress() : const Text('Bestand toevoegen'),
+                      child: _busy ? const ButtonProgress() : Text(l.myDisputeAddFile),
                     ),
                 ],
               ),
@@ -165,16 +169,18 @@ class _DisputeCardState extends ConsumerState<DisputeCard> {
     );
   }
 
-  static String _outcome(PartyDispute dispute) {
+  static String _outcome(AppLocalizations l, PartyDispute dispute) {
     final owner = dispute.role == DisputeParty.owner;
     final upheld = dispute.status == DisputeStatus.upheld;
     if (upheld) {
-      return owner
-          ? 'Uitkomst: je eigendom is ingetrokken.'
-          : 'Uitkomst: je bent nu de eigenaar'
-              '${dispute.newOwnerSince == null ? '' : ' (vanaf ${formatDate(dispute.newOwnerSince!)})'}.';
+      if (owner) {
+        return l.myDisputeOutcomeRevoked;
+      }
+      return dispute.newOwnerSince == null
+          ? l.myDisputeOutcomeNowOwner
+          : l.myDisputeOutcomeNowOwnerSince(formatDate(dispute.newOwnerSince!));
     }
-    return owner ? 'Uitkomst: je blijft de eigenaar.' : 'Uitkomst: je geschil is afgewezen.';
+    return owner ? l.myDisputeOutcomeStillOwner : l.myDisputeOutcomeRejected;
   }
 }
 
@@ -200,15 +206,16 @@ class _RespondDialogState extends ConsumerState<_RespondDialog> {
   }
 
   Future<void> _pick() async {
-    final file = await pickEvidenceFile((message) => setState(() => _error = message));
+    final file = await pickEvidenceFile(context.l10n, (message) => setState(() => _error = message));
     if (file != null && mounted) {
       setState(() => _file = file);
     }
   }
 
   Future<void> _send() async {
+    final l = context.l10n;
     if (_statement.text.trim().length < 10) {
-      setState(() => _error = 'Schrijf ten minste een paar woorden (10 tekens).');
+      setState(() => _error = l.disputeStatementTooShort);
       return;
     }
     setState(() {
@@ -224,7 +231,7 @@ class _RespondDialogState extends ConsumerState<_RespondDialog> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _error = userMessage(e);
+          _error = userMessage(l, e);
         });
       }
     }
@@ -232,27 +239,28 @@ class _RespondDialogState extends ConsumerState<_RespondDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AlertDialog(
-      title: const Text('Reageren op het geschil'),
+      title: Text(l.respondDisputeTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Je kunt één keer reageren. Leg uit waarom de auto van jou is.'),
+            Text(l.respondDisputeIntro),
             const SizedBox(height: 12),
             TextField(
               key: const Key('dispute-response'),
               controller: _statement,
-              decoration: const InputDecoration(labelText: 'Jouw reactie', alignLabelWithHint: true),
+              decoration: InputDecoration(labelText: l.myDisputeYourResponse, alignLabelWithHint: true),
               minLines: 3,
               maxLines: 6,
               maxLength: 2000,
             ),
             const SizedBox(height: 8),
-            const Text(evidenceHint),
+            Text(l.evidenceHint),
             const SizedBox(height: 8),
-            EvidenceFileButton(file: _file, onPressed: _busy ? null : _pick, label: 'Bestand toevoegen (optioneel)'),
+            EvidenceFileButton(file: _file, onPressed: _busy ? null : _pick, label: l.respondDisputeAddFileOptional),
             if (_error != null) ...[
               const SizedBox(height: 12),
               ErrorText(message: _error!),
@@ -263,11 +271,11 @@ class _RespondDialogState extends ConsumerState<_RespondDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Annuleren'),
+          child: Text(l.commonCancel),
         ),
         FilledButton(
           onPressed: _busy ? null : _send,
-          child: _busy ? const ButtonProgress() : const Text('Versturen'),
+          child: _busy ? const ButtonProgress() : Text(l.respondDisputeSend),
         ),
       ],
     );

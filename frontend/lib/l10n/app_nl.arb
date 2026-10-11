@@ -1,0 +1,928 @@
+{
+  "@@locale": "nl",
+  "errorGeneric": "Er ging iets mis. Probeer het opnieuw.",
+  "errorNetwork": "Geen verbinding met de server. Controleer je verbinding en probeer het opnieuw.",
+  "errorInvalidCredentials": "E-mailadres of wachtwoord is onjuist.",
+  "errorPasswordIncorrect": "Het wachtwoord klopt niet.",
+  "errorLastGarageAdmin": "Je bent de enige beheerder van een garage met andere leden. Maak eerst iemand anders beheerder.",
+  "errorAccountBlocked": "Dit account is geblokkeerd.",
+  "errorEmailNotVerified": "Bevestig eerst je e-mailadres via de link in je mail.",
+  "errorInvalidToken": "Deze link is ongeldig, verlopen of al gebruikt. Vraag een nieuwe aan.",
+  "errorSystemAdminRequired": "Alleen beheerders mogen dit doen.",
+  "errorCannotBlockYourself": "Je kunt je eigen account niet blokkeren.",
+  "errorUserNotFound": "Geen gebruiker met dit e-mailadres.",
+  "errorTooManyLoginAttempts": "Te vaak een verkeerd wachtwoord. Probeer het over een kwartier opnieuw.",
+  "errorRateLimited": "Te veel verzoeken achter elkaar. Wacht even en probeer het opnieuw.",
+  "errorEmailAlreadyRegistered": "Er bestaat al een account met dit e-mailadres.",
+  "errorInvalidPassword": "Het wachtwoord moet minimaal 12 tekens hebben.",
+  "errorSessionExpired": "Je sessie is verlopen. Log opnieuw in.",
+  "errorVehicleAlreadyRegistered": "Dit voertuig is al geregistreerd. Zoek het op kenteken en claim het met het VIN.",
+  "errorVehicleAlreadyOwned": "Dit voertuig heeft al een eigenaar.",
+  "errorAlreadyVehicleOwner": "Je bent al eigenaar van dit voertuig.",
+  "errorOwnershipProofInvalid": "Het VIN komt niet overeen met dit voertuig.",
+  "errorInvalidOwnershipPeriod": "Deze datum overlapt met de vorige eigenaar of ligt in de toekomst.",
+  "errorInvalidVehicleSearch": "Vul een kenteken in.",
+  "errorVehicleNotFound": "Voertuig niet gevonden.",
+  "errorVehicleUnderDispute": "Het eigendom van dit voertuig wordt betwist. Tot RepairTrack heeft beslist, kun je geen deellinks maken.",
+  "errorVehicleNotOwned": "Dit voertuig heeft geen eigenaar. Claim het in plaats van een geschil in te dienen.",
+  "errorDisputeNotFound": "Geschil niet gevonden.",
+  "errorDisputeAlreadyOpen": "Je hebt al een open geschil over dit voertuig.",
+  "errorTooManyOpenDisputes": "Je hebt te veel open geschillen. Wacht tot ze zijn beoordeeld.",
+  "errorTooMuchEvidence": "Je hebt het maximale aantal bestanden voor dit geschil bereikt.",
+  "errorDisputeClosed": "Dit is niet meer mogelijk: de reactietermijn is voorbij of er is al beslist.",
+  "errorDisputeNotReviewable": "De eigenaar kan nog reageren. Beslis na de reactie of na de termijn.",
+  "errorDisputeAccessDenied": "Alleen de huidige eigenaar kan op dit geschil reageren.",
+  "errorOwnershipChanged": "Het eigendom is intussen gewijzigd. Dit geschil kan niet meer worden toegekend.",
+  "errorInvalidInput": "Controleer de invoer: {details}",
+  "@errorInvalidInput": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "errorRegistryVehicleNotFound": "De RDW kent dit kenteken niet. Vul de gegevens zelf in.",
+  "errorRegistryUnavailable": "De RDW-gegevens zijn nu niet beschikbaar. Vul de gegevens zelf in.",
+  "errorRepairNotFound": "Registratie niet gevonden.",
+  "errorAccessDenied": "Je hebt geen toegang tot deze gegevens.",
+  "errorGarageAccessDenied": "Je bent geen (beheerder van dit) garagelid.",
+  "errorGarageSuspended": "Deze garage is geschorst en kan geen werk vastleggen.",
+  "errorGarageNotFound": "Garage niet gevonden.",
+  "errorInvalidVerificationTransition": "Deze statuswijziging is nu niet mogelijk.",
+  "errorNoChanges": "Er is niets gewijzigd.",
+  "errorRepairAlreadyVoided": "Deze registratie is al ongeldig verklaard en kan niet meer worden gewijzigd.",
+  "errorEmptyFile": "Het bestand is leeg.",
+  "errorFileTooLarge": "Het bestand is groter dan 20 MB.",
+  "errorMalwareDetected": "Het bestand is geweigerd: er is een virus of andere malware in gevonden.",
+  "errorScannerUnavailable": "Bestanden kunnen nu niet op virussen worden gecontroleerd. Probeer het later opnieuw.",
+  "errorUnsupportedFileType": "Alleen PDF, JPEG en PNG zijn toegestaan.",
+  "errorDocumentNotFound": "Document niet gevonden.",
+  "errorWithCode": "Er ging iets mis ({code}).",
+  "@errorWithCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "photoErrorVehicleAccessDenied": "Alleen de huidige eigenaar kan een foto toevoegen of bekijken.",
+  "photoErrorVehicleNotFound": "Dit voertuig bestaat niet (meer).",
+  "photoErrorEmptyFile": "Het gekozen bestand is leeg.",
+  "photoErrorFileTooLarge": "De foto is te groot (maximaal 20 MB).",
+  "photoErrorUnsupportedFileType": "Alleen JPEG-, PNG- en WebP-foto's zijn toegestaan.",
+  "photoErrorMalwareDetected": "Deze foto is geweigerd omdat er schadelijke inhoud in is gevonden.",
+  "photoErrorScannerUnavailable": "De foto kan nu niet worden gecontroleerd. Probeer het later opnieuw.",
+  "photoErrorVehiclePhotoConflict": "Er werd tegelijk een andere foto geüpload. Probeer het opnieuw.",
+  "eventTypeMaintenance": "Onderhoud",
+  "eventTypeRepair": "Reparatie",
+  "eventTypeInspection": "Inspectie",
+  "eventTypeTyreChange": "Banden",
+  "eventTypeDamageRepair": "Schadeherstel",
+  "eventTypeApk": "APK",
+  "@eventTypeApk": {
+    "description": "Dutch periodic vehicle inspection (APK)."
+  },
+  "eventTypeRecall": "Terugroepactie",
+  "eventTypeOther": "Overig",
+  "sourceTypeOwner": "Eigenaar",
+  "sourceTypeOwnerDocument": "Eigenaar met document",
+  "sourceTypeGarage": "Garage",
+  "sourceTypeVerifiedGarage": "Geverifieerde garage",
+  "sourceTypeManufacturer": "Fabrikant",
+  "sourceTypeRdw": "RDW",
+  "verificationUnverified": "Onbevestigd",
+  "verificationDocumented": "Met document",
+  "verificationGarageVerified": "Garage bevestigd",
+  "verificationOfficialSource": "Officiële bron",
+  "correctionFieldEventType": "Soort",
+  "@correctionFieldEventType": {
+    "description": "Field name: the kind of work (maintenance, repair, ...)."
+  },
+  "correctionFieldEventDate": "Datum",
+  "correctionFieldMileage": "Kilometerstand",
+  "correctionFieldTitle": "Titel",
+  "correctionFieldDescription": "Omschrijving",
+  "correctionValueEmpty": "(leeg)",
+  "@correctionValueEmpty": {
+    "description": "Shown when a corrected value was empty."
+  },
+  "mileageWarning": "Kilometerstand {laterMileage} op {laterDate} is lager dan {earlierMileage} op {earlierDate}.",
+  "@mileageWarning": {
+    "description": "A later record shows a lower mileage than an earlier one.",
+    "placeholders": {
+      "laterMileage": {
+        "type": "String",
+        "example": "120.000 km"
+      },
+      "laterDate": {
+        "type": "String",
+        "example": "01-03-2026"
+      },
+      "earlierMileage": {
+        "type": "String",
+        "example": "125.000 km"
+      },
+      "earlierDate": {
+        "type": "String",
+        "example": "10-01-2026"
+      }
+    }
+  },
+  "garageStatusVerified": "Geverifieerd",
+  "garageStatusPending": "Wacht op verificatie",
+  "garageStatusUnverified": "Niet geverifieerd",
+  "garageStatusSuspended": "Geschorst",
+  "garageRoleAdmin": "Beheerder",
+  "garageRoleMechanic": "Monteur",
+  "garageRoleMember": "Lid",
+  "disputeStatusOpen": "Wacht op reactie eigenaar",
+  "disputeStatusAwaitingReview": "In beoordeling",
+  "disputeStatusUpheld": "Toegekend",
+  "disputeStatusRejected": "Afgewezen",
+  "navDashboard": "Dashboard",
+  "navDisputes": "Geschillen",
+  "navAccount": "Account",
+  "navAdmin": "Beheer",
+  "@navAdmin": {
+    "description": "Navigation item for system administrators."
+  },
+  "navGarages": "Garages",
+  "navRegisterGarage": "Garage aanmelden",
+  "navSignOut": "Uitloggen",
+  "userRoleAdmin": "Beheerder",
+  "@userRoleAdmin": {
+    "description": "Role of the signed-in user in the sidebar."
+  },
+  "userRoleOwner": "Eigenaar",
+  "@userRoleOwner": {
+    "description": "Role of the signed-in user in the sidebar."
+  },
+  "passwordLabel": "Wachtwoord",
+  "passwordHide": "Wachtwoord verbergen",
+  "passwordShow": "Wachtwoord tonen",
+  "privacyPolicy": "Privacybeleid",
+  "accountTitle": "Account",
+  "accountName": "Naam",
+  "accountEmail": "E-mail",
+  "accountLanguage": "Taal",
+  "@accountLanguage": {
+    "description": "Heading above the language choice."
+  },
+  "accountDeleteTitle": "Account verwijderen",
+  "accountDeleteExplanation": "Je naam en e-mailadres worden verwijderd en je kunt niet meer inloggen. De onderhoudshistorie hoort bij het voertuig en blijft bewaard, zonder jouw gegevens; je voertuigen komen vrij voor hun volgende eigenaar en je deellinks werken niet meer. Dit kan niet ongedaan worden gemaakt.",
+  "accountDeletePasswordRequired": "Vul je wachtwoord in.",
+  "accountDeleted": "Je account is verwijderd.",
+  "accountDeleteConfirmTitle": "Account definitief verwijderen?",
+  "accountDeleteConfirmText": "Vul ter bevestiging je wachtwoord in.",
+  "commonDelete": "Verwijderen",
+  "commonCancel": "Annuleren",
+  "commonRequiredField": "Verplicht veld",
+  "commonBackToLogin": "Naar inloggen",
+  "commonEmail": "E-mailadres",
+  "commonInvalidEmail": "Vul een geldig e-mailadres in",
+  "commonGarage": "Garage",
+  "commonReject": "Afwijzen",
+  "commonYes": "Ja",
+  "commonNo": "Nee",
+  "loginTagline": "Vertrouwde voertuiggeschiedenis. Altijd en overal.",
+  "@loginTagline": {
+    "description": "Slogan under the logo on the sign-in screen."
+  },
+  "loginSubtitle": "Log in om je voertuighistorie te bekijken.",
+  "loginPasswordRequired": "Vul je wachtwoord in",
+  "loginSubmit": "Inloggen",
+  "loginNoAccount": "Nog geen account? Registreren",
+  "loginForgotPassword": "Wachtwoord vergeten?",
+  "registerTitle": "Account aanmaken",
+  "@registerTitle": {
+    "description": "Screen title and submit button of the registration form."
+  },
+  "registerConfirmEmailTitle": "Bevestig je e-mailadres",
+  "registerFirstName": "Voornaam",
+  "registerLastName": "Achternaam",
+  "registerHaveAccount": "Ik heb al een account",
+  "registerPrivacyConsent": "Met het aanmaken van een account ga je akkoord met het verwerken van je gegevens zoals beschreven in ons privacybeleid.",
+  "registerReadPrivacyPolicy": "Privacybeleid lezen",
+  "passwordMinLength": "Minimaal {min} tekens",
+  "@passwordMinLength": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "passwordRepeat": "Herhaal wachtwoord",
+  "passwordMismatch": "De wachtwoorden zijn niet gelijk",
+  "checkMailText": "We hebben een e-mail gestuurd naar {email}. Klik op de link in die mail om je e-mailadres te bevestigen; daarna kun je inloggen. De link is 24 uur geldig.",
+  "@checkMailText": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "resendVerificationSent": "Er is een nieuwe bevestigingsmail verstuurd. Eerdere links werken niet meer.",
+  "resendVerificationButton": "Bevestigingsmail opnieuw versturen",
+  "forgotPasswordTitle": "Wachtwoord vergeten",
+  "forgotPasswordSent": "Als dit e-mailadres bij RepairTrack bekend is, ontvang je een mail met een link om een nieuw wachtwoord te kiezen. De link is 1 uur geldig.",
+  "forgotPasswordSubmit": "Stuur een herstellink",
+  "forgotPasswordBack": "Terug naar inloggen",
+  "verifyEmailTitle": "E-mailadres bevestigen",
+  "verifyEmailDone": "Je e-mailadres is bevestigd. Je kunt nu inloggen, ook in de RepairTrack-app.",
+  "resetPasswordNewPassword": "Nieuw wachtwoord",
+  "@resetPasswordNewPassword": {
+    "description": "Title of the reset-password screen and label of its password field."
+  },
+  "resetPasswordDone": "Je wachtwoord is gewijzigd. Je bent op al je apparaten uitgelogd; log opnieuw in met je nieuwe wachtwoord.",
+  "resetPasswordSubmit": "Wachtwoord opslaan",
+  "createGarageInfo": "Je wordt beheerder van deze garage. RepairTrack controleert de gegevens (KvK); tot dan tellen je registraties als \"garage\", daarna als \"geverifieerde garage\".",
+  "createGarageName": "Naam",
+  "createGarageKvk": "KvK-nummer",
+  "createGarageKvkInvalid": "Een KvK-nummer heeft 8 cijfers",
+  "createGarageAddress": "Adres",
+  "createGaragePostalCode": "Postcode",
+  "createGaragePostalCodeInvalid": "Bijv. 1234 AB",
+  "@createGaragePostalCodeInvalid": {
+    "description": "Validation message shown when the Dutch postcode is invalid."
+  },
+  "createGarageCity": "Plaats",
+  "createGaragePhone": "Telefoon (optioneel)",
+  "createGarageEmail": "E-mailadres (optioneel)",
+  "createGarageSubmit": "Aanmelden",
+  "garageRegisterVehicle": "Nieuw voertuig registreren",
+  "garageVehiclesTitle": "Voertuigen waar we aan werkten",
+  "garageExplanationVerified": "Je registraties tellen als \"geverifieerde garage\".",
+  "garageExplanationPending": "RepairTrack controleert je garage. Tot dan tellen je registraties als \"garage\".",
+  "garageExplanationUnverified": "Je garage is niet geverifieerd. Registraties tellen als \"garage\".",
+  "garageExplanationSuspended": "Je garage is geschorst en kan op dit moment geen werk vastleggen.",
+  "garageYourRole": "Jouw rol: {role}",
+  "@garageYourRole": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "garageRequestVerification": "Verificatie aanvragen",
+  "garageVerificationRequested": "Verificatie aangevraagd.",
+  "garagePlateSearchLabel": "Zoek voertuig op kenteken",
+  "garagePlateSearchNotFound": "Niet gevonden. Registreer het voertuig als het nog niet in RepairTrack staat.",
+  "garageNoVehicles": "Nog geen voertuigen. Zoek een voertuig op kenteken om werk vast te leggen.",
+  "adminTabUsers": "Gebruikers",
+  "adminGarageQueueIntro": "Garages die wachten op verificatie. Controleer de KvK-gegevens voordat je verifieert.",
+  "adminNoPendingGarages": "Er wachten geen garages.",
+  "adminVerify": "Verifiëren",
+  "adminGarageVerified": "Garage geverifieerd.",
+  "adminGarageRejected": "Garage afgewezen.",
+  "adminRejectReasonTitle": "Reden van afwijzing",
+  "adminRejectReasonHint": "Bijv. KvK-nummer hoort niet bij deze naam",
+  "adminBlockUserTitle": "Gebruiker blokkeren?",
+  "adminUnblockUserTitle": "Blokkade opheffen?",
+  "adminBlockUserText": "{email} wordt direct uitgelogd en kan niet meer inloggen.",
+  "@adminBlockUserText": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUnblockUserText": "{email} kan weer inloggen.",
+  "@adminUnblockUserText": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "adminBlock": "Blokkeren",
+  "adminUnblockConfirm": "Opheffen",
+  "@adminUnblockConfirm": {
+    "description": "Confirm button of the unblock dialog."
+  },
+  "adminUnblock": "Blokkade opheffen",
+  "adminEmailExact": "E-mailadres (exact)",
+  "adminStatus": "Status",
+  "adminBlocked": "Geblokkeerd",
+  "adminEmailVerified": "E-mail bevestigd",
+  "adminRoles": "Rollen",
+  "adminCreated": "Aangemaakt",
+  "commonRetry": "Opnieuw proberen",
+  "commonVehicle": "Voertuig",
+  "commonAddVehicle": "Voertuig toevoegen",
+  "commonVin": "VIN (chassisnummer)",
+  "addVehicleRegisterTitle": "Voertuig registreren",
+  "@addVehicleRegisterTitle": {
+    "description": "App bar title when a garage registers a vehicle"
+  },
+  "addVehicleGarageInfo": "Je registreert dit voertuig namens je garage. Het krijgt nog geen eigenaar: de eigenaar claimt het later zelf met het VIN.",
+  "addVehicleModeRegister": "Nieuw registreren",
+  "addVehicleModeClaim": "Bestaand claimen",
+  "addVehicleEnterPlateFirst": "Vul eerst een kenteken in.",
+  "addVehicleOwnedSince": "Eigenaar sinds",
+  "@addVehicleOwnedSince": {
+    "description": "Date picker title"
+  },
+  "addVehiclePlateOptional": "Kenteken (optioneel)",
+  "addVehiclePlateHelper": "Haal merk, model en bouwjaar op bij de RDW",
+  "addVehicleRdwLookup": "Ophalen bij RDW",
+  "addVehicleVinHelper": "17 tekens, staat op je kentekenbewijs (E)",
+  "addVehicleVinInvalid": "Een VIN heeft 17 tekens, zonder I, O en Q",
+  "addVehicleMake": "Merk",
+  "addVehicleModel": "Model",
+  "addVehicleYearOptional": "Bouwjaar (optioneel)",
+  "addVehicleOwnedSinceToday": "Eigenaar sinds: vandaag",
+  "addVehicleOwnedSinceDate": "Eigenaar sinds: {date}",
+  "@addVehicleOwnedSinceDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "addVehicleRegisterButton": "Registreren",
+  "addVehicleRdwFirstRegistration": "eerste toelating {date}",
+  "@addVehicleRdwFirstRegistration": {
+    "description": "Lower-case fact in a list of RDW facts",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "addVehicleRdwApkUntil": "APK tot {date}",
+  "@addVehicleRdwApkUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "addVehicleRdwFound": "Gevonden bij de RDW: {vehicle}",
+  "@addVehicleRdwFound": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "addVehicleRdwCheck": "Controleer de gegevens; je kunt ze nog aanpassen.",
+  "addVehicleClaimIntro": "Zoek het voertuig op kenteken. Als bewijs dat je de eigenaar bent vul je daarna het volledige VIN in.",
+  "addVehicleNoneFound": "Geen voertuig gevonden met dit kenteken.",
+  "addVehicleClaimButton": "Claimen",
+  "addVehicleDisputeHint": "Is dit voertuig van jou, maar staat het op naam van iemand anders? Dan kun je het eigendom betwisten. RepairTrack beoordeelt dat.",
+  "addVehicleDisputeButton": "Eigendom betwisten",
+  "vehicleLicensePlate": "Kenteken",
+  "dashboardMenu": "Menu",
+  "dashboardWelcome": "Welkom terug!",
+  "dashboardWelcomeName": "Welkom terug, {name}!",
+  "@dashboardWelcomeName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardSubtitle": "Hier is een overzicht van je voertuigen en recente activiteiten.",
+  "dashboardMyGarages": "Mijn garages",
+  "dashboardStatVehicles": "{count, plural, =1{Voertuig} other{Voertuigen}}",
+  "@dashboardStatVehicles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardStatVehiclesCaption": "in jouw bezit",
+  "dashboardStatRepairs": "{count, plural, =1{Reparatie} other{Reparaties}}",
+  "@dashboardStatRepairs": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardStatRepairsCaption": "in totaal",
+  "dashboardStatGarages": "{count, plural, =1{Garage} other{Garages}}",
+  "@dashboardStatGarages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardStatGaragesCaption": "waar je lid bent",
+  "dashboardAllUpToDate": "Alles up-to-date",
+  "dashboardNoNotifications": "Geen meldingen",
+  "dashboardActionNeeded": "Actie nodig",
+  "dashboardDisputesWaiting": "{count, plural, =1{1 geschil wacht op je reactie} other{{count} geschillen}}",
+  "@dashboardDisputesWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardMyVehicles": "Mijn voertuigen",
+  "dashboardLastMaintenance": "Laatste onderhoud",
+  "dashboardNothingRecorded": "Nog niets geregistreerd",
+  "vehicleNoRepairsYet": "Nog geen onderhoud of reparaties geregistreerd.",
+  "dashboardRecentRepairsFailed": "Recente reparaties konden niet worden geladen.",
+  "dashboardRecentRepairs": "Recente reparaties",
+  "dashboardNoVehicles": "Je hebt nog geen voertuigen.",
+  "dashboardNoVehiclesHint": "Registreer een nieuw voertuig of claim een voertuig dat al in RepairTrack staat.",
+  "vehicleDetailMyVehicle": "Mijn voertuig",
+  "vehicleDetailDisputeRespond": "Iemand betwist dat jij de eigenaar bent. Reageer via Geschillen en voeg bewijs toe.",
+  "vehicleDetailDisputeUnderReview": "Het eigendom van dit voertuig wordt beoordeeld. Tot er is beslist, kun je geen deellinks maken.",
+  "vehicleDetailToDisputes": "Naar geschillen",
+  "vehicleDetailRecordWork": "Werk vastleggen",
+  "vehicleDetailNewRepair": "Nieuwe reparatie",
+  "vehicleDetailShareHistory": "Historie delen",
+  "vehicleDetailDetails": "Gegevens",
+  "vehicleDetailModelYear": "Bouwjaar",
+  "vehicleDetailFirstRegistration": "Eerste toelating",
+  "vehicleDetailVin": "VIN",
+  "vehicleDetailSold": "Ik heb dit voertuig verkocht",
+  "vehicleDetailSoldTitle": "Voertuig verkocht?",
+  "vehicleDetailSoldText": "Je eigendom eindigt vandaag. De onderhoudshistorie blijft bij het voertuig, zodat de nieuwe eigenaar die kan inzien. Jij hebt daarna geen toegang meer.",
+  "vehicleDetailEndOwnership": "Eigendom beëindigen",
+  "vehicleDetailActive": "Actief",
+  "vehicleDetailViewAll": "Bekijk alle",
+  "vehicleDetailOpenHistory": "Onderhoudshistorie openen",
+  "vehicleDetailRepairHistory": "Reparatiegeschiedenis",
+  "vehiclePhotoFromGallery": "Kies uit galerij",
+  "vehiclePhotoTakePhoto": "Maak een foto",
+  "vehiclePhotoPickerUnavailable": "De camera of fotobibliotheek kan niet worden geopend. Controleer de toegang in je instellingen.",
+  "vehiclePhotoSaved": "Foto opgeslagen.",
+  "vehiclePhotoAdd": "Foto toevoegen",
+  "vehiclePhotoReplace": "Foto vervangen",
+  "vehiclePhotoSemantic": "Foto van je voertuig",
+  "vehiclePhotoReload": "Foto opnieuw laden",
+  "vehiclePhotoOf": "Foto van {vehicle}",
+  "@vehiclePhotoOf": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "commonAdd": "Toevoegen",
+  "commonSave": "Opslaan",
+  "commonDescription": "Omschrijving",
+  "commonType": "Soort",
+  "commonTitle": "Titel",
+  "commonMileage": "Kilometerstand",
+  "commonVoid": "Ongeldig verklaren",
+  "vehicleHistoryTitle": "Reparatiegeschiedenis",
+  "vehicleHistoryNewRepair": "Nieuwe reparatie",
+  "vehicleHistoryGarageNoAccess": "De historie van dit voertuig is zichtbaar voor je garage zodra je er werk aan hebt vastgelegd of het hebt geregistreerd.",
+  "vehicleHistoryEmpty": "Nog geen onderhoud of reparaties geregistreerd.",
+  "partDialogTitle": "Onderdeel",
+  "@partDialogTitle": {
+    "description": "Title of the dialog for adding a part"
+  },
+  "partDialogBrand": "Merk (optioneel)",
+  "partDialogPartNumber": "Onderdeelnummer (optioneel)",
+  "partDialogQuantity": "Aantal",
+  "partDialogQuantityRange": "Tussen 1 en 999",
+  "repairDetailTitle": "Reparatie",
+  "repairCorrect": "Corrigeren",
+  "@repairCorrect": {
+    "description": "Action / screen title: correct a record"
+  },
+  "repairAddPart": "Onderdeel toevoegen",
+  "repairVoided": "Ongeldig verklaard",
+  "repairVoidedOn": "Ongeldig verklaard op {date}",
+  "@repairVoidedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "repairVoidedStillVisible": "De registratie blijft zichtbaar in de historie.",
+  "repairVoidedShort": "Ongeldig",
+  "@repairVoidedShort": {
+    "description": "Status of a voided record in the history timeline"
+  },
+  "repairRevokedOwnership": "Ingevoerd door een eigenaar van wie het eigendom na een geschil is ingetrokken",
+  "@repairRevokedOwnership": {
+    "description": "No full stop at the end"
+  },
+  "repairRevokedOwnershipCanVoid": "Je kunt deze registratie ongeldig verklaren als ze niet klopt.",
+  "repairDetailsSection": "Details",
+  "repairDetailType": "Type",
+  "repairDate": "Datum",
+  "repairSource": "Bron",
+  "repairRecordedAt": "Vastgelegd op",
+  "repairDescriptionLabel": "Beschrijving",
+  "repairParts": "Onderdelen",
+  "repairPartQuantity": "{count, plural, =1{1 stuk} other{{count} stuks}}",
+  "@repairPartQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "repairCorrections": "Correcties",
+  "repairPartAdded": "Onderdeel toegevoegd.",
+  "repairVoidSuccess": "Registratie ongeldig verklaard. Ze blijft zichtbaar in de historie.",
+  "repairVoidDialogText": "De registratie wordt niet verwijderd. Ze blijft zichtbaar als ongeldig, met de reden die je hier geeft.",
+  "repairVoidReason": "Reden",
+  "repairVoidReasonHint": "Bijv. verkeerd voertuig",
+  "repairCorrectedByOwner": "eigenaar",
+  "@repairCorrectedByOwner": {
+    "description": "Lowercase; fills {by} in repairCorrectedBy"
+  },
+  "repairCorrectedBy": "Door {by} op {date}",
+  "@repairCorrectedBy": {
+    "placeholders": {
+      "by": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "repairUnderstood": "Begrepen",
+  "repairDateButton": "Datum: {date}",
+  "@repairDateButton": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "repairMileageRequired": "Vul de kilometerstand in",
+  "repairMileageMax": "Maximaal {max} km",
+  "@repairMileageMax": {
+    "placeholders": {
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "repairTitleRequired": "Vul een titel in",
+  "createRepairWarningTitle": "Opgeslagen, met een waarschuwing",
+  "createRepairWarningCheck": "Controleer de kilometerstand. Is die fout, dan kun je de registratie later corrigeren.",
+  "createRepairTitleOwner": "Onderhoud toevoegen",
+  "createRepairTitleGarage": "Werk vastleggen",
+  "createRepairTitleHint": "Bijv. Grote beurt",
+  "createRepairDescriptionOptional": "Omschrijving (optioneel)",
+  "createRepairAddPart": "Onderdeel",
+  "@createRepairAddPart": {
+    "description": "Button that adds a part"
+  },
+  "createRepairOwnerNote": "Je registreert dit als eigenaar. Het wordt getoond als \"niet geverifieerd\" tot er een factuur of werkorder bij komt.",
+  "createRepairGarageNote": "Je registreert dit namens je garage. Daarna kun je een factuur of werkorder toevoegen.",
+  "correctRepairNoChanges": "Je hebt niets gewijzigd.",
+  "correctRepairWarningTitle": "Gecorrigeerd, met een waarschuwing",
+  "correctRepairInfo": "Een correctie overschrijft niets: de oorspronkelijke waarde en jouw reden blijven zichtbaar.",
+  "correctRepairReason": "Reden van de correctie",
+  "correctRepairReasonHint": "Bijv. typfout",
+  "correctRepairReasonRequired": "Een reden is verplicht",
+  "correctRepairSave": "Correctie opslaan",
+  "documentTypeInvoice": "Factuur",
+  "documentTypeWorkOrder": "Werkorder",
+  "documentTypeInspectionReport": "Keuringsrapport",
+  "documentTypePhoto": "Foto",
+  "documentTypeOther": "Overig",
+  "documentTypeUnknown": "Document",
+  "documentsTitle": "Documenten",
+  "documentsWhichType": "Wat voor document?",
+  "documentsAdded": "Document toegevoegd.",
+  "documentsAddedDocumented": "Document toegevoegd. De registratie telt nu als \"met document\".",
+  "documentsOpenFailed": "Het document kon niet worden geopend.",
+  "documentsEmpty": "Geen documenten.",
+  "documentsUploadHint": "PDF, JPEG of PNG, maximaal 20 MB. Bestanden kunnen niet worden verwijderd: ze horen bij de historie.",
+  "commonOwner": "Eigenaar",
+  "commonUphold": "Toekennen",
+  "commonExplanation": "Toelichting",
+  "commonClose": "Sluiten",
+  "commonUnknown": "Onbekend",
+  "adminDisputesFilterOpen": "Open",
+  "@adminDisputesFilterOpen": {
+    "description": "Filter: undecided disputes"
+  },
+  "adminDisputesFilterDecided": "Besloten",
+  "@adminDisputesFilterDecided": {
+    "description": "Filter: decided disputes"
+  },
+  "adminDisputesEmptyOpen": "Er zijn geen open geschillen.",
+  "adminDisputesEmptyDecided": "Nog geen besluiten.",
+  "adminDisputeSubmitted": "Ingediend {submitted} · reactietermijn tot {deadline}",
+  "@adminDisputeSubmitted": {
+    "placeholders": {
+      "deadline": {
+        "type": "String"
+      },
+      "submitted": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDisputeClaimant": "Indiener: {name}",
+  "@adminDisputeClaimant": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDisputeCurrentOwner": "Huidige eigenaar: {name}",
+  "@adminDisputeCurrentOwner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDisputeNoOwnerResponse": "Heeft (nog) niet gereageerd.",
+  "adminDisputeFiles": "Bestanden",
+  "disputePartyClaimant": "Indiener",
+  "@disputePartyClaimant": {
+    "description": "The party who filed the dispute"
+  },
+  "adminDisputeUpheld": "Toegekend",
+  "adminDisputeUpheldSince": "Toegekend, eigenaar vanaf {date}",
+  "@adminDisputeUpheldSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDisputeRejected": "Afgewezen",
+  "adminDisputeOwnerCanStillRespond": "De eigenaar kan nog reageren; daarna kun je beslissen.",
+  "disputeFileOpenFailed": "Het bestand kon niet worden geopend.",
+  "adminDisputeUpheldSnack": "Geschil toegekend.",
+  "adminDisputeRejectedSnack": "Geschil afgewezen.",
+  "adminDisputeOwnerSince": "Eigenaar sinds",
+  "@adminDisputeOwnerSince": {
+    "description": "Date picker title"
+  },
+  "adminDisputeNoteTooShort": "Geef een toelichting van ten minste 10 tekens.",
+  "adminDisputeUpholdTitle": "Geschil toekennen",
+  "adminDisputeRejectTitle": "Geschil afwijzen",
+  "adminDisputeUpholdText": "Het eigendom van de huidige eigenaar wordt ingetrokken en de indiener wordt eigenaar. Dit besluit is definitief.",
+  "adminDisputeRejectText": "Het eigendom blijft ongewijzigd. Dit besluit is definitief.",
+  "adminDisputeNoteHelper": "Beide partijen krijgen deze tekst per e-mail. Noem geen namen of gegevens van de ander.",
+  "adminDisputeNewOwnerSinceToday": "Nieuwe eigenaar sinds: vandaag",
+  "adminDisputeNewOwnerSince": "Nieuwe eigenaar sinds: {date}",
+  "@adminDisputeNewOwnerSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "evidenceFileTooLarge": "Het bestand is groter dan 20 MB.",
+  "evidenceChooseFile": "Bestand kiezen",
+  "evidenceHint": "Bijvoorbeeld een koopcontract, factuur of overschrijvingsbewijs (PDF, JPEG of PNG, max. 20 MB). Scherm de tenaamstellingscode altijd af: daarmee kan iemand je auto overschrijven. Alleen RepairTrack-beheerders zien je bestanden.",
+  "myDisputesTitle": "Geschillen over eigendom",
+  "myDisputesEmpty": "Je hebt geen geschillen.",
+  "myDisputeResponseSent": "Je reactie is verstuurd. RepairTrack beoordeelt het geschil.",
+  "myDisputeFileAdded": "Bestand toegevoegd.",
+  "myDisputeOwnerSubtitle": "Iemand betwist dat jij de eigenaar bent.",
+  "myDisputeClaimantSubtitle": "Jij betwist het eigendom van dit voertuig.",
+  "myDisputeSubmittedOn": "Ingediend op {date}",
+  "@myDisputeSubmittedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "myDisputeOwnerRespondUntil": "Reageren kan tot {deadline}.",
+  "@myDisputeOwnerRespondUntil": {
+    "placeholders": {
+      "deadline": {
+        "type": "String"
+      }
+    }
+  },
+  "myDisputeClaimantRespondUntil": "De eigenaar kan reageren tot {deadline}.",
+  "@myDisputeClaimantRespondUntil": {
+    "placeholders": {
+      "deadline": {
+        "type": "String"
+      }
+    }
+  },
+  "myDisputeOwnerBanner": "Geef je reactie en voeg bewijs toe dat je de eigenaar bent. Zolang het geschil loopt, kun je geen nieuwe deellinks maken.",
+  "myDisputeYourResponse": "Jouw reactie",
+  "myDisputeYourStatement": "Jouw toelichting",
+  "myDisputeYourFiles": "Jouw bestanden",
+  "myDisputeRespond": "Reageren",
+  "myDisputeAddFile": "Bestand toevoegen",
+  "myDisputeOutcomeRevoked": "Uitkomst: je eigendom is ingetrokken.",
+  "myDisputeOutcomeNowOwner": "Uitkomst: je bent nu de eigenaar.",
+  "myDisputeOutcomeNowOwnerSince": "Uitkomst: je bent nu de eigenaar (vanaf {date}).",
+  "@myDisputeOutcomeNowOwnerSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "myDisputeOutcomeStillOwner": "Uitkomst: je blijft de eigenaar.",
+  "myDisputeOutcomeRejected": "Uitkomst: je geschil is afgewezen.",
+  "disputeStatementTooShort": "Schrijf ten minste een paar woorden (10 tekens).",
+  "respondDisputeTitle": "Reageren op het geschil",
+  "respondDisputeIntro": "Je kunt één keer reageren. Leg uit waarom de auto van jou is.",
+  "respondDisputeAddFileOptional": "Bestand toevoegen (optioneel)",
+  "respondDisputeSend": "Versturen",
+  "openDisputeFileRequired": "Voeg een bestand toe waaruit blijkt dat je de eigenaar bent.",
+  "openDisputeSubmitted": "Je geschil is ingediend. Je krijgt een e-mail met de uitkomst.",
+  "openDisputeTitle": "Eigendom betwisten",
+  "openDisputeThisVehicle": "Dit voertuig",
+  "@openDisputeThisVehicle": {
+    "description": "Used as {vehicle} in openDisputeIntro when the name is unknown"
+  },
+  "openDisputeIntro": "{vehicle} staat in RepairTrack op naam van iemand anders. Ben jij de rechtmatige eigenaar? Dien dan een geschil in. De huidige eigenaar krijgt 14 dagen om te reageren en ziet niet wie het geschil indient. Daarna beslist RepairTrack.",
+  "@openDisputeIntro": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "openDisputeVinHelper": "Het volledige VIN van je kentekenbewijs",
+  "openDisputeVinInvalid": "Een VIN heeft 17 tekens, zonder I, O en Q",
+  "openDisputeStatementHelper": "Sinds wanneer is de auto van jou, en hoe heb je hem gekregen?",
+  "openDisputeSubmit": "Geschil indienen",
+  "publicReportInvalidLink": "Deze link is ongeldig of niet meer geldig. Vraag de eigenaar om een nieuwe link.",
+  "publicReportTitle": "Voertuighistorie",
+  "publicReportSharedByOwner": "Deze historie is publiekelijk gedeeld door de eigenaar.",
+  "publicReportModelYear": "bouwjaar {year}",
+  "@publicReportModelYear": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "publicReportFirstRegistration": "eerste toelating {date}",
+  "@publicReportFirstRegistration": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "publicReportUnderReview": "Het eigendom van dit voertuig wordt op dit moment door RepairTrack beoordeeld.",
+  "publicReportSummary": "Samenvatting",
+  "publicReportStatTotal": "Totaal aantal registraties",
+  "publicReportStatVerified": "Garage bevestigd",
+  "publicReportStatDocumented": "Met document",
+  "publicReportStatLastMileage": "Laatste km-stand",
+  "publicReportStatOwners": "Eigenaren in RepairTrack",
+  "publicReportStatVoided": "Ongeldig verklaard",
+  "publicReportMileageInconsistency": "Kilometerstand {laterMileage} op {laterDate} is lager dan {earlierMileage} op {earlierDate}. Dit is een inconsistentie in de gegevens, geen vaststelling van fraude.",
+  "@publicReportMileageInconsistency": {
+    "placeholders": {
+      "earlierDate": {
+        "type": "String"
+      },
+      "earlierMileage": {
+        "type": "String"
+      },
+      "laterDate": {
+        "type": "String"
+      },
+      "laterMileage": {
+        "type": "String"
+      }
+    }
+  },
+  "publicReportRecords": "Registraties",
+  "publicReportNoRecords": "Er zijn nog geen registraties.",
+  "publicReportDisclaimer": "Deze historie bevat alleen openbare informatie en is geen volledig onderhoudslogboek.",
+  "publicReportFooter": "Opgesteld op {generatedAt}. Deze link is geldig tot {validUntil}. Ongeldig verklaarde registraties en correcties blijven zichtbaar: in RepairTrack wordt niets stilletjes gewijzigd of verwijderd.",
+  "@publicReportFooter": {
+    "placeholders": {
+      "generatedAt": {
+        "type": "String"
+      },
+      "validUntil": {
+        "type": "String"
+      }
+    }
+  },
+  "publicReportVoid": "Ongeldig",
+  "@publicReportVoid": {
+    "description": "Badge on a voided record"
+  },
+  "publicReportGarageVerified": "{garage} (geverifieerd)",
+  "@publicReportGarageVerified": {
+    "placeholders": {
+      "garage": {
+        "type": "String"
+      }
+    }
+  },
+  "publicReportRevokedOwnership": "Ingevoerd door een eigenaar van wie het eigendom na een geschil is ingetrokken",
+  "publicReportVoidedReason": "Ongeldig verklaard: {reason}",
+  "@publicReportVoidedReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "publicReportCorrection": "Gecorrigeerd: {field} {from} → {to} ({reason}; door {by}, {date})",
+  "@publicReportCorrection": {
+    "placeholders": {
+      "by": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "field": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "publicReportCorrectedByOwner": "eigenaar",
+  "@publicReportCorrectedByOwner": {
+    "description": "Lowercase; used as {by} in publicReportCorrection"
+  },
+  "publicReportDocumentFingerprint": "{size} · vingerafdruk {fingerprint}…",
+  "@publicReportDocumentFingerprint": {
+    "placeholders": {
+      "fingerprint": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "publicReportDocumentNotShared": "Niet gedeeld door de eigenaar",
+  "publicReportDocumentOpenFailed": "Het document kon niet worden geopend.",
+  "shareStatusActive": "Actief",
+  "shareStatusExpired": "Verlopen",
+  "shareStatusRevoked": "Ingetrokken",
+  "shareStatusOwnerChanged": "Vervallen (andere eigenaar)",
+  "shareVehicleTitle": "Voertuig delen",
+  "shareNewLink": "Nieuwe link",
+  "shareVehicleInfo": "Met een link kan iedereen de onderhoudshistorie bekijken, zonder account. Jouw naam, e-mailadres en het VIN worden nooit getoond. Een link werkt niet meer na het intrekken, na de vervaldatum of zodra je het voertuig verkoopt.",
+  "shareVehicleEmpty": "Je hebt nog geen links gemaakt.",
+  "shareValidUntil": "geldig tot {date}",
+  "@shareValidUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "shareWithDocuments": "met documenten",
+  "shareViewCount": "{count, plural, other{{count}× bekeken}}",
+  "@shareViewCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareLinkFrom": "Link van {date}",
+  "@shareLinkFrom": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "shareRevoke": "Intrekken",
+  "shareRevokeTitle": "Link intrekken?",
+  "shareRevokeText": "Wie de link heeft, kan de historie daarna niet meer bekijken.",
+  "shareRevoked": "Link ingetrokken.",
+  "shareValidFor": "Geldig",
+  "shareValidityYear": "1 jaar",
+  "shareValidityDays": "{days, plural, other{{days} dagen}}",
+  "@shareValidityDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "shareIncludeDocuments": "Documenten meedelen",
+  "shareIncludeDocumentsHelp": "Facturen en werkorders kunnen dan worden geopend. Controleer of daar geen persoonsgegevens op staan.",
+  "shareCreateLink": "Link maken",
+  "shareLinkCreated": "Link gemaakt",
+  "shareCopyNow": "Kopieer de link nu. Hij wordt maar één keer getoond; daarna kun je hem alleen nog intrekken.",
+  "shareLinkCopied": "Link gekopieerd.",
+  "shareCopy": "Kopiëren"
+}

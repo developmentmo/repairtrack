@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/session_controller.dart';
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/locale_controller.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/widgets/form_widgets.dart';
 import '../data/auth_api.dart';
@@ -15,36 +17,60 @@ class AccountScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);
     final user = session is SignedIn ? session.user : null;
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('Account')),
+      appBar: AppBar(title: Text(l.accountTitle)),
       body: CenteredForm(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (user != null) ...[
-              DetailRow(label: 'Naam', value: '${user.firstName} ${user.lastName}'),
-              DetailRow(label: 'E-mail', value: user.email),
+              DetailRow(label: l.accountName, value: '${user.firstName} ${user.lastName}'),
+              DetailRow(label: l.accountEmail, value: user.email),
               const SizedBox(height: 32),
             ],
-            Text('Account verwijderen', style: Theme.of(context).textTheme.titleMedium),
+            Text(l.accountLanguage, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            const Text(
-              'Je naam en e-mailadres worden verwijderd en je kunt niet meer inloggen. De onderhoudshistorie '
-              'hoort bij het voertuig en blijft bewaard, zonder jouw gegevens; je voertuigen komen vrij voor hun '
-              'volgende eigenaar en je deellinks werken niet meer. Dit kan niet ongedaan worden gemaakt.',
-            ),
+            const _LanguageChoice(),
+            const SizedBox(height: 32),
+            Text(l.accountDeleteTitle, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text(l.accountDeleteExplanation),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               key: const Key('delete-account'),
               style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
               onPressed: () => showDialog<void>(context: context, builder: (_) => const _DeleteAccountDialog()),
               icon: const Icon(Icons.delete_forever_outlined),
-              label: const Text('Account verwijderen'),
+              label: Text(l.accountDeleteTitle),
             ),
             const SizedBox(height: 32),
             const Align(alignment: Alignment.centerLeft, child: PrivacyPolicyLink()),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Dutch or English. Each language is named in its own language, so it can be found whatever is shown now.
+class _LanguageChoice extends ConsumerWidget {
+  const _LanguageChoice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final shown = AppLanguage.fromCode(Localizations.localeOf(context).languageCode) ?? AppLanguage.dutch;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SegmentedButton<AppLanguage>(
+        key: const Key('language-choice'),
+        segments: const [
+          ButtonSegment(value: AppLanguage.dutch, label: Text('Nederlands')),
+          ButtonSegment(value: AppLanguage.english, label: Text('English')),
+        ],
+        selected: {shown},
+        showSelectedIcon: false,
+        onSelectionChanged: (selection) => ref.read(languageControllerProvider.notifier).select(selection.single),
       ),
     );
   }
@@ -70,7 +96,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
 
   Future<void> _delete() async {
     if (_password.text.isEmpty) {
-      setState(() => _error = 'Vul je wachtwoord in.');
+      setState(() => _error = context.l10n.accountDeletePasswordRequired);
       return;
     }
     setState(() {
@@ -78,18 +104,19 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       _error = null;
     });
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     try {
       await ref.read(authApiProvider).deleteAccount(_password.text);
       if (mounted) {
         Navigator.of(context).pop();
       }
-      messenger.showSnackBar(const SnackBar(content: Text('Je account is verwijderd.')));
+      messenger.showSnackBar(SnackBar(content: Text(l.accountDeleted)));
       await ref.read(sessionControllerProvider.notifier).accountDeleted();
     } catch (e) {
       if (mounted) {
         setState(() {
           _busy = false;
-          _error = userMessage(e);
+          _error = userMessage(l, e);
         });
       }
     }
@@ -97,13 +124,14 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AlertDialog(
-      title: const Text('Account definitief verwijderen?'),
+      title: Text(l.accountDeleteConfirmTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Vul ter bevestiging je wachtwoord in.'),
+          Text(l.accountDeleteConfirmText),
           const SizedBox(height: 12),
           PasswordFormField(
             key: const Key('delete-account-password'),
@@ -122,12 +150,12 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         ],
       ),
       actions: [
-        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: const Text('Annuleren')),
+        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: Text(l.commonCancel)),
         FilledButton(
           key: const Key('delete-account-confirm'),
           style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
           onPressed: _busy ? null : _delete,
-          child: _busy ? const ButtonProgress() : const Text('Verwijderen'),
+          child: _busy ? const ButtonProgress() : Text(l.commonDelete),
         ),
       ],
     );

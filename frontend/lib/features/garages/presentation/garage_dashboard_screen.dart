@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/async_value_view.dart';
@@ -26,9 +27,10 @@ class GarageDashboardScreen extends ConsumerWidget {
     final membership = memberships.hasValue
         ? memberships.requireValue.where((m) => m.garageId == garageId).firstOrNull
         : null;
+    final l = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: Text(garage.hasValue ? garage.requireValue.name : 'Garage')),
+      appBar: AppBar(title: Text(garage.hasValue ? garage.requireValue.name : l.commonGarage)),
       body: AsyncValueView(
         value: garage,
         onRetry: () => ref.invalidate(garageProvider(garageId)),
@@ -51,11 +53,11 @@ class GarageDashboardScreen extends ConsumerWidget {
                 OutlinedButton.icon(
                   onPressed: () => context.go(Routes.garageAddVehicle(garageId)),
                   icon: const Icon(Icons.add),
-                  label: const Text('Nieuw voertuig registreren'),
+                  label: Text(l.garageRegisterVehicle),
                 ),
                 const SizedBox(height: 24),
               ],
-              Text('Voertuigen waar we aan werkten', style: Theme.of(context).textTheme.titleMedium),
+              Text(l.garageVehiclesTitle, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               _GarageVehicles(garageId: garageId),
             ],
@@ -74,14 +76,13 @@ class _GarageHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final status = garage.verificationStatus;
     final explanation = switch (status) {
-      GarageVerificationStatus.verified => 'Je registraties tellen als "geverifieerde garage".',
-      GarageVerificationStatus.pending =>
-        'RepairTrack controleert je garage. Tot dan tellen je registraties als "garage".',
-      GarageVerificationStatus.unverified =>
-        'Je garage is niet geverifieerd. Registraties tellen als "garage".',
-      GarageVerificationStatus.suspended => 'Je garage is geschorst en kan op dit moment geen werk vastleggen.',
+      GarageVerificationStatus.verified => l.garageExplanationVerified,
+      GarageVerificationStatus.pending => l.garageExplanationPending,
+      GarageVerificationStatus.unverified => l.garageExplanationUnverified,
+      GarageVerificationStatus.suspended => l.garageExplanationSuspended,
       GarageVerificationStatus.unknown => '',
     };
     return Card(
@@ -98,7 +99,7 @@ class _GarageHeader extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text('${garage.address}, ${garage.postalCode} ${garage.city} · KvK ${garage.kvkNumber}'),
-            if (membership != null) Text('Jouw rol: ${garageRoleLabel(membership!.role)}'),
+            if (membership != null) Text(l.garageYourRole(garageRoleLabel(l, membership!.role))),
             if (explanation.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(explanation, style: Theme.of(context).textTheme.bodySmall),
@@ -107,7 +108,7 @@ class _GarageHeader extends ConsumerWidget {
               const SizedBox(height: 8),
               FilledButton.tonal(
                 onPressed: () => _requestVerification(context, ref),
-                child: const Text('Verificatie aanvragen'),
+                child: Text(l.garageRequestVerification),
               ),
             ],
           ],
@@ -117,15 +118,16 @@ class _GarageHeader extends ConsumerWidget {
   }
 
   Future<void> _requestVerification(BuildContext context, WidgetRef ref) async {
+    final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(garageApiProvider).requestVerification(garage.id);
       ref
         ..invalidate(garageProvider(garage.id))
         ..invalidate(myGaragesProvider);
-      messenger.showSnackBar(const SnackBar(content: Text('Verificatie aangevraagd.')));
+      messenger.showSnackBar(SnackBar(content: Text(l.garageVerificationRequested)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     }
   }
 }
@@ -157,6 +159,7 @@ class _PlateSearchState extends ConsumerState<_PlateSearch> {
     if (plate.isEmpty) {
       return;
     }
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _error = null;
@@ -168,7 +171,7 @@ class _PlateSearchState extends ConsumerState<_PlateSearch> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -186,7 +189,7 @@ class _PlateSearchState extends ConsumerState<_PlateSearch> {
         TextField(
           controller: _plate,
           decoration: InputDecoration(
-            labelText: 'Zoek voertuig op kenteken',
+            labelText: context.l10n.garagePlateSearchLabel,
             suffixIcon: _busy
                 ? const Padding(padding: EdgeInsets.all(12), child: ButtonProgress())
                 : IconButton(icon: const Icon(Icons.search), onPressed: _search),
@@ -200,9 +203,9 @@ class _PlateSearchState extends ConsumerState<_PlateSearch> {
           ErrorText(message: _error!),
         ],
         if (results != null && results.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text('Niet gevonden. Registreer het voertuig als het nog niet in RepairTrack staat.'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(context.l10n.garagePlateSearchNotFound),
           ),
         if (results != null)
           for (final vehicle in results) _VehicleTile(garageId: widget.garageId, vehicle: vehicle),
@@ -227,7 +230,7 @@ class _GarageVehicles extends ConsumerWidget {
     }
     final list = vehicles.requireValue;
     if (list.isEmpty) {
-      return const Text('Nog geen voertuigen. Zoek een voertuig op kenteken om werk vast te leggen.');
+      return Text(context.l10n.garageNoVehicles);
     }
     return Column(
       children: [for (final vehicle in list) _VehicleTile(garageId: garageId, vehicle: vehicle)],

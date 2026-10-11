@@ -38,7 +38,7 @@ flutter test
 lib/
 ├── core/           config, network (Dio + token refresh), auth (session), routing, theme, widgets
 └── features/
-    ├── authentication/   login, register, current user
+    ├── authentication/   login, register, current user, account (language choice, account deletion)
     ├── vehicles/         dashboard, add/claim vehicle, vehicle details, sold
     ├── repairs/          history, mileage warnings, repair details, new record, correct, void, parts
     ├── garages/          register a garage, garage dashboard, plate search, work on behalf of the garage
@@ -59,6 +59,17 @@ Each feature has `data/` (API calls), `domain/` (models), `application/` (Riverp
 - Mileage warnings are shown as inconsistencies, never as fraud.
 - Access and refresh tokens live in secure storage only. Refresh tokens are single-use; the network layer
   refreshes once for parallel requests.
+
+## Languages
+
+The app is available in Dutch (default) and English. On first start it follows the device language (English on an
+English device, Dutch otherwise); the user can switch on the *Account* page, and that choice is kept on the device
+(`shared_preferences`). The public report follows the same setting.
+
+Texts live in `lib/l10n/app_nl.arb` (template, with descriptions) and `lib/l10n/app_en.arb`. `flutter pub get`
+generates `AppLocalizations` from them (`lib/l10n/app_localizations*.dart`, not in git); run `flutter gen-l10n` after
+editing an ARB file. In widgets use `context.l10n.someText` (`core/l10n/l10n.dart`). Tests pump screens inside
+`TestApp` (`test/helpers/test_app.dart`), which loads the Dutch texts.
 
 ## Share links and the public report
 

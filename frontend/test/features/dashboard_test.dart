@@ -18,8 +18,10 @@ import 'package:repairtrack_app/features/vehicles/data/vehicle_api.dart';
 import 'package:repairtrack_app/features/vehicles/domain/vehicle.dart';
 import 'package:repairtrack_app/features/vehicles/domain/vehicle_photo.dart';
 import 'package:repairtrack_app/features/vehicles/presentation/owner_dashboard_screen.dart';
+import 'package:repairtrack_app/core/l10n/l10n.dart';
 
 import '../helpers/in_memory_token_store.dart';
+import '../helpers/test_app.dart';
 
 class MockVehicleApi extends Mock implements VehicleApi {}
 
@@ -124,7 +126,7 @@ void main() {
     when(() => repairs.history('v2')).thenAnswer((_) async => const <Repair>[]);
 
     await tester.pumpWidget(
-      ProviderScope(overrides: overrides(), child: const MaterialApp(home: OwnerDashboardScreen())),
+      ProviderScope(overrides: overrides(), child: const TestApp(home: OwnerDashboardScreen())),
     );
     await tester.pumpAndSettle();
 
@@ -141,7 +143,7 @@ void main() {
     Future<void> pumpDashboard(WidgetTester tester) async {
       when(() => repairs.history(any())).thenAnswer((_) async => const <Repair>[]);
       await tester.pumpWidget(
-        ProviderScope(overrides: overrides(), child: const MaterialApp(home: OwnerDashboardScreen())),
+        ProviderScope(overrides: overrides(), child: const TestApp(home: OwnerDashboardScreen())),
       );
       await tester.pumpAndSettle();
     }
@@ -201,7 +203,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: overrides(),
-          child: const MaterialApp(home: AppShell(location: '/', child: Text('inhoud'))),
+          child: const TestApp(home: AppShell(location: '/', child: Text('inhoud'))),
         ),
       );
       await tester.pumpAndSettle();
@@ -225,8 +227,8 @@ void main() {
   });
 
   test('verification labels match the design', () {
-    expect(verificationLabel(VerificationStatus.garageVerified), 'Garage bevestigd');
-    expect(verificationLabel(VerificationStatus.officialSource), 'Officiële bron');
-    expect(verificationLabel(VerificationStatus.unverified), 'Onbevestigd');
+    expect(verificationLabel(lookupAppLocalizations(const Locale('nl')), VerificationStatus.garageVerified), 'Garage bevestigd');
+    expect(verificationLabel(lookupAppLocalizations(const Locale('nl')), VerificationStatus.officialSource), 'Officiële bron');
+    expect(verificationLabel(lookupAppLocalizations(const Locale('nl')), VerificationStatus.unverified), 'Onbevestigd');
   });
 }

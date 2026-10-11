@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
+import '../l10n/l10n.dart';
 import 'brand_widgets.dart';
 
 /// Scrollable, centered column with a max width: forms look right on phones, tablets and the web.
@@ -97,7 +98,7 @@ class PasswordFormField extends StatefulWidget {
   const PasswordFormField({
     super.key,
     this.controller,
-    this.labelText = 'Wachtwoord',
+    this.labelText,
     this.helperText,
     this.validator,
     this.onFieldSubmitted,
@@ -105,7 +106,8 @@ class PasswordFormField extends StatefulWidget {
   });
 
   final TextEditingController? controller;
-  final String labelText;
+  /// Defaults to 'Wachtwoord'.
+  final String? labelText;
   final String? helperText;
   final FormFieldValidator<String>? validator;
   final ValueChanged<String>? onFieldSubmitted;
@@ -129,10 +131,10 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
       onFieldSubmitted: widget.onFieldSubmitted,
       validator: widget.validator,
       decoration: InputDecoration(
-        labelText: widget.labelText,
+        labelText: widget.labelText ?? context.l10n.passwordLabel,
         helperText: widget.helperText,
         suffixIcon: IconButton(
-          tooltip: _visible ? 'Wachtwoord verbergen' : 'Wachtwoord tonen',
+          tooltip: _visible ? context.l10n.passwordHide : context.l10n.passwordShow,
           icon: Icon(_visible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
           onPressed: () => setState(() => _visible = !_visible),
         ),
@@ -143,16 +145,17 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
 
 /// "Privacybeleid" link: opens the public privacy policy in the browser.
 class PrivacyPolicyLink extends StatelessWidget {
-  const PrivacyPolicyLink({super.key, this.label = 'Privacybeleid'});
+  const PrivacyPolicyLink({super.key, this.label});
 
-  final String label;
+  /// Defaults to 'Privacybeleid'.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     return TextButton(
       key: const Key('privacy-policy'),
       onPressed: () => launchUrl(AppConfig.privacyPolicyUrl, mode: LaunchMode.externalApplication),
-      child: Text(label),
+      child: Text(label ?? context.l10n.privacyPolicy),
     );
   }
 }

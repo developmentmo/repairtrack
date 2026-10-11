@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/garages/application/garage_providers.dart';
 import '../../features/garages/domain/garage.dart';
 import '../auth/session_controller.dart';
+import '../l10n/l10n.dart';
 import '../routing/routes.dart';
 import '../theme/app_theme.dart';
 import 'brand_widgets.dart';
@@ -17,16 +18,21 @@ bool isWideLayout(BuildContext context) => MediaQuery.sizeOf(context).width >= w
 class _Destination {
   const _Destination(this.label, this.icon, this.selectedIcon, this.route);
 
-  final String label;
+  final String Function(AppLocalizations l) label;
   final IconData icon;
   final IconData selectedIcon;
   final String route;
 }
 
-const _dashboard = _Destination('Dashboard', Icons.home_outlined, Icons.home, Routes.home);
-const _disputes = _Destination('Geschillen', Icons.gavel_outlined, Icons.gavel, Routes.disputes);
-const _account = _Destination('Account', Icons.person_outline, Icons.person, Routes.account);
-const _admin = _Destination('Beheer', Icons.admin_panel_settings_outlined, Icons.admin_panel_settings, Routes.admin);
+const _dashboard = _Destination(_dashboardLabel, Icons.home_outlined, Icons.home, Routes.home);
+const _disputes = _Destination(_disputesLabel, Icons.gavel_outlined, Icons.gavel, Routes.disputes);
+const _account = _Destination(_accountLabel, Icons.person_outline, Icons.person, Routes.account);
+const _admin = _Destination(_adminLabel, Icons.admin_panel_settings_outlined, Icons.admin_panel_settings, Routes.admin);
+
+String _dashboardLabel(AppLocalizations l) => l.navDashboard;
+String _disputesLabel(AppLocalizations l) => l.navDisputes;
+String _accountLabel(AppLocalizations l) => l.navAccount;
+String _adminLabel(AppLocalizations l) => l.navAdmin;
 
 /// Frame around every signed-in screen: a sidebar on wide screens, a bottom navigation bar on phones.
 class AppShell extends ConsumerWidget {
@@ -52,7 +58,7 @@ class AppShell extends ConsumerWidget {
           onDestinationSelected: (index) => context.go(destinations[index].route),
           destinations: [
             for (final d in destinations)
-              NavigationDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selectedIcon), label: d.label),
+              NavigationDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selectedIcon), label: d.label(context.l10n)),
           ],
         ),
       );
@@ -117,7 +123,7 @@ class _Sidebar extends ConsumerWidget {
                 children: [
                   for (final d in destinations.where((d) => d != _account))
                     _SidebarItem(
-                      label: d.label,
+                      label: d.label(context.l10n),
                       icon: isActive(d.route) ? d.selectedIcon : d.icon,
                       selected: isActive(d.route),
                       onTap: () => context.go(d.route),
@@ -125,7 +131,7 @@ class _Sidebar extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                    child: Text('Garages', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: BrandColors.mutedText)),
+                    child: Text(context.l10n.navGarages, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: BrandColors.mutedText)),
                   ),
                   for (final garage in garages)
                     _SidebarItem(
@@ -135,7 +141,7 @@ class _Sidebar extends ConsumerWidget {
                       onTap: () => context.go(Routes.garage(garage.garageId)),
                     ),
                   _SidebarItem(
-                    label: 'Garage aanmelden',
+                    label: context.l10n.navRegisterGarage,
                     icon: Icons.add_business_outlined,
                     selected: location == Routes.newGarage,
                     onTap: () => context.go(Routes.newGarage),
@@ -148,13 +154,13 @@ class _Sidebar extends ConsumerWidget {
               child: Column(
                 children: [
                   _SidebarItem(
-                    label: 'Account',
+                    label: context.l10n.navAccount,
                     icon: isActive(Routes.account) ? Icons.person : Icons.person_outline,
                     selected: isActive(Routes.account),
                     onTap: () => context.go(Routes.account),
                   ),
                   _SidebarItem(
-                    label: 'Uitloggen',
+                    label: context.l10n.navSignOut,
                     icon: Icons.logout,
                     selected: false,
                     onTap: () => ref.read(sessionControllerProvider.notifier).logout(),
@@ -180,7 +186,7 @@ class _Sidebar extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            user.isSystemAdmin ? 'Beheerder' : 'Eigenaar',
+                            user.isSystemAdmin ? context.l10n.userRoleAdmin : context.l10n.userRoleOwner,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],

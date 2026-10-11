@@ -1,6 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import '../../../core/json/date_only_converter.dart';
+import '../../../core/l10n/l10n.dart';
 
 part 'dispute.g.dart';
 
@@ -172,10 +173,10 @@ class EvidenceFile {
   final List<int> bytes;
 }
 
-String disputeStatusLabel(DisputeStatus status) => switch (status) {
-      DisputeStatus.open => 'Wacht op reactie eigenaar',
-      DisputeStatus.awaitingReview => 'In beoordeling',
-      DisputeStatus.upheld => 'Toegekend',
-      DisputeStatus.rejected => 'Afgewezen',
-      DisputeStatus.unknown => 'Onbekend',
+String disputeStatusLabel(AppLocalizations l, DisputeStatus status) => switch (status) {
+      DisputeStatus.open => l.disputeStatusOpen,
+      DisputeStatus.awaitingReview => l.disputeStatusAwaitingReview,
+      DisputeStatus.upheld => l.disputeStatusUpheld,
+      DisputeStatus.rejected => l.disputeStatusRejected,
+      DisputeStatus.unknown => l.commonUnknown,
     };

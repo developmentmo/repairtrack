@@ -5,6 +5,7 @@ import 'package:repairtrack_app/features/disputes/domain/dispute.dart';
 import 'package:repairtrack_app/features/disputes/presentation/my_disputes_screen.dart';
 import 'package:repairtrack_app/features/repairs/domain/repair.dart';
 import 'package:repairtrack_app/features/sharing/domain/public_report.dart';
+import '../helpers/test_app.dart';
 
 Map<String, dynamic> _partyJson({required String role, required bool canRespond, String status = 'OPEN'}) => {
       'id': 'd1',
@@ -85,7 +86,7 @@ void main() {
   testWidgets('only the contested owner gets the respond button', (tester) async {
     Future<void> pump(PartyDispute dispute) => tester.pumpWidget(
           ProviderScope(
-            child: MaterialApp(home: Scaffold(body: DisputeCard(dispute: dispute))),
+            child: TestApp(home: Scaffold(body: DisputeCard(dispute: dispute))),
           ),
         );
 

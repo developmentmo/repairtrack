@@ -1,5 +1,8 @@
-/// Formatting helpers for display (Dutch conventions) and for the API wire format.
+/// Formatting helpers for display and for the API wire format. Display follows the shown language
+/// (`Intl.defaultLocale`, set by the app): 183.421 km in Dutch, 183,421 km in English.
 library;
+
+import 'package:intl/intl.dart';
 
 String _two(int value) => value.toString().padLeft(2, '0');
 
@@ -16,11 +19,12 @@ String formatDateTime(DateTime instant) {
 String formatKm(int km) => '${formatThousands(km)} km';
 
 String formatThousands(int value) {
+  final separator = (Intl.defaultLocale?.startsWith('en') ?? false) ? ',' : '.';
   final digits = value.abs().toString();
   final buffer = StringBuffer(value < 0 ? '-' : '');
   for (var i = 0; i < digits.length; i++) {
     if (i > 0 && (digits.length - i) % 3 == 0) {
-      buffer.write('.');
+      buffer.write(separator);
     }
     buffer.write(digits[i]);
   }

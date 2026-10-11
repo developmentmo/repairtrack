@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/widgets/brand_widgets.dart';
 import '../application/vehicle_providers.dart';
 import '../domain/vehicle.dart';
@@ -32,7 +33,7 @@ class VehicleThumbnail extends ConsumerWidget {
         height: height,
         width: double.infinity,
         fit: BoxFit.cover,
-        semanticLabel: 'Foto van ${vehicle.displayName}',
+        semanticLabel: context.l10n.vehiclePhotoOf(vehicle.displayName),
         // An expired link shows the placeholder; pulling to refresh fetches a new one.
         errorBuilder: (context, error, stackTrace) => placeholder,
       ),

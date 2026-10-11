@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/routing/routes.dart';
 import '../domain/repair.dart';
 import 'repair_labels.dart';
@@ -20,7 +21,7 @@ class RepairRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final detail = [
-      vehicleName ?? repair.garage?.name ?? sourceTypeLabel(repair.sourceType),
+      vehicleName ?? repair.garage?.name ?? sourceTypeLabel(context.l10n, repair.sourceType),
       formatDate(repair.eventDate),
     ].join(' · ');
     return InkWell(
@@ -70,12 +71,13 @@ class RepairTimelineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final theme = Theme.of(context);
     final voided = repair.isVoided;
     // On phones the status goes under the text, so the title keeps the full width.
     final compact = MediaQuery.sizeOf(context).width < 600;
     final status = voided
-        ? Text('Ongeldig', style: TextStyle(color: theme.colorScheme.error))
+        ? Text(l.repairVoidedShort, style: TextStyle(color: theme.colorScheme.error))
         : VerificationBadge(status: repair.verificationStatus);
     final lineColor = theme.colorScheme.outlineVariant;
     final titleStyle = voided
@@ -111,12 +113,12 @@ class RepairTimelineTile extends StatelessWidget {
                           Text(repair.title, style: titleStyle),
                           const SizedBox(height: 2),
                           Text(
-                            repair.garage?.name ?? sourceTypeLabel(repair.sourceType),
+                            repair.garage?.name ?? sourceTypeLabel(l, repair.sourceType),
                             style: theme.textTheme.bodySmall,
                           ),
                           Text(
                             '${formatDate(repair.eventDate)} · ${formatKm(repair.mileage)} · '
-                            '${eventTypeLabel(repair.eventType)}',
+                            '${eventTypeLabel(l, repair.eventType)}',
                             style: theme.textTheme.bodySmall,
                           ),
                           if (compact) ...[
@@ -126,7 +128,7 @@ class RepairTimelineTile extends StatelessWidget {
                           if (repair.enteredDuringRevokedOwnership) ...[
                             const SizedBox(height: 2),
                             Text(
-                              'Ingevoerd door een eigenaar van wie het eigendom na een geschil is ingetrokken',
+                              l.repairRevokedOwnership,
                               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
                             ),
                           ],

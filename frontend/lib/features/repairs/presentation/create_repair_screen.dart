@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -71,6 +72,7 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _error = null;
@@ -98,7 +100,7 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
         return;
       }
       if (created.warnings.isNotEmpty) {
-        await _showWarnings(created.warnings);
+        await _showWarnings(l, created.warnings);
       }
       if (mounted) {
         // Show the saved record: documents can be added there ("confirm repair" step).
@@ -106,7 +108,7 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -115,29 +117,30 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
     }
   }
 
-  Future<void> _showWarnings(List<MileageWarning> warnings) {
+  Future<void> _showWarnings(AppLocalizations l, List<MileageWarning> warnings) {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.speed),
-        title: const Text('Opgeslagen, met een waarschuwing'),
+        title: Text(l.createRepairWarningTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final warning in warnings) ...[Text(mileageWarningText(warning)), const SizedBox(height: 8)],
-            const Text('Controleer de kilometerstand. Is die fout, dan kun je de registratie later corrigeren.'),
+            for (final warning in warnings) ...[Text(mileageWarningText(l, warning)), const SizedBox(height: 8)],
+            Text(l.createRepairWarningCheck),
           ],
         ),
-        actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Begrepen'))],
+        actions: [FilledButton(onPressed: () => Navigator.pop(context), child: Text(l.repairUnderstood))],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: Text(widget.garageId == null ? 'Onderhoud toevoegen' : 'Werk vastleggen')),
+      appBar: AppBar(title: Text(widget.garageId == null ? l.createRepairTitleOwner : l.createRepairTitleGarage)),
       body: CenteredForm(
         maxWidth: 560,
         child: Form(
@@ -147,10 +150,10 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
             children: [
               DropdownButtonFormField<RepairEventType>(
                 initialValue: _eventType,
-                decoration: const InputDecoration(labelText: 'Soort'),
+                decoration: InputDecoration(labelText: l.commonType),
                 items: [
                   for (final type in RepairEventType.selectable)
-                    DropdownMenuItem(value: type, child: Text(eventTypeLabel(type))),
+                    DropdownMenuItem(value: type, child: Text(eventTypeLabel(l, type))),
                 ],
                 onChanged: (type) => setState(() => _eventType = type ?? _eventType),
               ),
@@ -158,41 +161,41 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
               OutlinedButton.icon(
                 onPressed: _pickDate,
                 icon: const Icon(Icons.event),
-                label: Text('Datum: ${formatDate(_eventDate)}'),
+                label: Text(l.repairDateButton(formatDate(_eventDate))),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _mileage,
-                decoration: const InputDecoration(labelText: 'Kilometerstand', suffixText: 'km'),
+                decoration: InputDecoration(labelText: l.commonMileage, suffixText: 'km'),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 validator: (value) {
                   final km = int.tryParse(value ?? '');
                   if (km == null) {
-                    return 'Vul de kilometerstand in';
+                    return l.repairMileageRequired;
                   }
-                  return km > maxMileage ? 'Maximaal ${formatThousands(maxMileage)} km' : null;
+                  return km > maxMileage ? l.repairMileageMax(formatThousands(maxMileage)) : null;
                 },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _title,
-                decoration: const InputDecoration(labelText: 'Titel', hintText: 'Bijv. Grote beurt'),
+                decoration: InputDecoration(labelText: l.commonTitle, hintText: l.createRepairTitleHint),
                 maxLength: 150,
-                validator: (value) => (value == null || value.trim().isEmpty) ? 'Vul een titel in' : null,
+                validator: (value) => (value == null || value.trim().isEmpty) ? l.repairTitleRequired : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _description,
-                decoration: const InputDecoration(labelText: 'Omschrijving (optioneel)'),
+                decoration: InputDecoration(labelText: l.createRepairDescriptionOptional),
                 maxLines: 4,
                 maxLength: 5000,
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(child: Text('Onderdelen', style: Theme.of(context).textTheme.titleSmall)),
-                  TextButton.icon(onPressed: _addPart, icon: const Icon(Icons.add), label: const Text('Onderdeel')),
+                  Expanded(child: Text(l.repairParts, style: Theme.of(context).textTheme.titleSmall)),
+                  TextButton.icon(onPressed: _addPart, icon: const Icon(Icons.add), label: Text(l.createRepairAddPart)),
                 ],
               ),
               for (final (index, part) in _parts.indexed)
@@ -201,7 +204,7 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
                   title: Text('${part.quantity} × ${part.description}'),
                   subtitle: Text([part.brand, part.partNumber].whereType<String>().where((s) => s.isNotEmpty).join(' · ')),
                   trailing: IconButton(
-                    tooltip: 'Verwijderen',
+                    tooltip: l.commonDelete,
                     icon: const Icon(Icons.close),
                     onPressed: () => setState(() => _parts.removeAt(index)),
                   ),
@@ -213,14 +216,11 @@ class _CreateRepairScreenState extends ConsumerState<CreateRepairScreen> {
               ],
               FilledButton(
                 onPressed: _busy ? null : _submit,
-                child: _busy ? const ButtonProgress() : const Text('Opslaan'),
+                child: _busy ? const ButtonProgress() : Text(l.commonSave),
               ),
               const SizedBox(height: 8),
               Text(
-                widget.garageId == null
-                    ? 'Je registreert dit als eigenaar. Het wordt getoond als "niet geverifieerd" tot er een factuur '
-                        'of werkorder bij komt.'
-                    : 'Je registreert dit namens je garage. Daarna kun je een factuur of werkorder toevoegen.',
+                widget.garageId == null ? l.createRepairOwnerNote : l.createRepairGarageNote,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],

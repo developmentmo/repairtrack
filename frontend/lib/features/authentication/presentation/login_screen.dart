@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/session_controller.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
@@ -36,6 +37,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _error = null;
@@ -47,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = userMessage(e);
+          _error = userMessage(l, e);
           _unverified = e is ApiException && e.code == 'EMAIL_NOT_VERIFIED';
         });
       }
@@ -62,6 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
     final expired = session is SignedOut && session.expired;
+    final l = context.l10n;
     return Scaffold(
       body: CenteredForm(
         child: Form(
@@ -72,29 +75,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const Center(child: BrandLogoLarge(width: 200)),
               const SizedBox(height: 16),
               Text(
-                'Vertrouwde voertuiggeschiedenis. Altijd en overal.',
+                l.loginTagline,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 4),
               Text(
-                'Log in om je voertuighistorie te bekijken.',
+                l.loginSubtitle,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 24),
               if (expired) ...[
-                const InfoBanner(message: 'Je sessie is verlopen. Log opnieuw in.'),
+                InfoBanner(message: l.errorSessionExpired),
                 const SizedBox(height: 16),
               ],
               TextFormField(
                 key: const Key('login-email'),
                 controller: _email,
-                decoration: const InputDecoration(labelText: 'E-mailadres'),
+                decoration: InputDecoration(labelText: l.commonEmail),
                 keyboardType: TextInputType.emailAddress,
                 autofillHints: const [AutofillHints.email],
                 textInputAction: TextInputAction.next,
-                validator: (value) => (value == null || !value.contains('@')) ? 'Vul een geldig e-mailadres in' : null,
+                validator: (value) => (value == null || !value.contains('@')) ? l.commonInvalidEmail : null,
               ),
               const SizedBox(height: 16),
               PasswordFormField(
@@ -102,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 controller: _password,
                 autofillHints: const [AutofillHints.password],
                 onFieldSubmitted: (_) => _submit(),
-                validator: (value) => (value == null || value.isEmpty) ? 'Vul je wachtwoord in' : null,
+                validator: (value) => (value == null || value.isEmpty) ? l.loginPasswordRequired : null,
               ),
               const SizedBox(height: 16),
               if (_error != null) ...[
@@ -116,17 +119,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               FilledButton(
                 key: const Key('login-submit'),
                 onPressed: _busy ? null : _submit,
-                child: _busy ? const ButtonProgress() : const Text('Inloggen'),
+                child: _busy ? const ButtonProgress() : Text(l.loginSubmit),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: _busy ? null : () => context.go(Routes.register),
-                child: const Text('Nog geen account? Registreren'),
+                child: Text(l.loginNoAccount),
               ),
               TextButton(
                 key: const Key('login-forgot'),
                 onPressed: _busy ? null : () => context.go(Routes.forgotPassword),
-                child: const Text('Wachtwoord vergeten?'),
+                child: Text(l.loginForgotPassword),
               ),
             ],
           ),
