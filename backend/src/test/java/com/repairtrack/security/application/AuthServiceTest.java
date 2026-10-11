@@ -30,6 +30,7 @@ import com.repairtrack.common.ratelimit.FixedWindowRateLimiter;
 import com.repairtrack.security.Role;
 import com.repairtrack.security.UserRegisteredEvent;
 import com.repairtrack.security.domain.InvalidPasswordException;
+import com.repairtrack.security.domain.LoginSession;
 import com.repairtrack.security.domain.RefreshToken;
 import com.repairtrack.security.domain.User;
 import com.repairtrack.security.infrastructure.RefreshTokenRepository;
@@ -55,6 +56,8 @@ class AuthServiceTest {
     private AccessTokenService accessTokenService;
     @Mock
     private ApplicationEventPublisher events;
+    @Mock
+    private LoginSessionService loginSessions;
 
     private AuthService authService;
 
@@ -62,11 +65,11 @@ class AuthServiceTest {
     void setUp() {
         var properties = new SecurityProperties(
                 new SecurityProperties.Jwt("0123456789abcdef0123456789abcdef", "repairtrack", Duration.ofMinutes(15)),
-                REFRESH_TTL);
+                REFRESH_TTL, Duration.ofMinutes(15));
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         var loginThrottle = new LoginThrottle(new FixedWindowRateLimiter(MAX_FAILED_LOGINS, Duration.ofMinutes(15), clock));
         authService = new AuthService(users, refreshTokens, PASSWORD_ENCODER, accessTokenService,
-                properties, events, clock, loginThrottle);
+                properties, events, clock, loginThrottle, loginSessions);
     }
 
     // ---------- register ----------
@@ -142,7 +145,9 @@ class AuthServiceTest {
     void successfulLoginStoresOnlyTheHashOfTheRefreshToken() {
         User user = existingUser();
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(accessTokenService.issue(user.getId()))
+        LoginSession session = LoginSession.start(user.getId(), NOW);
+        when(loginSessions.start(user.getId(), NOW)).thenReturn(session);
+        when(accessTokenService.issue(user.getId(), session.getId()))
                 .thenReturn(new AccessTokenService.IssuedAccessToken("jwt", NOW.plusSeconds(900)));
 
         AuthTokens tokens = authService.login(user.getEmail(), PASSWORD);
@@ -152,6 +157,7 @@ class AuthServiceTest {
         assertThat(tokens.accessToken()).isEqualTo("jwt");
         assertThat(tokens.refreshTokenExpiresAt()).isEqualTo(NOW.plus(REFRESH_TTL));
         assertThat(saved.getValue().getUserId()).isEqualTo(user.getId());
+        assertThat(saved.getValue().getFamilyId()).isEqualTo(session.getId());
         verify(refreshTokens, never()).findByTokenHash(tokens.refreshToken()); // raw token never used as key
     }
 
@@ -198,7 +204,9 @@ class AuthServiceTest {
     void successfulLoginResetsTheFailureCount() {
         User user = existingUser();
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(accessTokenService.issue(user.getId()))
+        LoginSession session = LoginSession.start(user.getId(), NOW);
+        when(loginSessions.start(user.getId(), NOW)).thenReturn(session);
+        when(accessTokenService.issue(user.getId(), session.getId()))
                 .thenReturn(new AccessTokenService.IssuedAccessToken("jwt", NOW.plusSeconds(900)));
         for (int i = 0; i < MAX_FAILED_LOGINS - 1; i++) {
             assertThatThrownBy(() -> authService.login(user.getEmail(), "wrong password"))
@@ -223,7 +231,8 @@ class AuthServiceTest {
                 NOW.minusSeconds(60), REFRESH_TTL);
         when(refreshTokens.findByTokenHash(OpaqueTokens.sha256Hex(raw))).thenReturn(Optional.of(current));
         when(users.findById(user.getId())).thenReturn(Optional.of(user));
-        when(accessTokenService.issue(user.getId()))
+        when(loginSessions.recordActivity(family, user.getId())).thenReturn(true);
+        when(accessTokenService.issue(user.getId(), family))
                 .thenReturn(new AccessTokenService.IssuedAccessToken("jwt2", NOW.plusSeconds(900)));
 
         AuthTokens tokens = authService.refresh(raw);
@@ -235,6 +244,24 @@ class AuthServiceTest {
         assertThat(current.isRevoked()).isTrue();
         assertThat(current.getReplacedById()).isEqualTo(successor.getId());
         assertThat(tokens.refreshToken()).isNotEqualTo(raw);
+    }
+
+    @Test
+    void refreshOfAnIdleSessionEndsTheLogin() {
+        User user = existingUser();
+        UUID family = UUID.randomUUID();
+        String raw = OpaqueTokens.generate();
+        RefreshToken current = RefreshToken.issue(user.getId(), family, OpaqueTokens.sha256Hex(raw),
+                NOW.minusSeconds(3600), REFRESH_TTL);
+        when(refreshTokens.findByTokenHash(OpaqueTokens.sha256Hex(raw))).thenReturn(Optional.of(current));
+        when(users.findById(user.getId())).thenReturn(Optional.of(user));
+        when(loginSessions.recordActivity(family, user.getId())).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.refresh(raw)).isInstanceOf(SessionExpiredException.class);
+        verify(refreshTokens).revokeFamily(family, NOW);
+        verify(loginSessions).end(family, NOW);
+        verify(refreshTokens, never()).save(any());
+        verify(accessTokenService, never()).issue(any(), any());
     }
 
     @Test

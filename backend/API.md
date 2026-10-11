@@ -44,6 +44,7 @@ Business codes:
 | `INVALID_PASSWORD` | 400 | Password violates the policy (min 12 characters, max 72 bytes) |
 | `INVALID_CREDENTIALS` | 401 | Login: wrong email or password (identical for both) |
 | `INVALID_REFRESH_TOKEN` | 401 | Refresh: unknown, expired, revoked or replayed token |
+| `SESSION_EXPIRED` | 401 | Refresh: the login was idle for longer than the idle timeout (15 min); log in again |
 | `ACCOUNT_BLOCKED` | 403 | Login/refresh of a blocked account (login: only after a correct password) |
 | `USER_NOT_FOUND` | 404 | No (active) account for the given user / email |
 | `EMAIL_ALREADY_REGISTERED` | 409 | Registration with an existing email (case-insensitive) |
@@ -114,6 +115,8 @@ Client rules:
 - Refresh tokens are **single-use**. Always store the refresh token from the latest response.
 - Reusing an old refresh token revokes the entire session (all its tokens); the user must log in again.
 - Refresh proactively shortly before `accessTokenExpiresAt`, or on a 401 from a protected endpoint.
+- A login ends after 15 minutes without requests (`SESSION_IDLE_TIMEOUT`). After that both tokens are rejected
+  (refresh answers `401 SESSION_EXPIRED`) and the user must log in again.
 
 Registration never accepts roles or status; every new account is an active `OWNER`.
 

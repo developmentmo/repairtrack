@@ -75,6 +75,8 @@ repairtrack:
       issuer: ${JWT_ISSUER:repairtrack}
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
     refresh-token-ttl: ${REFRESH_TOKEN_TTL:30d}
+    # A login ends after this long without any request (sliding: every request extends it).
+    session-idle-timeout: ${SESSION_IDLE_TIMEOUT:15m}
     # Daily deletion of expired refresh tokens ("-" disables it).
     refresh-token-cleanup-cron: ${REFRESH_TOKEN_CLEANUP_CRON:0 30 3 * * *}
   # Abuse protection (see RateLimitProperties for all limits and their defaults).

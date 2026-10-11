@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.repairtrack.common.ratelimit.FixedWindowRateLimiter;
+import com.repairtrack.security.application.LoginSessionService;
 import com.repairtrack.security.application.LoginThrottle;
 
 /**
@@ -37,10 +38,11 @@ class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             UserRepository userRepository,
+                                            LoginSessionService loginSessionService,
                                             SecurityErrorHandler securityErrorHandler,
                                             RateLimitProperties rateLimits,
                                             Clock clock) throws Exception {
-        var authenticatedUserConverter = new AuthenticatedUserConverter(userRepository);
+        var authenticatedUserConverter = new AuthenticatedUserConverter(userRepository, loginSessionService);
         http
                 // No cookies/sessions are used for authentication, so CSRF protection does not apply.
                 .csrf(csrf -> csrf.disable())

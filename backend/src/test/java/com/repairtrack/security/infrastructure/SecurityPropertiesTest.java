@@ -28,7 +28,7 @@ class SecurityPropertiesTest {
     void rejectsNonPositiveTtl() {
         var jwt = new SecurityProperties.Jwt(STRONG_SECRET, "repairtrack", Duration.ofMinutes(15));
 
-        assertThatThrownBy(() -> new SecurityProperties(jwt, Duration.ZERO))
+        assertThatThrownBy(() -> new SecurityProperties(jwt, Duration.ZERO, null))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -37,6 +37,6 @@ class SecurityPropertiesTest {
         var jwt = new SecurityProperties.Jwt(STRONG_SECRET, "repairtrack", Duration.ofMinutes(15));
 
         assertThat(jwt.toString()).doesNotContain(STRONG_SECRET);
-        assertThat(new SecurityProperties(jwt, Duration.ofDays(30)).toString()).doesNotContain(STRONG_SECRET);
+        assertThat(new SecurityProperties(jwt, Duration.ofDays(30), null).toString()).doesNotContain(STRONG_SECRET);
     }
 }

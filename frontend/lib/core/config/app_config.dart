@@ -10,6 +10,10 @@ class AppConfig {
 
   static const _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
 
+  /// Signed-in users are signed out after this long without interaction. Matches the backend's
+  /// `SESSION_IDLE_TIMEOUT`, which ends the session on the server as well.
+  static const sessionIdleTimeout = Duration(minutes: 15);
+
   /// Public website (privacy policy, account page). Override with `--dart-define=PUBLIC_WEB_URL=...`.
   static const _publicWebUrl = String.fromEnvironment('PUBLIC_WEB_URL', defaultValue: 'https://repairtrack.nl');
 

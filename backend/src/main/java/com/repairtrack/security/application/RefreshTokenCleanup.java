@@ -11,10 +11,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.repairtrack.security.infrastructure.AccountTokenRepository;
+import com.repairtrack.security.infrastructure.LoginSessionRepository;
 import com.repairtrack.security.infrastructure.RefreshTokenRepository;
+import com.repairtrack.security.infrastructure.SecurityProperties;
 
 /**
- * Deletes refresh tokens and email-link tokens that expired more than a day ago. They can no longer be used, so keeping them only
+ * Deletes refresh tokens and email-link tokens that expired more than a day ago, and login sessions that have been
+ * over (ended or idle) for more than a day. They can no longer be used, so keeping them only
  * grows the table. These are credentials, not history: the "no hard deletes" rule is about the vehicle history
  * and its audit trail. Idempotent, so it may run on several instances.
  */
@@ -26,12 +29,16 @@ public class RefreshTokenCleanup {
 
     private final RefreshTokenRepository refreshTokens;
     private final AccountTokenRepository accountTokens;
+    private final LoginSessionRepository loginSessions;
+    private final SecurityProperties properties;
     private final Clock clock;
 
     public RefreshTokenCleanup(RefreshTokenRepository refreshTokens, AccountTokenRepository accountTokens,
-                               Clock clock) {
+                               LoginSessionRepository loginSessions, SecurityProperties properties, Clock clock) {
         this.refreshTokens = refreshTokens;
         this.accountTokens = accountTokens;
+        this.loginSessions = loginSessions;
+        this.properties = properties;
         this.clock = clock;
     }
 
@@ -42,7 +49,9 @@ public class RefreshTokenCleanup {
         Instant cutoff = Instant.now(clock).minus(GRACE);
         int refresh = refreshTokens.deleteExpiredBefore(cutoff);
         int account = accountTokens.deleteExpiredBefore(cutoff);
-        log.info("Token cleanup: {} refresh token(s) and {} email-link token(s) deleted", refresh, account);
-        return refresh + account;
+        int sessions = loginSessions.deleteInactiveSince(cutoff.minus(properties.sessionIdleTimeout()));
+        log.info("Token cleanup: {} refresh token(s), {} email-link token(s) and {} login session(s) deleted",
+                refresh, account, sessions);
+        return refresh + account + sessions;
     }
 }

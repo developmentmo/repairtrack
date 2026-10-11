@@ -26,6 +26,7 @@ Never modify a schema manually, and never edit a migration that has been applied
 | V17 | `V17__create_account_token.sql` | `app_user.email_verified_at` (existing users count as verified), `account_token` |
 | V18 | `V18__create_ownership_dispute.sql` | `ownership_dispute`, `dispute_evidence`; ownership status `REVOKED` |
 | V19 | `V19__create_vehicle_photo.sql` | `vehicle_photo` (owner's photo of a vehicle; bytes in object storage) |
+| V20 | `V20__create_login_session.sql` | `login_session` (one row per login, for the idle timeout; existing logins backfilled) |
 
 ## Tables
 

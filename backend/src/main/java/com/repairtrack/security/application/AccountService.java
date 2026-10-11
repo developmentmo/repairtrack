@@ -37,15 +37,18 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    private final LoginSessionService loginSessions;
 
     public AccountService(UserRepository users, AccountTokenRepository tokens, RefreshTokenRepository refreshTokens,
-                          PasswordEncoder passwordEncoder, ApplicationEventPublisher events, Clock clock) {
+                          PasswordEncoder passwordEncoder, ApplicationEventPublisher events, Clock clock,
+                          LoginSessionService loginSessions) {
         this.users = users;
         this.tokens = tokens;
         this.refreshTokens = refreshTokens;
         this.passwordEncoder = passwordEncoder;
         this.events = events;
         this.clock = clock;
+        this.loginSessions = loginSessions;
     }
 
     /** Every new account gets a verification email (in the registration's transaction; sent after commit). */
@@ -98,6 +101,7 @@ public class AccountService {
         user.changePasswordHash(passwordEncoder.encode(newPassword), now);
         user.verifyEmail(now);
         refreshTokens.revokeAllOfUser(user.getId(), now);
+        loginSessions.endAllOfUser(user.getId(), now);
         events.publishEvent(new UserAccountEvents.PasswordReset(user.getId(), now));
     }
 

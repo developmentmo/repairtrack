@@ -16,11 +16,15 @@ import com.repairtrack.security.infrastructure.SecurityProperties;
 /**
  * Issues short-lived access tokens.
  * <p>
- * Claims are minimal: subject (user ID), issuer, issued-at, expiry, token ID. No email, name or
+ * Claims are minimal: subject (user ID), login session ID ({@value #SESSION_ID_CLAIM}), issuer, issued-at, expiry,
+ * token ID. No email, name or
  * roles: tokens are readable by anyone holding them, and roles are loaded from the database per request.
  */
 @Service
 public class AccessTokenService {
+
+    /** The {@link com.repairtrack.security.domain.LoginSession} the token belongs to. */
+    public static final String SESSION_ID_CLAIM = "sid";
 
     private final JwtEncoder jwtEncoder;
     private final SecurityProperties properties;
@@ -32,12 +36,13 @@ public class AccessTokenService {
         this.clock = clock;
     }
 
-    public IssuedAccessToken issue(UUID userId) {
+    public IssuedAccessToken issue(UUID userId, UUID sessionId) {
         Instant now = Instant.now(clock);
         Instant expiresAt = now.plus(properties.jwt().accessTokenTtl());
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(properties.jwt().issuer())
                 .subject(userId.toString())
+                .claim(SESSION_ID_CLAIM, sessionId.toString())
                 .issuedAt(now)
                 .expiresAt(expiresAt)
                 .id(UUID.randomUUID().toString())
