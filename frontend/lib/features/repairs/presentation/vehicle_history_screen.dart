@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/async_value_view.dart';
@@ -24,6 +25,7 @@ class VehicleHistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final repairs = ref.watch(vehicleRepairsProvider(vehicleId));
     final mileage = ref.watch(mileageHistoryProvider(vehicleId));
     final vehicle = ref.watch(vehicleProvider(vehicleId));
@@ -37,13 +39,13 @@ class VehicleHistoryScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reparatiegeschiedenis')),
+      appBar: AppBar(title: Text(l.vehicleHistoryTitle)),
       floatingActionButton: canAdd
           ? FloatingActionButton.extended(
-              tooltip: 'Toevoegen',
+              tooltip: l.commonAdd,
               onPressed: () => context.go(Routes.newRepairFor(garageId, vehicleId)),
               icon: const Icon(Icons.add),
-              label: const Text('Nieuwe reparatie'),
+              label: Text(l.vehicleHistoryNewRepair),
             )
           : null,
       body: ContentWidth(
@@ -51,12 +53,9 @@ class VehicleHistoryScreen extends ConsumerWidget {
         child: RefreshIndicator(
         onRefresh: refresh,
         child: _garageCannotSeeHistoryYet(repairs)
-            ? const Padding(
-                padding: EdgeInsets.all(16),
-                child: InfoBanner(
-                  message: 'De historie van dit voertuig is zichtbaar voor je garage zodra je er werk aan hebt '
-                      'vastgelegd of het hebt geregistreerd.',
-                ),
+            ? Padding(
+                padding: const EdgeInsets.all(16),
+                child: InfoBanner(message: l.vehicleHistoryGarageNoAccess),
               )
             : AsyncValueView(
           value: repairs,
@@ -67,13 +66,13 @@ class VehicleHistoryScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               children: [
                 for (final warning in warnings) ...[
-                  InfoBanner(message: mileageWarningText(warning), icon: Icons.speed, warning: true),
+                  InfoBanner(message: mileageWarningText(l, warning), icon: Icons.speed, warning: true),
                   const SizedBox(height: 8),
                 ],
                 if (list.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Text('Nog geen onderhoud of reparaties geregistreerd.', textAlign: TextAlign.center),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: Text(l.vehicleHistoryEmpty, textAlign: TextAlign.center),
                   ),
                 if (list.isNotEmpty)
                   Card(

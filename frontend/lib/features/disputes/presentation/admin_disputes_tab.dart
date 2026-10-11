@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -23,6 +24,7 @@ class _AdminDisputesTabState extends ConsumerState<AdminDisputesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final disputes = ref.watch(adminDisputesProvider(_undecided));
     return RefreshIndicator(
       onRefresh: () async {
@@ -33,9 +35,9 @@ class _AdminDisputesTabState extends ConsumerState<AdminDisputesTab> {
         padding: const EdgeInsets.all(16),
         children: [
           SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: true, label: Text('Open')),
-              ButtonSegment(value: false, label: Text('Besloten')),
+            segments: [
+              ButtonSegment(value: true, label: Text(l.adminDisputesFilterOpen)),
+              ButtonSegment(value: false, label: Text(l.adminDisputesFilterDecided)),
             ],
             selected: {_undecided},
             onSelectionChanged: (selection) => setState(() => _undecided = selection.first),
@@ -47,7 +49,7 @@ class _AdminDisputesTabState extends ConsumerState<AdminDisputesTab> {
             data: (list) => Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (list.isEmpty) Text(_undecided ? 'Er zijn geen open geschillen.' : 'Nog geen besluiten.'),
+                if (list.isEmpty) Text(_undecided ? l.adminDisputesEmptyOpen : l.adminDisputesEmptyDecided),
                 for (final dispute in list) _AdminDisputeCard(dispute: dispute),
               ],
             ),
@@ -65,6 +67,7 @@ class _AdminDisputeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final theme = Theme.of(context);
     return Card(
       child: Padding(
@@ -75,30 +78,32 @@ class _AdminDisputeCard extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(dispute.vehicle?.displayName ?? 'Voertuig', style: theme.textTheme.titleMedium),
+                  child: Text(dispute.vehicle?.displayName ?? l.commonVehicle, style: theme.textTheme.titleMedium),
                 ),
-                Text(disputeStatusLabel(dispute.status)),
+                Text(disputeStatusLabel(l, dispute.status)),
               ],
             ),
             const SizedBox(height: 4),
-            Text('Ingediend ${formatDateTime(dispute.createdAt)} · reactietermijn tot '
-                '${formatDateTime(dispute.responseDeadline)}', style: theme.textTheme.bodySmall),
+            Text(
+              l.adminDisputeSubmitted(formatDateTime(dispute.createdAt), formatDateTime(dispute.responseDeadline)),
+              style: theme.textTheme.bodySmall,
+            ),
             const SizedBox(height: 8),
-            Text('Indiener: ${dispute.claimant?.displayName ?? '-'}', style: theme.textTheme.labelLarge),
+            Text(l.adminDisputeClaimant(dispute.claimant?.displayName ?? '-'), style: theme.textTheme.labelLarge),
             Text(dispute.claimantStatement),
             const SizedBox(height: 8),
-            Text('Huidige eigenaar: ${dispute.owner?.displayName ?? '-'}', style: theme.textTheme.labelLarge),
-            Text(dispute.ownerStatement ?? 'Heeft (nog) niet gereageerd.'),
+            Text(l.adminDisputeCurrentOwner(dispute.owner?.displayName ?? '-'), style: theme.textTheme.labelLarge),
+            Text(dispute.ownerStatement ?? l.adminDisputeNoOwnerResponse),
             if (dispute.evidence.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text('Bestanden', style: theme.textTheme.labelLarge),
+              Text(l.adminDisputeFiles, style: theme.textTheme.labelLarge),
               for (final file in dispute.evidence)
                 ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.description_outlined),
                   title: Text(file.fileName),
-                  subtitle: Text('${file.party == DisputeParty.claimant ? 'Indiener' : 'Eigenaar'} · '
+                  subtitle: Text('${file.party == DisputeParty.claimant ? l.disputePartyClaimant : l.commonOwner} · '
                       '${formatDateTime(file.uploadedAt)}'),
                   onTap: () => _open(context, ref, file),
                 ),
@@ -107,14 +112,16 @@ class _AdminDisputeCard extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 dispute.status == DisputeStatus.upheld
-                    ? 'Toegekend${dispute.newOwnerSince == null ? '' : ', eigenaar vanaf ${formatDate(dispute.newOwnerSince!)}'}'
-                    : 'Afgewezen',
+                    ? (dispute.newOwnerSince == null
+                        ? l.adminDisputeUpheld
+                        : l.adminDisputeUpheldSince(formatDate(dispute.newOwnerSince!)))
+                    : l.adminDisputeRejected,
                 style: theme.textTheme.labelLarge,
               ),
               if (dispute.decisionNote != null) Text(dispute.decisionNote!),
             ] else if (!dispute.reviewable) ...[
               const SizedBox(height: 8),
-              Text('De eigenaar kan nog reageren; daarna kun je beslissen.', style: theme.textTheme.bodySmall),
+              Text(l.adminDisputeOwnerCanStillRespond, style: theme.textTheme.bodySmall),
             ] else ...[
               const SizedBox(height: 8),
               Wrap(
@@ -122,11 +129,11 @@ class _AdminDisputeCard extends ConsumerWidget {
                 children: [
                   FilledButton(
                     onPressed: () => _decide(context, ref, uphold: true),
-                    child: const Text('Toekennen'),
+                    child: Text(l.commonUphold),
                   ),
                   OutlinedButton(
                     onPressed: () => _decide(context, ref, uphold: false),
-                    child: const Text('Afwijzen'),
+                    child: Text(l.commonReject),
                   ),
                 ],
               ),
@@ -138,14 +145,15 @@ class _AdminDisputeCard extends ConsumerWidget {
   }
 
   Future<void> _open(BuildContext context, WidgetRef ref, DisputeEvidence file) async {
+    final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final url = await ref.read(disputeApiProvider).evidenceUrl(dispute.id, file.id);
       if (!await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)) {
-        messenger.showSnackBar(const SnackBar(content: Text('Het bestand kon niet worden geopend.')));
+        messenger.showSnackBar(SnackBar(content: Text(l.disputeFileOpenFailed)));
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     }
   }
 
@@ -157,6 +165,7 @@ class _AdminDisputeCard extends ConsumerWidget {
     if (decision == null || !context.mounted) {
       return;
     }
+    final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(disputeApiProvider).decide(dispute.id,
@@ -164,9 +173,9 @@ class _AdminDisputeCard extends ConsumerWidget {
       ref
         ..invalidate(adminDisputesProvider(true))
         ..invalidate(adminDisputesProvider(false));
-      messenger.showSnackBar(SnackBar(content: Text(uphold ? 'Geschil toegekend.' : 'Geschil afgewezen.')));
+      messenger.showSnackBar(SnackBar(content: Text(uphold ? l.adminDisputeUpheldSnack : l.adminDisputeRejectedSnack)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     }
   }
 }
@@ -204,7 +213,7 @@ class _DecisionDialogState extends State<_DecisionDialog> {
       firstDate: DateTime(1950),
       lastDate: today(),
       initialDate: _since ?? today(),
-      helpText: 'Eigenaar sinds',
+      helpText: context.l10n.adminDisputeOwnerSince,
     );
     if (picked != null) {
       setState(() => _since = picked);
@@ -213,7 +222,7 @@ class _DecisionDialogState extends State<_DecisionDialog> {
 
   void _confirm() {
     if (_note.text.trim().length < 10) {
-      setState(() => _error = 'Geef een toelichting van ten minste 10 tekens.');
+      setState(() => _error = context.l10n.adminDisputeNoteTooShort);
       return;
     }
     Navigator.of(context).pop(_Decision(_note.text.trim(), _since));
@@ -221,23 +230,21 @@ class _DecisionDialogState extends State<_DecisionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AlertDialog(
-      title: Text(widget.uphold ? 'Geschil toekennen' : 'Geschil afwijzen'),
+      title: Text(widget.uphold ? l.adminDisputeUpholdTitle : l.adminDisputeRejectTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(widget.uphold
-                ? 'Het eigendom van de huidige eigenaar wordt ingetrokken en de indiener wordt eigenaar. '
-                    'Dit besluit is definitief.'
-                : 'Het eigendom blijft ongewijzigd. Dit besluit is definitief.'),
+            Text(widget.uphold ? l.adminDisputeUpholdText : l.adminDisputeRejectText),
             const SizedBox(height: 12),
             TextField(
               controller: _note,
-              decoration: const InputDecoration(
-                labelText: 'Toelichting',
-                helperText: 'Beide partijen krijgen deze tekst per e-mail. Noem geen namen of gegevens van de ander.',
+              decoration: InputDecoration(
+                labelText: l.commonExplanation,
+                helperText: l.adminDisputeNoteHelper,
                 helperMaxLines: 3,
                 alignLabelWithHint: true,
               ),
@@ -250,7 +257,7 @@ class _DecisionDialogState extends State<_DecisionDialog> {
               OutlinedButton.icon(
                 onPressed: _pickSince,
                 icon: const Icon(Icons.event),
-                label: Text(_since == null ? 'Nieuwe eigenaar sinds: vandaag' : 'Nieuwe eigenaar sinds: ${formatDate(_since!)}'),
+                label: Text(_since == null ? l.adminDisputeNewOwnerSinceToday : l.adminDisputeNewOwnerSince(formatDate(_since!))),
               ),
             ],
             if (_error != null) ...[
@@ -261,8 +268,8 @@ class _DecisionDialogState extends State<_DecisionDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Annuleren')),
-        FilledButton(onPressed: _confirm, child: Text(widget.uphold ? 'Toekennen' : 'Afwijzen')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l.commonCancel)),
+        FilledButton(onPressed: _confirm, child: Text(widget.uphold ? l.commonUphold : l.commonReject)),
       ],
     );
   }

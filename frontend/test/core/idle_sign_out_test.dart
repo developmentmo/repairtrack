@@ -10,6 +10,7 @@ import 'package:repairtrack_app/features/authentication/data/auth_api.dart';
 import 'package:repairtrack_app/features/authentication/domain/user.dart';
 
 import '../helpers/in_memory_token_store.dart';
+import '../helpers/test_app.dart';
 
 const _user = User(id: 'u1', email: 'a@b.nl', firstName: 'An', lastName: 'Tester', roles: ['OWNER']);
 
@@ -46,7 +47,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [sessionControllerProvider.overrideWith(() => session)],
-          child: MaterialApp(
+          child: TestApp(
             home: IdleSignOut(
               now: () => now,
               child: const Scaffold(body: Center(child: Text('Dashboard'))),

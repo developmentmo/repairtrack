@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/async_value_view.dart';
@@ -24,19 +25,20 @@ class RepairDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final repair = ref.watch(repairProvider(repairId));
     final loaded = repair.hasValue ? repair.requireValue : null;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reparatie'),
+        title: Text(l.repairDetailTitle),
         actions: [
           if (loaded != null && (loaded.canCorrect || loaded.canVoid))
             PopupMenuButton<_Action>(
               onSelected: (action) => _onAction(context, ref, loaded, action),
               itemBuilder: (context) => [
-                if (loaded.canCorrect) const PopupMenuItem(value: _Action.correct, child: Text('Corrigeren')),
-                if (loaded.canCorrect) const PopupMenuItem(value: _Action.addPart, child: Text('Onderdeel toevoegen')),
-                if (loaded.canVoid) const PopupMenuItem(value: _Action.voidRecord, child: Text('Ongeldig verklaren')),
+                if (loaded.canCorrect) PopupMenuItem(value: _Action.correct, child: Text(l.repairCorrect)),
+                if (loaded.canCorrect) PopupMenuItem(value: _Action.addPart, child: Text(l.repairAddPart)),
+                if (loaded.canVoid) PopupMenuItem(value: _Action.voidRecord, child: Text(l.commonVoid)),
               ],
             ),
         ],
@@ -53,9 +55,9 @@ class RepairDetailScreen extends ConsumerWidget {
               InfoBanner(
                 warning: true,
                 icon: Icons.block,
-                message: 'Ongeldig verklaard${repair.voidedAt == null ? '' : ' op ${formatDateTime(repair.voidedAt!)}'}'
+                message: '${repair.voidedAt == null ? l.repairVoided : l.repairVoidedOn(formatDateTime(repair.voidedAt!))}'
                     '${repair.voidReason == null ? '' : ': ${repair.voidReason}'}. '
-                    'De registratie blijft zichtbaar in de historie.',
+                    '${l.repairVoidedStillVisible}',
               ),
               const SizedBox(height: 16),
             ],
@@ -63,8 +65,8 @@ class RepairDetailScreen extends ConsumerWidget {
               InfoBanner(
                 warning: true,
                 icon: Icons.gavel,
-                message: 'Ingevoerd door een eigenaar van wie het eigendom na een geschil is ingetrokken.'
-                    '${repair.canVoid ? ' Je kunt deze registratie ongeldig verklaren als ze niet klopt.' : ''}',
+                message: '${l.repairRevokedOwnership}.'
+                    '${repair.canVoid ? ' ${l.repairRevokedOwnershipCanVoid}' : ''}',
               ),
               const SizedBox(height: 16),
             ],
@@ -94,28 +96,28 @@ class RepairDetailScreen extends ConsumerWidget {
               ),
             ),
             SectionCard(
-              title: 'Details',
+              title: l.repairDetailsSection,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DetailRow(label: 'Type', value: eventTypeLabel(repair.eventType)),
+                  DetailRow(label: l.repairDetailType, value: eventTypeLabel(l, repair.eventType)),
                   if (repair.garage != null)
                     DetailRow(
-                      label: 'Garage',
+                      label: l.commonGarage,
                       value: [repair.garage!.name, repair.garage!.city].whereType<String>().join(', '),
                     ),
-                  DetailRow(label: 'Datum', value: formatDate(repair.eventDate)),
-                  DetailRow(label: 'Kilometerstand', value: formatKm(repair.mileage)),
-                  DetailRow(label: 'Bron', value: sourceTypeLabel(repair.sourceType)),
-                  DetailRow(label: 'Vastgelegd op', value: formatDateTime(repair.createdAt)),
+                  DetailRow(label: l.repairDate, value: formatDate(repair.eventDate)),
+                  DetailRow(label: l.commonMileage, value: formatKm(repair.mileage)),
+                  DetailRow(label: l.repairSource, value: sourceTypeLabel(l, repair.sourceType)),
+                  DetailRow(label: l.repairRecordedAt, value: formatDateTime(repair.createdAt)),
                   if (repair.description != null && repair.description!.isNotEmpty)
-                    DetailRow(label: 'Beschrijving', value: repair.description!),
+                    DetailRow(label: l.repairDescriptionLabel, value: repair.description!),
                 ],
               ),
             ),
             if (repair.parts.isNotEmpty)
               SectionCard(
-                title: 'Onderdelen',
+                title: l.repairParts,
                 child: Column(
                   children: [
                     for (final part in repair.parts)
@@ -124,14 +126,14 @@ class RepairDetailScreen extends ConsumerWidget {
                         leading: const IconBadge(icon: Icons.settings_outlined, tone: Tone.neutral, size: 36),
                         title: Text(part.description),
                         subtitle: Text([part.brand, part.partNumber].whereType<String>().join(' · ')),
-                        trailing: Text(part.quantity == 1 ? '1 stuk' : '${part.quantity} stuks'),
+                        trailing: Text(l.repairPartQuantity(part.quantity)),
                       ),
                   ],
                 ),
               ),
             if (repair.corrections.isNotEmpty)
               SectionCard(
-                title: 'Correcties',
+                title: l.repairCorrections,
                 child: Column(
                   children: [for (final correction in repair.corrections) _CorrectionTile(correction: correction)],
                 ),
@@ -146,6 +148,7 @@ class RepairDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _onAction(BuildContext context, WidgetRef ref, Repair repair, _Action action) async {
+    final l = context.l10n;
     switch (action) {
       case _Action.correct:
         await context.push(Routes.correctRepair(repair.id));
@@ -153,13 +156,13 @@ class RepairDetailScreen extends ConsumerWidget {
         final part = await showDialog<NewPart>(context: context, builder: (context) => const PartDialog());
         if (part != null && context.mounted) {
           await _run(context, ref, repair, () => ref.read(repairApiProvider).addParts(repair.id, [part]),
-              'Onderdeel toegevoegd.');
+              l.repairPartAdded);
         }
       case _Action.voidRecord:
         final reason = await showDialog<String>(context: context, builder: (context) => const _VoidDialog());
         if (reason != null && context.mounted) {
           await _run(context, ref, repair, () => ref.read(repairApiProvider).voidRepair(repair.id, reason),
-              'Registratie ongeldig verklaard. Ze blijft zichtbaar in de historie.');
+              l.repairVoidSuccess);
         }
     }
   }
@@ -171,6 +174,7 @@ class RepairDetailScreen extends ConsumerWidget {
     Future<Repair> Function() call,
     String success,
   ) async {
+    final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     try {
       await call();
@@ -180,7 +184,7 @@ class RepairDetailScreen extends ConsumerWidget {
         ..invalidate(mileageHistoryProvider(repair.vehicleId));
       messenger.showSnackBar(SnackBar(content: Text(success)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     }
   }
 }
@@ -204,28 +208,27 @@ class _VoidDialogState extends State<_VoidDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AlertDialog(
-      title: const Text('Ongeldig verklaren'),
+      title: Text(l.commonVoid),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'De registratie wordt niet verwijderd. Ze blijft zichtbaar als ongeldig, met de reden die je hier geeft.',
-          ),
+          Text(l.repairVoidDialogText),
           const SizedBox(height: 12),
           TextField(
             controller: _reason,
-            decoration: const InputDecoration(labelText: 'Reden', hintText: 'Bijv. verkeerd voertuig'),
+            decoration: InputDecoration(labelText: l.repairVoidReason, hintText: l.repairVoidReasonHint),
             maxLength: 500,
             onChanged: (_) => setState(() {}),
           ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuleren')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
         FilledButton(
           onPressed: _reason.text.trim().isEmpty ? null : () => Navigator.pop(context, _reason.text.trim()),
-          child: const Text('Ongeldig verklaren'),
+          child: Text(l.commonVoid),
         ),
       ],
     );
@@ -239,15 +242,16 @@ class _CorrectionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final by = correction.correctedByGarage?.name ?? 'eigenaar';
+    final l = context.l10n;
+    final by = correction.correctedByGarage?.name ?? l.repairCorrectedByOwner;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(
-        '${correctionFieldLabel(correction.field)}: '
-        '${correctionValueLabel(correction.field, correction.originalValue)} → '
-        '${correctionValueLabel(correction.field, correction.correctedValue)}',
+        '${correctionFieldLabel(l, correction.field)}: '
+        '${correctionValueLabel(l, correction.field, correction.originalValue)} → '
+        '${correctionValueLabel(l, correction.field, correction.correctedValue)}',
       ),
-      subtitle: Text('${correction.reason}\nDoor $by op ${formatDateTime(correction.correctedAt)}'),
+      subtitle: Text('${correction.reason}\n${l.repairCorrectedBy(by, formatDateTime(correction.correctedAt))}'),
       isThreeLine: true,
     );
   }

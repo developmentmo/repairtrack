@@ -20,8 +20,10 @@ import 'package:repairtrack_app/features/vehicles/domain/vehicle.dart';
 import 'package:repairtrack_app/features/vehicles/domain/vehicle_photo.dart';
 import 'package:repairtrack_app/features/vehicles/presentation/vehicle_detail_screen.dart';
 import 'package:repairtrack_app/features/vehicles/presentation/vehicle_photo_card.dart';
+import 'package:repairtrack_app/core/l10n/l10n.dart';
 
 import '../helpers/fake_http_adapter.dart';
+import '../helpers/test_app.dart';
 
 class MockVehicleApi extends Mock implements VehicleApi {}
 
@@ -114,7 +116,7 @@ void main() {
   });
 
   test('photo error codes have their own Dutch messages', () {
-    String message(String code) => vehiclePhotoMessage(ApiException(code: code, message: 'test'));
+    String message(String code) => vehiclePhotoMessage(lookupAppLocalizations(const Locale('nl')), ApiException(code: code, message: 'test'));
 
     expect(message('VEHICLE_ACCESS_DENIED'), 'Alleen de huidige eigenaar kan een foto toevoegen of bekijken.');
     expect(message('VEHICLE_NOT_FOUND'), 'Dit voertuig bestaat niet (meer).');
@@ -124,7 +126,7 @@ void main() {
     expect(message('MALWARE_DETECTED'), 'Deze foto is geweigerd omdat er schadelijke inhoud in is gevonden.');
     expect(message('SCANNER_UNAVAILABLE'), 'De foto kan nu niet worden gecontroleerd. Probeer het later opnieuw.');
     expect(message('VEHICLE_PHOTO_CONFLICT'), 'Er werd tegelijk een andere foto geüpload. Probeer het opnieuw.');
-    expect(message(ApiException.network), userMessage(const ApiException(code: ApiException.network, message: '')));
+    expect(message(ApiException.network), userMessage(lookupAppLocalizations(const Locale('nl')), const ApiException(code: ApiException.network, message: '')));
   });
 
   group('VehiclePhotoCard', () {
@@ -172,7 +174,7 @@ void main() {
             vehicleApiProvider.overrideWithValue(api),
             imagePickerProvider.overrideWithValue(picker),
           ],
-          child: const MaterialApp(
+          child: const TestApp(
             home: Scaffold(body: SingleChildScrollView(child: VehiclePhotoCard(vehicleId: 'v1'))),
           ),
         ),
@@ -422,7 +424,7 @@ void main() {
         ProviderScope(
           retry: _noRetry,
           overrides: overrides(),
-          child: MaterialApp(home: VehicleDetailScreen(vehicleId: 'v1', garageId: garageId)),
+          child: TestApp(home: VehicleDetailScreen(vehicleId: 'v1', garageId: garageId)),
         ),
       );
       await tester.pumpAndSettle();

@@ -31,7 +31,9 @@ RepairTrack is a verifiable vehicle repair-history platform. It is a monorepo:
    rename or remove them without a migration path.
 10. Every behaviour change comes with tests. In the backend, that means unit tests, plus an integration test
     (Testcontainers) when the database is involved. In the app, that means unit or widget tests.
-11. Text users see in the app is Dutch. Code, comments, commit messages and technical documentation are English.
+11. The app is Dutch by default and also available in English. Text users see lives in the ARB files in
+    `frontend/lib/l10n` (`app_nl.arb` is the template, `app_en.arb` the translation), never as a literal in a widget;
+    every new text gets both. Code, comments, commit messages and technical documentation are English.
 
 ## Commands
 

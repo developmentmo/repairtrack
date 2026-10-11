@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -20,15 +21,11 @@ class CheckYourMail extends StatelessWidget {
       children: [
         const Icon(Icons.mark_email_unread_outlined, size: 56),
         const SizedBox(height: 16),
-        Text(
-          'We hebben een e-mail gestuurd naar $email. Klik op de link in die mail om je e-mailadres te bevestigen; '
-          'daarna kun je inloggen. De link is 24 uur geldig.',
-          textAlign: TextAlign.center,
-        ),
+        Text(context.l10n.checkMailText(email), textAlign: TextAlign.center),
         const SizedBox(height: 24),
         ResendVerificationButton(email: email),
         const SizedBox(height: 8),
-        FilledButton(onPressed: () => context.go(Routes.login), child: const Text('Naar inloggen')),
+        FilledButton(onPressed: () => context.go(Routes.login), child: Text(context.l10n.commonBackToLogin)),
       ],
     );
   }
@@ -48,6 +45,7 @@ class _ResendVerificationButtonState extends ConsumerState<ResendVerificationBut
   bool _sent = false;
 
   Future<void> _resend() async {
+    final l = context.l10n;
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -56,7 +54,7 @@ class _ResendVerificationButtonState extends ConsumerState<ResendVerificationBut
         setState(() => _sent = true);
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -67,13 +65,13 @@ class _ResendVerificationButtonState extends ConsumerState<ResendVerificationBut
   @override
   Widget build(BuildContext context) {
     if (_sent) {
-      return const InfoBanner(message: 'Er is een nieuwe bevestigingsmail verstuurd. Eerdere links werken niet meer.');
+      return InfoBanner(message: context.l10n.resendVerificationSent);
     }
     return OutlinedButton.icon(
       key: const Key('resend-verification'),
       onPressed: _busy ? null : _resend,
       icon: const Icon(Icons.refresh),
-      label: const Text('Bevestigingsmail opnieuw versturen'),
+      label: Text(context.l10n.resendVerificationButton),
     );
   }
 }
@@ -102,6 +100,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _error = null;
@@ -113,7 +112,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -124,19 +123,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('Wachtwoord vergeten')),
+      appBar: AppBar(title: Text(l.forgotPasswordTitle)),
       body: CenteredForm(
         child: _sent
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const InfoBanner(
-                    message: 'Als dit e-mailadres bij RepairTrack bekend is, ontvang je een mail met een link om een '
-                        'nieuw wachtwoord te kiezen. De link is 1 uur geldig.',
-                  ),
+                  InfoBanner(message: l.forgotPasswordSent),
                   const SizedBox(height: 16),
-                  FilledButton(onPressed: () => context.go(Routes.login), child: const Text('Naar inloggen')),
+                  FilledButton(onPressed: () => context.go(Routes.login), child: Text(l.commonBackToLogin)),
                 ],
               )
             : Form(
@@ -146,11 +143,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   children: [
                     TextFormField(
                       controller: _email,
-                      decoration: const InputDecoration(labelText: 'E-mailadres'),
+                      decoration: InputDecoration(labelText: l.commonEmail),
                       keyboardType: TextInputType.emailAddress,
                       onFieldSubmitted: (_) => _submit(),
                       validator: (value) =>
-                          (value == null || !value.contains('@')) ? 'Vul een geldig e-mailadres in' : null,
+                          (value == null || !value.contains('@')) ? l.commonInvalidEmail : null,
                     ),
                     const SizedBox(height: 16),
                     if (_error != null) ...[
@@ -159,9 +156,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ],
                     FilledButton(
                       onPressed: _busy ? null : _submit,
-                      child: _busy ? const ButtonProgress() : const Text('Stuur een herstellink'),
+                      child: _busy ? const ButtonProgress() : Text(l.forgotPasswordSubmit),
                     ),
-                    TextButton(onPressed: () => context.go(Routes.login), child: const Text('Terug naar inloggen')),
+                    TextButton(onPressed: () => context.go(Routes.login), child: Text(l.forgotPasswordBack)),
                   ],
                 ),
               ),
@@ -185,8 +182,9 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('E-mailadres bevestigen'), automaticallyImplyLeading: false),
+      appBar: AppBar(title: Text(l.verifyEmailTitle), automaticallyImplyLeading: false),
       body: CenteredForm(
         child: FutureBuilder<void>(
           future: _verification,
@@ -202,12 +200,12 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 const SizedBox(height: 16),
                 Text(
                   failed
-                      ? userMessage(snapshot.error!)
-                      : 'Je e-mailadres is bevestigd. Je kunt nu inloggen, ook in de RepairTrack-app.',
+                      ? userMessage(l, snapshot.error!)
+                      : l.verifyEmailDone,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
-                FilledButton(onPressed: () => context.go(Routes.login), child: const Text('Naar inloggen')),
+                FilledButton(onPressed: () => context.go(Routes.login), child: Text(l.commonBackToLogin)),
               ],
             );
           },
@@ -247,6 +245,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _error = null;
@@ -258,7 +257,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -270,19 +269,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     const min = ResetPasswordScreen.minPasswordLength;
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('Nieuw wachtwoord'), automaticallyImplyLeading: false),
+      appBar: AppBar(title: Text(l.resetPasswordNewPassword), automaticallyImplyLeading: false),
       body: CenteredForm(
         child: _done
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const InfoBanner(
-                    message: 'Je wachtwoord is gewijzigd. Je bent op al je apparaten uitgelogd; log opnieuw in met '
-                        'je nieuwe wachtwoord.',
-                  ),
+                  InfoBanner(message: l.resetPasswordDone),
                   const SizedBox(height: 16),
-                  FilledButton(onPressed: () => context.go(Routes.login), child: const Text('Naar inloggen')),
+                  FilledButton(onPressed: () => context.go(Routes.login), child: Text(l.commonBackToLogin)),
                 ],
               )
             : Form(
@@ -292,16 +289,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   children: [
                     PasswordFormField(
                       controller: _password,
-                      labelText: 'Nieuw wachtwoord',
-                      helperText: 'Minimaal $min tekens',
+                      labelText: l.resetPasswordNewPassword,
+                      helperText: l.passwordMinLength(min),
                       autofillHints: const [AutofillHints.newPassword],
-                      validator: (value) => (value == null || value.length < min) ? 'Minimaal $min tekens' : null,
+                      validator: (value) => (value == null || value.length < min) ? l.passwordMinLength(min) : null,
                     ),
                     const SizedBox(height: 16),
                     PasswordFormField(
-                      labelText: 'Herhaal wachtwoord',
+                      labelText: l.passwordRepeat,
                       onFieldSubmitted: (_) => _submit(),
-                      validator: (value) => value != _password.text ? 'De wachtwoorden zijn niet gelijk' : null,
+                      validator: (value) => value != _password.text ? l.passwordMismatch : null,
                     ),
                     const SizedBox(height: 16),
                     if (_error != null) ...[
@@ -310,7 +307,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     ],
                     FilledButton(
                       onPressed: _busy ? null : _submit,
-                      child: _busy ? const ButtonProgress() : const Text('Wachtwoord opslaan'),
+                      child: _busy ? const ButtonProgress() : Text(l.resetPasswordSubmit),
                     ),
                   ],
                 ),

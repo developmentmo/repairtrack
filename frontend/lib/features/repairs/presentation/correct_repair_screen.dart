@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -22,7 +23,7 @@ class CorrectRepairScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final repair = ref.watch(repairProvider(repairId));
     return Scaffold(
-      appBar: AppBar(title: const Text('Corrigeren')),
+      appBar: AppBar(title: Text(context.l10n.repairCorrect)),
       body: AsyncValueView(
         value: repair,
         onRetry: () => ref.invalidate(repairProvider(repairId)),
@@ -77,6 +78,7 @@ class _CorrectionFormState extends ConsumerState<_CorrectionForm> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final l = context.l10n;
     final correction = RepairCorrection.diff(
       widget.repair,
       reason: _reason.text.trim(),
@@ -87,7 +89,7 @@ class _CorrectionFormState extends ConsumerState<_CorrectionForm> {
       description: _description.text.trim(),
     );
     if (correction == null) {
-      setState(() => _error = 'Je hebt niets gewijzigd.');
+      setState(() => _error = l.correctRepairNoChanges);
       return;
     }
     setState(() {
@@ -108,9 +110,9 @@ class _CorrectionFormState extends ConsumerState<_CorrectionForm> {
           context: context,
           builder: (context) => AlertDialog(
             icon: const Icon(Icons.speed),
-            title: const Text('Gecorrigeerd, met een waarschuwing'),
-            content: Text(corrected.warnings.map(mileageWarningText).join('\n\n')),
-            actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Begrepen'))],
+            title: Text(l.correctRepairWarningTitle),
+            content: Text(corrected.warnings.map((w) => mileageWarningText(l, w)).join('\n\n')),
+            actions: [FilledButton(onPressed: () => Navigator.pop(context), child: Text(l.repairUnderstood))],
           ),
         );
       }
@@ -119,7 +121,7 @@ class _CorrectionFormState extends ConsumerState<_CorrectionForm> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -130,6 +132,7 @@ class _CorrectionFormState extends ConsumerState<_CorrectionForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return CenteredForm(
       maxWidth: 560,
       child: Form(
@@ -137,16 +140,14 @@ class _CorrectionFormState extends ConsumerState<_CorrectionForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const InfoBanner(
-              message: 'Een correctie overschrijft niets: de oorspronkelijke waarde en jouw reden blijven zichtbaar.',
-            ),
+            InfoBanner(message: l.correctRepairInfo),
             const SizedBox(height: 16),
             DropdownButtonFormField<RepairEventType>(
               initialValue: _eventType,
-              decoration: const InputDecoration(labelText: 'Soort'),
+              decoration: InputDecoration(labelText: l.commonType),
               items: [
                 for (final type in RepairEventType.selectable)
-                  DropdownMenuItem(value: type, child: Text(eventTypeLabel(type))),
+                  DropdownMenuItem(value: type, child: Text(eventTypeLabel(l, type))),
               ],
               onChanged: (type) => setState(() => _eventType = type ?? _eventType),
             ),
@@ -154,36 +155,36 @@ class _CorrectionFormState extends ConsumerState<_CorrectionForm> {
             OutlinedButton.icon(
               onPressed: _pickDate,
               icon: const Icon(Icons.event),
-              label: Text('Datum: ${formatDate(_eventDate)}'),
+              label: Text(l.repairDateButton(formatDate(_eventDate))),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _mileage,
-              decoration: const InputDecoration(labelText: 'Kilometerstand', suffixText: 'km'),
+              decoration: InputDecoration(labelText: l.commonMileage, suffixText: 'km'),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (value) => int.tryParse(value ?? '') == null ? 'Vul de kilometerstand in' : null,
+              validator: (value) => int.tryParse(value ?? '') == null ? l.repairMileageRequired : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _title,
-              decoration: const InputDecoration(labelText: 'Titel'),
+              decoration: InputDecoration(labelText: l.commonTitle),
               maxLength: 150,
-              validator: (value) => (value == null || value.trim().isEmpty) ? 'Vul een titel in' : null,
+              validator: (value) => (value == null || value.trim().isEmpty) ? l.repairTitleRequired : null,
             ),
             const SizedBox(height: 8),
             TextFormField(
               controller: _description,
-              decoration: const InputDecoration(labelText: 'Omschrijving'),
+              decoration: InputDecoration(labelText: l.commonDescription),
               maxLines: 4,
               maxLength: 5000,
             ),
             const SizedBox(height: 8),
             TextFormField(
               controller: _reason,
-              decoration: const InputDecoration(labelText: 'Reden van de correctie', hintText: 'Bijv. typfout'),
+              decoration: InputDecoration(labelText: l.correctRepairReason, hintText: l.correctRepairReasonHint),
               maxLength: 500,
-              validator: (value) => (value == null || value.trim().isEmpty) ? 'Een reden is verplicht' : null,
+              validator: (value) => (value == null || value.trim().isEmpty) ? l.correctRepairReasonRequired : null,
             ),
             const SizedBox(height: 16),
             if (_error != null) ...[
@@ -192,7 +193,7 @@ class _CorrectionFormState extends ConsumerState<_CorrectionForm> {
             ],
             FilledButton(
               onPressed: _busy ? null : _submit,
-              child: _busy ? const ButtonProgress() : const Text('Correctie opslaan'),
+              child: _busy ? const ButtonProgress() : Text(l.correctRepairSave),
             ),
           ],
         ),

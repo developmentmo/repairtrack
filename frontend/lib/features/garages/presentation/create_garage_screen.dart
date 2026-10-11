@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -42,6 +43,7 @@ class _CreateGarageScreenState extends ConsumerState<CreateGarageScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _error = null;
@@ -64,7 +66,7 @@ class _CreateGarageScreenState extends ConsumerState<CreateGarageScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -73,39 +75,37 @@ class _CreateGarageScreenState extends ConsumerState<CreateGarageScreen> {
     }
   }
 
-  String? _required(String? value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : null;
+  String? _required(String? value) => (value == null || value.trim().isEmpty) ? context.l10n.commonRequiredField : null;
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('Garage aanmelden')),
+      appBar: AppBar(title: Text(l.navRegisterGarage)),
       body: CenteredForm(
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const InfoBanner(
-                message: 'Je wordt beheerder van deze garage. RepairTrack controleert de gegevens (KvK); tot dan '
-                    'tellen je registraties als "garage", daarna als "geverifieerde garage".',
-              ),
+              InfoBanner(message: l.createGarageInfo),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _name,
-                decoration: const InputDecoration(labelText: 'Naam'),
+                decoration: InputDecoration(labelText: l.createGarageName),
                 validator: _required,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _kvk,
-                decoration: const InputDecoration(labelText: 'KvK-nummer'),
+                decoration: InputDecoration(labelText: l.createGarageKvk),
                 keyboardType: TextInputType.number,
-                validator: (value) => isValidKvkNumber(value ?? '') ? null : 'Een KvK-nummer heeft 8 cijfers',
+                validator: (value) => isValidKvkNumber(value ?? '') ? null : l.createGarageKvkInvalid,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _address,
-                decoration: const InputDecoration(labelText: 'Adres'),
+                decoration: InputDecoration(labelText: l.createGarageAddress),
                 validator: _required,
               ),
               const SizedBox(height: 16),
@@ -116,16 +116,16 @@ class _CreateGarageScreenState extends ConsumerState<CreateGarageScreen> {
                     width: 140,
                     child: TextFormField(
                       controller: _postalCode,
-                      decoration: const InputDecoration(labelText: 'Postcode'),
+                      decoration: InputDecoration(labelText: l.createGaragePostalCode),
                       textCapitalization: TextCapitalization.characters,
-                      validator: (value) => isValidPostalCode(value ?? '') ? null : 'Bijv. 1234 AB',
+                      validator: (value) => isValidPostalCode(value ?? '') ? null : l.createGaragePostalCodeInvalid,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
                       controller: _city,
-                      decoration: const InputDecoration(labelText: 'Plaats'),
+                      decoration: InputDecoration(labelText: l.createGarageCity),
                       validator: _required,
                     ),
                   ),
@@ -134,13 +134,13 @@ class _CreateGarageScreenState extends ConsumerState<CreateGarageScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phone,
-                decoration: const InputDecoration(labelText: 'Telefoon (optioneel)'),
+                decoration: InputDecoration(labelText: l.createGaragePhone),
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _email,
-                decoration: const InputDecoration(labelText: 'E-mailadres (optioneel)'),
+                decoration: InputDecoration(labelText: l.createGarageEmail),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
@@ -150,7 +150,7 @@ class _CreateGarageScreenState extends ConsumerState<CreateGarageScreen> {
               ],
               FilledButton(
                 onPressed: _busy ? null : _submit,
-                child: _busy ? const ButtonProgress() : const Text('Aanmelden'),
+                child: _busy ? const ButtonProgress() : Text(l.createGarageSubmit),
               ),
             ],
           ),

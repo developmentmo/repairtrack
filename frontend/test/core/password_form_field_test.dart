@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repairtrack_app/core/widgets/form_widgets.dart';
+import '../helpers/test_app.dart';
 
 void main() {
   testWidgets('the eye shows and hides the password', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: PasswordFormField())));
+    await tester.pumpWidget(const TestApp(home: Scaffold(body: PasswordFormField())));
 
     EditableText field() => tester.widget<EditableText>(find.byType(EditableText));
 

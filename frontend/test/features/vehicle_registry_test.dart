@@ -6,6 +6,7 @@ import 'package:repairtrack_app/core/network/api_exception.dart';
 import 'package:repairtrack_app/features/vehicles/data/vehicle_api.dart';
 import 'package:repairtrack_app/features/vehicles/domain/vehicle.dart';
 import 'package:repairtrack_app/features/vehicles/presentation/add_vehicle_screen.dart';
+import '../helpers/test_app.dart';
 
 class MockVehicleApi extends Mock implements VehicleApi {}
 
@@ -39,7 +40,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [vehicleApiProvider.overrideWithValue(api)],
-          child: const MaterialApp(home: AddVehicleScreen()),
+          child: const TestApp(home: AddVehicleScreen()),
         ),
       );
       await tester.pumpAndSettle();

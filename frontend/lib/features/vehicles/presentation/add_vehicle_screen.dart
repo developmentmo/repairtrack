@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
@@ -32,18 +33,16 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final garageId = widget.garageId;
     if (garageId != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Voertuig registreren')),
+        appBar: AppBar(title: Text(l.addVehicleRegisterTitle)),
         body: CenteredForm(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const InfoBanner(
-                message: 'Je registreert dit voertuig namens je garage. Het krijgt nog geen eigenaar: '
-                    'de eigenaar claimt het later zelf met het VIN.',
-              ),
+              InfoBanner(message: l.addVehicleGarageInfo),
               const SizedBox(height: 24),
               _RegisterForm(garageId: garageId),
             ],
@@ -52,15 +51,15 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Voertuig toevoegen')),
+      appBar: AppBar(title: Text(l.commonAddVehicle)),
       body: CenteredForm(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SegmentedButton<_Mode>(
-              segments: const [
-                ButtonSegment(value: _Mode.register, label: Text('Nieuw registreren')),
-                ButtonSegment(value: _Mode.claim, label: Text('Bestaand claimen')),
+              segments: [
+                ButtonSegment(value: _Mode.register, label: Text(l.addVehicleModeRegister)),
+                ButtonSegment(value: _Mode.claim, label: Text(l.addVehicleModeClaim)),
               ],
               selected: {_mode},
               onSelectionChanged: (selection) => setState(() => _mode = selection.first),
@@ -116,6 +115,8 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _busy = true;
       _error = null;
@@ -143,12 +144,12 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
     } on ApiException catch (e) {
       final onAlreadyRegistered = widget.onAlreadyRegistered;
       if (e.code == 'VEHICLE_ALREADY_REGISTERED' && onAlreadyRegistered != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(userMessage(e))));
+        messenger.showSnackBar(SnackBar(content: Text(userMessage(l, e))));
         onAlreadyRegistered();
         return;
       }
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -159,8 +160,9 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
 
   /// Fills make, model and model year from the RDW. Only a suggestion: the user can still change everything.
   Future<void> _lookup() async {
+    final l = context.l10n;
     if (_plate.text.trim().isEmpty) {
-      setState(() => _lookupMessage = 'Vul eerst een kenteken in.');
+      setState(() => _lookupMessage = l.addVehicleEnterPlateFirst);
       return;
     }
     setState(() {
@@ -189,7 +191,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
       });
     } on ApiException catch (e) {
       if (mounted) {
-        setState(() => _lookupMessage = userMessage(e));
+        setState(() => _lookupMessage = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -204,17 +206,19 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
       firstDate: DateTime(1950),
       lastDate: today(),
       initialDate: _ownedSince ?? today(),
-      helpText: 'Eigenaar sinds',
+      helpText: context.l10n.addVehicleOwnedSince,
     );
     if (picked != null) {
       setState(() => _ownedSince = picked);
     }
   }
 
-  String? _required(String? value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : null;
+  String? _required(String? value) =>
+      (value == null || value.trim().isEmpty) ? context.l10n.commonRequiredField : null;
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Form(
       key: _formKey,
       child: Column(
@@ -224,13 +228,13 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
             key: const Key('vehicle-plate'),
             controller: _plate,
             decoration: InputDecoration(
-              labelText: 'Kenteken (optioneel)',
-              helperText: 'Haal merk, model en bouwjaar op bij de RDW',
+              labelText: l.addVehiclePlateOptional,
+              helperText: l.addVehiclePlateHelper,
               suffixIcon: _lookingUp
                   ? const Padding(padding: EdgeInsets.all(12), child: ButtonProgress())
                   : IconButton(
                       key: const Key('rdw-lookup'),
-                      tooltip: 'Ophalen bij RDW',
+                      tooltip: l.addVehicleRdwLookup,
                       icon: const Icon(Icons.travel_explore),
                       onPressed: _lookup,
                     ),
@@ -257,32 +261,32 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _vin,
-            decoration: const InputDecoration(
-              labelText: 'VIN (chassisnummer)',
-              helperText: '17 tekens, staat op je kentekenbewijs (E)',
+            decoration: InputDecoration(
+              labelText: l.commonVin,
+              helperText: l.addVehicleVinHelper,
             ),
             textCapitalization: TextCapitalization.characters,
-            validator: (value) => isValidVin(value ?? '') ? null : 'Een VIN heeft 17 tekens, zonder I, O en Q',
+            validator: (value) => isValidVin(value ?? '') ? null : l.addVehicleVinInvalid,
           ),
           const SizedBox(height: 16),
           TextFormField(
             key: const Key('vehicle-make'),
             controller: _make,
-            decoration: const InputDecoration(labelText: 'Merk'),
+            decoration: InputDecoration(labelText: l.addVehicleMake),
             validator: _required,
           ),
           const SizedBox(height: 16),
           TextFormField(
             key: const Key('vehicle-model'),
             controller: _model,
-            decoration: const InputDecoration(labelText: 'Model'),
+            decoration: InputDecoration(labelText: l.addVehicleModel),
             validator: _required,
           ),
           const SizedBox(height: 16),
           TextFormField(
             key: const Key('vehicle-year'),
             controller: _year,
-            decoration: const InputDecoration(labelText: 'Bouwjaar (optioneel)'),
+            decoration: InputDecoration(labelText: l.addVehicleYearOptional),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
           ),
@@ -292,7 +296,9 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
               onPressed: _pickOwnedSince,
               icon: const Icon(Icons.event),
               label: Text(
-                _ownedSince == null ? 'Eigenaar sinds: vandaag' : 'Eigenaar sinds: ${formatDate(_ownedSince!)}',
+                _ownedSince == null
+                    ? l.addVehicleOwnedSinceToday
+                    : l.addVehicleOwnedSinceDate(formatDate(_ownedSince!)),
               ),
             ),
           ],
@@ -303,7 +309,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
           ],
           FilledButton(
             onPressed: _busy ? null : _submit,
-            child: _busy ? const ButtonProgress() : const Text('Registreren'),
+            child: _busy ? const ButtonProgress() : Text(l.addVehicleRegisterButton),
           ),
         ],
       ),
@@ -319,21 +325,22 @@ class _RegistrySummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final facts = <String>[
       if (vehicle.vehicleType != null) vehicle.vehicleType!,
       if (vehicle.primaryColor != null) vehicle.primaryColor!.toLowerCase(),
       if (vehicle.fuelTypes.isNotEmpty) vehicle.fuelTypes.join(' / ').toLowerCase(),
-      if (vehicle.firstRegistrationDate != null) 'eerste toelating ${formatDate(vehicle.firstRegistrationDate!)}',
-      if (vehicle.apkExpiryDate != null) 'APK tot ${formatDate(vehicle.apkExpiryDate!)}',
+      if (vehicle.firstRegistrationDate != null) l.addVehicleRdwFirstRegistration(formatDate(vehicle.firstRegistrationDate!)),
+      if (vehicle.apkExpiryDate != null) l.addVehicleRdwApkUntil(formatDate(vehicle.apkExpiryDate!)),
     ];
     return Card(
       key: const Key('rdw-summary'),
       child: ListTile(
         leading: const Icon(Icons.fact_check_outlined),
-        title: Text('Gevonden bij de RDW: ${[vehicle.make, vehicle.model].whereType<String>().join(' ')}'),
+        title: Text(l.addVehicleRdwFound([vehicle.make, vehicle.model].whereType<String>().join(' '))),
         subtitle: Text([
           if (facts.isNotEmpty) facts.join(' · '),
-          'Controleer de gegevens; je kunt ze nog aanpassen.',
+          l.addVehicleRdwCheck,
         ].join('\n')),
       ),
     );
@@ -369,6 +376,7 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
     if (_plate.text.trim().isEmpty) {
       return;
     }
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _error = null;
@@ -381,7 +389,7 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -395,8 +403,9 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
     if (selected == null) {
       return;
     }
+    final l = context.l10n;
     if (!isValidVin(_vin.text)) {
-      setState(() => _error = 'Een VIN heeft 17 tekens, zonder I, O en Q');
+      setState(() => _error = l.addVehicleVinInvalid);
       return;
     }
     setState(() {
@@ -413,7 +422,7 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
-          _error = userMessage(e);
+          _error = userMessage(l, e);
           _ownedBySomeoneElse = e.code == 'VEHICLE_ALREADY_OWNED';
         });
       }
@@ -426,23 +435,24 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final results = _results;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Zoek het voertuig op kenteken. Als bewijs dat je de eigenaar bent vul je daarna het volledige VIN in.'),
+        Text(l.addVehicleClaimIntro),
         const SizedBox(height: 16),
         TextField(
           controller: _plate,
           decoration: InputDecoration(
-            labelText: 'Kenteken',
+            labelText: l.vehicleLicensePlate,
             suffixIcon: IconButton(icon: const Icon(Icons.search), onPressed: _busy ? null : _search),
           ),
           textCapitalization: TextCapitalization.characters,
           onSubmitted: (_) => _search(),
         ),
         const SizedBox(height: 16),
-        if (results != null && results.isEmpty) const Text('Geen voertuig gevonden met dit kenteken.'),
+        if (results != null && results.isEmpty) Text(l.addVehicleNoneFound),
         if (results != null)
           for (final result in results)
             Card(
@@ -460,13 +470,13 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
           const SizedBox(height: 16),
           TextField(
             controller: _vin,
-            decoration: const InputDecoration(labelText: 'VIN (chassisnummer)'),
+            decoration: InputDecoration(labelText: l.commonVin),
             textCapitalization: TextCapitalization.characters,
           ),
           const SizedBox(height: 16),
           FilledButton(
             onPressed: _busy ? null : _claim,
-            child: _busy ? const ButtonProgress() : const Text('Claimen'),
+            child: _busy ? const ButtonProgress() : Text(l.addVehicleClaimButton),
           ),
         ],
         if (_error != null) ...[
@@ -475,13 +485,12 @@ class _ClaimFormState extends ConsumerState<_ClaimForm> {
         ],
         if (_ownedBySomeoneElse && _selected != null) ...[
           const SizedBox(height: 8),
-          const Text('Is dit voertuig van jou, maar staat het op naam van iemand anders? Dan kun je het eigendom '
-              'betwisten. RepairTrack beoordeelt dat.'),
+          Text(l.addVehicleDisputeHint),
           TextButton.icon(
             key: const Key('open-dispute'),
             onPressed: () => context.go(Routes.openDispute(_selected!.id), extra: _selected!.displayName),
             icon: const Icon(Icons.gavel),
-            label: const Text('Eigendom betwisten'),
+            label: Text(l.addVehicleDisputeButton),
           ),
         ],
       ],

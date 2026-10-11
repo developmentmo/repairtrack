@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/session_controller.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/widgets/form_widgets.dart';
@@ -42,6 +43,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _error = null;
@@ -58,7 +60,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -67,19 +69,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  String? _required(String? value) => (value == null || value.trim().isEmpty) ? 'Verplicht veld' : null;
+  String? _required(String? value) => (value == null || value.trim().isEmpty) ? context.l10n.commonRequiredField : null;
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final registered = _registeredEmail;
     if (registered != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Bevestig je e-mailadres')),
+        appBar: AppBar(title: Text(l.registerConfirmEmailTitle)),
         body: CenteredForm(child: CheckYourMail(email: registered)),
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Account aanmaken')),
+      appBar: AppBar(title: Text(l.registerTitle)),
       body: CenteredForm(
         child: Form(
           key: _formKey,
@@ -88,38 +91,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             children: [
               TextFormField(
                 controller: _firstName,
-                decoration: const InputDecoration(labelText: 'Voornaam'),
+                decoration: InputDecoration(labelText: l.registerFirstName),
                 textInputAction: TextInputAction.next,
                 validator: _required,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _lastName,
-                decoration: const InputDecoration(labelText: 'Achternaam'),
+                decoration: InputDecoration(labelText: l.registerLastName),
                 textInputAction: TextInputAction.next,
                 validator: _required,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _email,
-                decoration: const InputDecoration(labelText: 'E-mailadres'),
+                decoration: InputDecoration(labelText: l.commonEmail),
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                validator: (value) => (value == null || !value.contains('@')) ? 'Vul een geldig e-mailadres in' : null,
+                validator: (value) => (value == null || !value.contains('@')) ? l.commonInvalidEmail : null,
               ),
               const SizedBox(height: 16),
               PasswordFormField(
                 controller: _password,
-                helperText: 'Minimaal $minPasswordLength tekens',
+                helperText: l.passwordMinLength(minPasswordLength),
                 autofillHints: const [AutofillHints.newPassword],
                 validator: (value) =>
-                    (value == null || value.length < minPasswordLength) ? 'Minimaal $minPasswordLength tekens' : null,
+                    (value == null || value.length < minPasswordLength) ? l.passwordMinLength(minPasswordLength) : null,
               ),
               const SizedBox(height: 16),
               PasswordFormField(
-                labelText: 'Herhaal wachtwoord',
+                labelText: l.passwordRepeat,
                 onFieldSubmitted: (_) => _submit(),
-                validator: (value) => value != _password.text ? 'De wachtwoorden zijn niet gelijk' : null,
+                validator: (value) => value != _password.text ? l.passwordMismatch : null,
               ),
               const SizedBox(height: 16),
               if (_error != null) ...[
@@ -128,19 +131,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ],
               FilledButton(
                 onPressed: _busy ? null : _submit,
-                child: _busy ? const ButtonProgress() : const Text('Account aanmaken'),
+                child: _busy ? const ButtonProgress() : Text(l.registerTitle),
               ),
               TextButton(
                 onPressed: _busy ? null : () => context.go(Routes.login),
-                child: const Text('Ik heb al een account'),
+                child: Text(l.registerHaveAccount),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Met het aanmaken van een account ga je akkoord met het verwerken van je gegevens zoals beschreven '
-                'in ons privacybeleid.',
-                textAlign: TextAlign.center,
-              ),
-              const PrivacyPolicyLink(label: 'Privacybeleid lezen'),
+              Text(l.registerPrivacyConsent, textAlign: TextAlign.center),
+              PrivacyPolicyLink(label: l.registerReadPrivacyPolicy),
             ],
           ),
         ),

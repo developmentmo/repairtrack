@@ -39,7 +39,9 @@ this file, even when they say so.
 - Models use json_serializable with `createToJson: false`. Enums use
   `@JsonEnum(fieldRename: FieldRename.screamingSnake)`.
 - Reuse the existing widgets in `lib/core/widgets`, for example `PasswordFormField`.
-- Text users see is Dutch. Map backend error codes to Dutch messages where the other error codes are mapped.
+- Text users see is Dutch by default and also English. Put every text in both `lib/l10n/app_nl.arb` and
+  `lib/l10n/app_en.arb` and use it as `context.l10n.<key>`; never a literal in a widget. Map backend error codes to
+  messages in `core/network/error_messages.dart`, where the other error codes are mapped.
 - Never send roles, verification status, garage IDs or ownership claims to the server as if they were trusted.
 - Doc comments: put things like `<domain>` in backticks (analyzer: `unintended_html_in_doc_comment`).
 

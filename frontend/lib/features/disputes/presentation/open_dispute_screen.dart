@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/error_messages.dart';
 import '../../../core/routing/routes.dart';
@@ -40,7 +41,7 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
   }
 
   Future<void> _pick() async {
-    final file = await pickEvidenceFile((message) => setState(() => _error = message));
+    final file = await pickEvidenceFile(context.l10n, (message) => setState(() => _error = message));
     if (file != null && mounted) {
       setState(() {
         _file = file;
@@ -50,12 +51,13 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
   }
 
   Future<void> _submit() async {
+    final l = context.l10n;
     if (!_formKey.currentState!.validate()) {
       return;
     }
     final file = _file;
     if (file == null) {
-      setState(() => _error = 'Voeg een bestand toe waaruit blijkt dat je de eigenaar bent.');
+      setState(() => _error = l.openDisputeFileRequired);
       return;
     }
     setState(() {
@@ -72,13 +74,13 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
       ref.invalidate(myDisputesProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Je geschil is ingediend. Je krijgt een e-mail met de uitkomst.')),
+          SnackBar(content: Text(l.openDisputeSubmitted)),
         );
         context.go(Routes.disputes);
       }
     } on ApiException catch (e) {
       if (mounted) {
-        setState(() => _error = userMessage(e));
+        setState(() => _error = userMessage(l, e));
       }
     } finally {
       if (mounted) {
@@ -89,8 +91,9 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('Eigendom betwisten')),
+      appBar: AppBar(title: Text(l.openDisputeTitle)),
       body: CenteredForm(
         child: Form(
           key: _formKey,
@@ -98,39 +101,35 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               InfoBanner(
-                message: '${widget.vehicleName ?? 'Dit voertuig'} staat in RepairTrack op naam van iemand anders. '
-                    'Ben jij de rechtmatige eigenaar? Dien dan een geschil in. De huidige eigenaar krijgt 14 dagen om '
-                    'te reageren en ziet niet wie het geschil indient. Daarna beslist RepairTrack.',
+                message: l.openDisputeIntro(widget.vehicleName ?? l.openDisputeThisVehicle),
               ),
               const SizedBox(height: 24),
               TextFormField(
                 key: const Key('dispute-vin'),
                 controller: _vin,
-                decoration: const InputDecoration(
-                  labelText: 'VIN (chassisnummer)',
-                  helperText: 'Het volledige VIN van je kentekenbewijs',
+                decoration: InputDecoration(
+                  labelText: l.commonVin,
+                  helperText: l.openDisputeVinHelper,
                 ),
                 textCapitalization: TextCapitalization.characters,
-                validator: (value) =>
-                    isValidVin(value ?? '') ? null : 'Een VIN heeft 17 tekens, zonder I, O en Q',
+                validator: (value) => isValidVin(value ?? '') ? null : l.openDisputeVinInvalid,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 key: const Key('dispute-statement'),
                 controller: _statement,
-                decoration: const InputDecoration(
-                  labelText: 'Toelichting',
-                  helperText: 'Sinds wanneer is de auto van jou, en hoe heb je hem gekregen?',
+                decoration: InputDecoration(
+                  labelText: l.commonExplanation,
+                  helperText: l.openDisputeStatementHelper,
                   alignLabelWithHint: true,
                 ),
                 minLines: 4,
                 maxLines: 8,
                 maxLength: 2000,
-                validator: (value) =>
-                    (value ?? '').trim().length < 10 ? 'Schrijf ten minste een paar woorden (10 tekens).' : null,
+                validator: (value) => (value ?? '').trim().length < 10 ? l.disputeStatementTooShort : null,
               ),
               const SizedBox(height: 8),
-              const Text(evidenceHint),
+              Text(l.evidenceHint),
               const SizedBox(height: 8),
               EvidenceFileButton(file: _file, onPressed: _busy ? null : _pick),
               const SizedBox(height: 16),
@@ -141,7 +140,7 @@ class _OpenDisputeScreenState extends ConsumerState<OpenDisputeScreen> {
               FilledButton(
                 key: const Key('dispute-submit'),
                 onPressed: _busy ? null : _submit,
-                child: _busy ? const ButtonProgress() : const Text('Geschil indienen'),
+                child: _busy ? const ButtonProgress() : Text(l.openDisputeSubmit),
               ),
             ],
           ),

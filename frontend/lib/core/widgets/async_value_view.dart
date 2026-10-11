@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/error_messages.dart';
+import '../l10n/l10n.dart';
 
 /// Renders loading, error (with retry) and data states of an [AsyncValue].
 class AsyncValueView<T> extends StatelessWidget {
@@ -39,10 +40,10 @@ class ErrorView extends StatelessWidget {
           children: [
             Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
             const SizedBox(height: 12),
-            Text(userMessage(error), textAlign: TextAlign.center),
+            Text(userMessage(context.l10n, error), textAlign: TextAlign.center),
             if (onRetry != null) ...[
               const SizedBox(height: 12),
-              OutlinedButton(onPressed: onRetry, child: const Text('Opnieuw proberen')),
+              OutlinedButton(onPressed: onRetry, child: Text(context.l10n.commonRetry)),
             ],
           ],
         ),

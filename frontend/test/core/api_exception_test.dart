@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repairtrack_app/core/network/api_exception.dart';
 import 'package:repairtrack_app/core/network/error_messages.dart';
+import 'package:repairtrack_app/core/l10n/l10n.dart';
+import 'package:flutter/widgets.dart';
 
 void main() {
   final request = RequestOptions(path: '/api/v1/vehicles');
@@ -29,7 +31,7 @@ void main() {
     );
 
     expect(exception.isNetworkError, isTrue);
-    expect(userMessage(exception), contains('Geen verbinding'));
+    expect(userMessage(lookupAppLocalizations(const Locale('nl')), exception), contains('Geen verbinding'));
   });
 
   test('a response without the error body keeps the status', () {
@@ -45,7 +47,7 @@ void main() {
   });
 
   test('user messages branch on the code, with a fallback for unknown codes', () {
-    expect(userMessage(const ApiException(code: 'INVALID_CREDENTIALS', message: '')), 'E-mailadres of wachtwoord is onjuist.');
-    expect(userMessage(const ApiException(code: 'SOMETHING_NEW', message: '')), contains('SOMETHING_NEW'));
+    expect(userMessage(lookupAppLocalizations(const Locale('nl')), const ApiException(code: 'INVALID_CREDENTIALS', message: '')), 'E-mailadres of wachtwoord is onjuist.');
+    expect(userMessage(lookupAppLocalizations(const Locale('nl')), const ApiException(code: 'SOMETHING_NEW', message: '')), contains('SOMETHING_NEW'));
   });
 }
