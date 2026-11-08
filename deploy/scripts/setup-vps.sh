@@ -127,7 +127,7 @@ ufw allow 443/tcp
 ufw allow 443/udp
 ufw --force enable
 # Docker publishes ports past ufw; the stacks therefore publish nothing except Caddy (80/443) and staging's
-# Mailpit UI on 127.0.0.1 only. PostgreSQL is never published.
+# Mailpit UI and the production db-access forwarder on 127.0.0.1 only. PostgreSQL itself is never published.
 
 step "fail2ban for SSH"
 # Conservative: 8 failures within 10 minutes -> 10 minute ban. Note that failures from just before fail2ban was

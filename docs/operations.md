@@ -38,7 +38,7 @@ Internet --443--> Caddy (edge, TLS by Let's Encrypt, no access log)
 production stack (Compose project repairtrack-production)      staging stack (repairtrack-staging): same, plus
   backend  (Spring Boot, Flyway runs at startup)                 Mailpit instead of real e-mail, ClamAV optional
   web      (Flutter web build, nginx, non-root, read-only)
-  postgres (volume repairtrack-production-postgres-data, internal network only, no published port)
+  postgres (volume repairtrack-production-postgres-data, internal network only; db-access forwards 127.0.0.1:5433)
   garage   (S3 object storage, volumes ...-garage-meta/-data)
   clamav   (malware scanning of uploads)
 ```
@@ -309,12 +309,18 @@ includes storage and the malware scanner. Details are never shown publicly; othe
 exposed (Caddy only forwards `/actuator/health*`). Staging mail: `ssh -L 8026:127.0.0.1:8026 <you>@<vps>` and open
 http://localhost:8026.
 
+Production database with a GUI (TablePlus, DBeaver, pgAdmin): `ssh -L 5433:127.0.0.1:5433 <you>@<vps>` and connect
+to `localhost:5433`, database `POSTGRES_DB`, user `POSTGRES_USER`, password `POSTGRES_PASSWORD` from
+`/opt/repairtrack/production/.env`. This is the live database: make a dump first (`backup-db.sh before-maintenance`)
+before changing anything. Without a GUI: `$S/compose.sh exec postgres psql -U <POSTGRES_USER> <POSTGRES_DB>`.
+
 ## Security
 
 - SSH: keys only, no root login (`--harden-ssh`), fail2ban; deployments use `repairtrack-deploy` with a key that
   exists only in the GitHub environment secret, and a pinned host key (`VPS_KNOWN_HOSTS`).
-- Firewall: only SSH, 80 and 443. No container publishes a port except Caddy (staging Mailpit on 127.0.0.1 only).
-  PostgreSQL is on an internal Docker network without internet access and is never published.
+- Firewall: only SSH, 80 and 443. No container publishes a port except Caddy (staging Mailpit and production
+  db-access on 127.0.0.1 only). PostgreSQL is on an internal Docker network without internet access; only the
+  db-access forwarder reaches it from the VPS itself, so it is reachable from outside through SSH only.
 - Secrets: only in `/opt/repairtrack/<env>/.env` (chmod 600, owner `repairtrack-deploy`), different per
   environment; never in git (`.gitignore`), images or workflow logs. Images contain no configuration.
 - Containers: backend and web run as non-root; the web container is read-only; Docker logs are size-limited.
